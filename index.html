@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>개인용 메이플 사냥 타이머</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app-container">
+    <!-- 헤더 영역 -->
+    <header class="app-header">
+      <div class="logo-area">
+        <div class="logo-icon">🍁</div>
+        <div>
+          <h1>메이플 사냥 헬퍼 타이머</h1>
+          <p class="subtitle">100% 브라우저 화면 분석 기반 · 변조/자동화 없음</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="status-badge disconnected" id="stream-status-badge">
+          <span class="status-dot"></span>
+          <span id="stream-status-text">화면 공유 대기 중</span>
+        </div>
+        <button id="btn-pip-toggle" class="btn btn-secondary" title="게임 위에 플로팅 타이머 노출">
+          <span class="icon">📺</span> PIP 플로팅 창
+        </button>
+        <button id="btn-reset-settings" class="btn btn-outline" title="설정 초기화">
+          <span class="icon">⚙️</span> 설정 초기화
+        </button>
+      </div>
+    </header>
+
+    <!-- 메인 컨텐츠 레이아웃 -->
+    <main class="main-content">
+      <!-- 좌측: 화면 공유 및 ROI (화면 감지 영역) 지정 -->
+      <section class="card screen-section">
+        <div class="card-header">
+          <h2><span class="icon">🖥️</span> 메이플 게임 화면 분석</h2>
+          <div class="screen-controls">
+            <button id="btn-start-share" class="btn btn-primary">
+              <span class="icon">▶</span> 게임 창 공유 시작
+            </button>
+            <button id="btn-stop-share" class="btn btn-danger hidden">
+              <span class="icon">⏹</span> 공유 중지
+            </button>
+          </div>
+        </div>
+
+        <div class="info-alert">
+          🔒 <strong>안내:</strong> 화면은 서버로 전송되지 않으며, 사용자 PC 브라우저 내부(Canvas)에서만 분석됩니다.
+        </div>
+
+        <!-- 화면 공유 뷰포트 및 ROI 오버레이 -->
+        <div class="video-container" id="video-container">
+          <video id="game-video" autoplay playsinline muted class="hidden"></video>
+          <canvas id="analysis-canvas" class="hidden"></canvas>
+          <canvas id="roi-overlay-canvas"></canvas>
+
+          <div class="screen-placeholder" id="screen-placeholder">
+            <div class="placeholder-content">
+              <div class="placeholder-icon">🎮</div>
+              <h3>메이플스토리 창을 공유해 주세요</h3>
+              <p>상단의 '게임 창 공유 시작' 버튼을 누른 후 메이플스토리 창을 선택하세요.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 감지 영역(ROI) 설정 도구 -->
+        <div class="roi-tools-panel">
+          <div class="roi-tool-item">
+            <div class="tool-title">
+              <span class="color-badge rune-badge"></span>
+              <strong>룬 감지 영역 (Rune ROI)</strong>
+            </div>
+            <div class="tool-actions">
+              <label class="switch">
+                <input type="checkbox" id="toggle-rune-detection" checked>
+                <span class="slider"></span>
+              </label>
+              <button id="btn-select-rune-roi" class="btn btn-small btn-outline">영역 드래그 지정</button>
+              <span class="status-pill" id="rune-status-pill">대기 중</span>
+            </div>
+          </div>
+
+          <div class="roi-tool-item">
+            <div class="tool-title">
+              <span class="color-badge popup-badge"></span>
+              <strong>팝업 / 거탐 감지 영역 (Popup ROI)</strong>
+            </div>
+            <div class="tool-actions">
+              <label class="switch">
+                <input type="checkbox" id="toggle-popup-detection" checked>
+                <span class="slider"></span>
+              </label>
+              <button id="btn-select-popup-roi" class="btn btn-small btn-outline">영역 드래그 지정</button>
+              <span class="status-pill" id="popup-status-pill">대기 중</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 우측: 사냥 수동 타이머 및 알림 설정 -->
+      <section class="right-panel">
+        <!-- 경험치 쿠폰 타이머 -->
+        <div class="card timer-card">
+          <div class="card-header">
+            <h2><span class="icon">🧪</span> 경험치 쿠폰 타이머</h2>
+            <div class="preset-buttons">
+              <button class="btn btn-xs btn-preset" data-minutes="15">15분</button>
+              <button class="btn btn-xs btn-preset active" data-minutes="30">30분</button>
+              <button class="btn btn-xs btn-preset" data-minutes="60">60분</button>
+            </div>
+          </div>
+          
+          <div class="timer-display-area">
+            <div class="timer-clock" id="exp-timer-clock">30:00</div>
+            <div class="progress-bar-container">
+              <div class="progress-bar" id="exp-progress-bar" style="width: 100%;"></div>
+            </div>
+          </div>
+
+          <div class="timer-controls">
+            <button id="btn-exp-start" class="btn btn-primary btn-large">
+              <span class="icon">▶</span> 쿠폰 시작
+            </button>
+            <button id="btn-exp-pause" class="btn btn-warning btn-large hidden">
+              <span class="icon">⏸</span> 일시정지
+            </button>
+            <button id="btn-exp-reset" class="btn btn-secondary btn-large">
+              <span class="icon">🔄</span> 리셋
+            </button>
+            <div class="quick-add-group">
+              <button class="btn btn-small btn-outline" id="btn-exp-add1">+1분</button>
+              <button class="btn btn-small btn-outline" id="btn-exp-add5">+5분</button>
+            </div>
+          </div>
+
+          <div class="timer-settings-inline">
+            <label><input type="checkbox" id="chk-exp-alert-60" checked> 60초 전 알림</label>
+            <label><input type="checkbox" id="chk-exp-alert-30" checked> 30초 전 알림</label>
+            <label><input type="checkbox" id="chk-exp-alert-end" checked> 종료 반복 알림</label>
+          </div>
+        </div>
+
+        <!-- 솔 야누스 재사용 타이머 -->
+        <div class="card timer-card janus-card">
+          <div class="card-header">
+            <h2><span class="icon">🌌</span> 솔 야누스 주기 타이머</h2>
+            <div class="cycle-selector">
+              <label class="radio-label">
+                <input type="radio" name="janus-cycle" value="70"> 70초 주기
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="janus-cycle" value="80" checked> 80초 주기
+              </label>
+            </div>
+          </div>
+
+          <div class="timer-display-area compact">
+            <div class="timer-clock" id="janus-timer-clock">01:20</div>
+            <div class="progress-bar-container">
+              <div class="progress-bar janus-bar" id="janus-progress-bar" style="width: 100%;"></div>
+            </div>
+          </div>
+
+          <div class="timer-controls">
+            <button id="btn-janus-start" class="btn btn-primary btn-large btn-janus">
+              <span class="icon">⚡</span> 야누스 시작 (Spacebar)
+            </button>
+            <button id="btn-janus-reset" class="btn btn-secondary btn-large">
+              <span class="icon">🔄</span> 리셋
+            </button>
+          </div>
+
+          <div class="timer-settings-inline">
+            <label><input type="checkbox" id="chk-janus-prealert" checked> 5초 전 알림</label>
+            <label><input type="checkbox" id="chk-janus-endalert" checked> 종료 즉시 알림</label>
+          </div>
+        </div>
+
+        <!-- 팝업 인식 학습 및 유형별 안내 파트 -->
+        <div class="card popup-guide-card">
+          <div class="card-header">
+            <h2><span class="icon">⚠️</span> 팝업 감지 4종 모니터링</h2>
+          </div>
+          <div class="popup-grid">
+            <div class="popup-item">
+              <span class="popup-tag">일반 팝업</span>
+              <p>문구 입력/지시문 안내창</p>
+            </div>
+            <div class="popup-item">
+              <span class="popup-tag">정답 문장</span>
+              <p>읽을 문장 및 항목 선택</p>
+            </div>
+            <div class="popup-item">
+              <span class="popup-tag">비올레타</span>
+              <p>화면 중앙 미니게임 창</p>
+            </div>
+            <div class="popup-item">
+              <span class="popup-tag">투명 도형</span>
+              <p>배경 방해/투명 객체 비올레타</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 알림 & 사운드 공통 설정 -->
+        <div class="card settings-card">
+          <div class="card-header">
+            <h2><span class="icon">🔔</span> 알림 및 음성 설정</h2>
+          </div>
+
+          <div class="setting-row">
+            <label for="select-sound-preset">알림 사운드 종류</label>
+            <div class="setting-control-group">
+              <select id="select-sound-preset" class="form-select">
+                <option value="chime">맑은 차임벨 (Chime)</option>
+                <option value="beep">게이밍 비프음 (Beep)</option>
+                <option value="rune">룬 감지 전용음 (Rune Synth)</option>
+                <option value="siren">경고 사이렌 (Siren)</option>
+              </select>
+              <button id="btn-test-sound" class="btn btn-small btn-outline">소리 테스트</button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <label for="range-volume">전체 알림 볼륨 (<span id="volume-val-text">80%</span>)</label>
+            <input type="range" id="range-volume" min="0" max="100" value="80" class="form-range">
+          </div>
+
+          <div class="setting-row">
+            <label>한국어 음성 안내 (TTS)</label>
+            <label class="switch">
+              <input type="checkbox" id="toggle-tts-voice" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <label>화면 깜빡임 시각 알림</label>
+            <label class="switch">
+              <input type="checkbox" id="toggle-visual-flash" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- 시각 알림용 오버레이 플래시 -->
+    <div id="flash-overlay" class="flash-overlay hidden"></div>
+  </div>
+
+  <!-- 스크립트 불러오기 모듈 -->
+  <script src="js/storage.js"></script>
+  <script src="js/audioNotifier.js"></script>
+  <script src="js/timerModule.js"></script>
+  <script src="js/imageAnalyzer.js"></script>
+  <script src="js/screenCapture.js"></script>
+  <script src="js/pipController.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

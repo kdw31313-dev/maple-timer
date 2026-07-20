@@ -1,0 +1,208 @@
+/**
+ * TimerModule - 경험치 쿠폰 & 솔 야누스 타이머 엔진
+ */
+class TimerModule {
+  constructor() {
+    // 경험치 쿠폰 타이머 상태
+    this.expTimer = {
+      totalSeconds: 1800, // 기본 30분
+      remainingSeconds: 1800,
+      isRunning: false,
+      intervalId: null,
+      alert60Triggered: false,
+      alert30Triggered: false,
+      alertEndTriggered: false,
+      endRepeatInterval: null
+    };
+
+    // 솔 야누스 타이머 상태
+    this.janusTimer = {
+      cycleSeconds: 80, // 기본 80초
+      remainingSeconds: 80,
+      isRunning: false,
+      intervalId: null,
+      preAlertTriggered: false
+    };
+
+    // 이벤트 콜백
+    this.onExpTick = null;
+    this.onJanusTick = null;
+  }
+
+  /* ===================================================
+   * 1. 경험치 쿠폰 타이머 메서드
+   * =================================================== */
+  setExpPresetMinutes(mins) {
+    const secs = mins * 60;
+    this.expTimer.totalSeconds = secs;
+    this.expTimer.remainingSeconds = secs;
+    this.resetExpFlags();
+    if (this.onExpTick) this.onExpTick(this.expTimer);
+  }
+
+  addExpMinutes(mins) {
+    const addSecs = mins * 60;
+    this.expTimer.remainingSeconds += addSecs;
+    this.expTimer.totalSeconds = Math.max(this.expTimer.totalSeconds, this.expTimer.remainingSeconds);
+    
+    // 시간 늘어났으면 알림 플래그 재조정
+    if (this.expTimer.remainingSeconds > 60) this.expTimer.alert60Triggered = false;
+    if (this.expTimer.remainingSeconds > 30) this.expTimer.alert30Triggered = false;
+
+    if (this.onExpTick) this.onExpTick(this.expTimer);
+  }
+
+  startExpTimer() {
+    if (this.expTimer.isRunning) return;
+    if (this.expTimer.remainingSeconds <= 0) {
+      this.expTimer.remainingSeconds = this.expTimer.totalSeconds;
+      this.resetExpFlags();
+    }
+
+    this.expTimer.isRunning = true;
+    this.expTimer.intervalId = setInterval(() => {
+      if (this.expTimer.remainingSeconds > 0) {
+        this.expTimer.remainingSeconds--;
+        this.checkExpAlerts();
+      } else {
+        this.handleExpEnd();
+      }
+      if (this.onExpTick) this.onExpTick(this.expTimer);
+    }, 1000);
+  }
+
+  pauseExpTimer() {
+    this.expTimer.isRunning = false;
+    if (this.expTimer.intervalId) {
+      clearInterval(this.expTimer.intervalId);
+      this.expTimer.intervalId = null;
+    }
+    this.stopExpEndRepeat();
+  }
+
+  resetExpTimer() {
+    this.pauseExpTimer();
+    this.expTimer.remainingSeconds = this.expTimer.totalSeconds;
+    this.resetExpFlags();
+    if (this.onExpTick) this.onExpTick(this.expTimer);
+  }
+
+  resetExpFlags() {
+    this.expTimer.alert60Triggered = false;
+    this.expTimer.alert30Triggered = false;
+    this.expTimer.alertEndTriggered = false;
+    this.stopExpEndRepeat();
+  }
+
+  checkExpAlerts() {
+    const rem = this.expTimer.remainingSeconds;
+    const chk60 = document.getElementById('chk-exp-alert-60')?.checked;
+    const chk30 = document.getElementById('chk-exp-alert-30')?.checked;
+
+    if (rem === 60 && chk60 && !this.expTimer.alert60Triggered) {
+      this.expTimer.alert60Triggered = true;
+      window.audioNotifier.notify('경험치 쿠폰 종료 1분 전입니다', 'chime');
+    } else if (rem === 30 && chk30 && !this.expTimer.alert30Triggered) {
+      this.expTimer.alert30Triggered = true;
+      window.audioNotifier.notify('경험치 쿠폰 종료 30초 전입니다', 'chime');
+    }
+  }
+
+  handleExpEnd() {
+    if (!this.expTimer.alertEndTriggered) {
+      this.expTimer.alertEndTriggered = true;
+      const chkEnd = document.getElementById('chk-exp-alert-end')?.checked;
+      
+      window.audioNotifier.notify('경험치 쿠폰이 종료되었습니다!', 'siren');
+
+      if (chkEnd) {
+        // 종료 후 10초마다 반복 알림
+        this.expTimer.endRepeatInterval = setInterval(() => {
+          if (!this.expTimer.isRunning && this.expTimer.remainingSeconds <= 0) {
+            window.audioNotifier.notify('경험치 쿠폰 재사용이 필요합니다!', 'siren');
+          } else {
+            this.stopExpEndRepeat();
+          }
+        }, 10000);
+      }
+    }
+    this.pauseExpTimer();
+  }
+
+  stopExpEndRepeat() {
+    if (this.expTimer.endRepeatInterval) {
+      clearInterval(this.expTimer.endRepeatInterval);
+      this.expTimer.endRepeatInterval = null;
+    }
+  }
+
+
+  /* ===================================================
+   * 2. 솔 야누스 주기 타이머 메서드
+   * =================================================== */
+  setJanusCycle(secs) {
+    this.janusTimer.cycleSeconds = secs;
+    this.janusTimer.remainingSeconds = secs;
+    this.janusTimer.preAlertTriggered = false;
+    if (this.onJanusTick) this.onJanusTick(this.janusTimer);
+  }
+
+  startJanusTimer() {
+    // 기존 작동 중이어도 즉시 시작(재시작) 기능
+    if (this.janusTimer.intervalId) {
+      clearInterval(this.janusTimer.intervalId);
+    }
+
+    this.janusTimer.remainingSeconds = this.janusTimer.cycleSeconds;
+    this.janusTimer.preAlertTriggered = false;
+    this.janusTimer.isRunning = true;
+
+    if (this.onJanusTick) this.onJanusTick(this.janusTimer);
+
+    this.janusTimer.intervalId = setInterval(() => {
+      if (this.janusTimer.remainingSeconds > 0) {
+        this.janusTimer.remainingSeconds--;
+        this.checkJanusAlerts();
+      } else {
+        this.handleJanusEnd();
+      }
+      if (this.onJanusTick) this.onJanusTick(this.janusTimer);
+    }, 1000);
+  }
+
+  resetJanusTimer() {
+    if (this.janusTimer.intervalId) {
+      clearInterval(this.janusTimer.intervalId);
+      this.janusTimer.intervalId = null;
+    }
+    this.janusTimer.isRunning = false;
+    this.janusTimer.remainingSeconds = this.janusTimer.cycleSeconds;
+    this.janusTimer.preAlertTriggered = false;
+    if (this.onJanusTick) this.onJanusTick(this.janusTimer);
+  }
+
+  checkJanusAlerts() {
+    const rem = this.janusTimer.remainingSeconds;
+    const chkPre = document.getElementById('chk-janus-prealert')?.checked;
+
+    if (rem === 5 && chkPre && !this.janusTimer.preAlertTriggered) {
+      this.janusTimer.preAlertTriggered = true;
+      window.audioNotifier.notify('솔 야누스 5초 전', 'beep');
+    }
+  }
+
+  handleJanusEnd() {
+    if (this.janusTimer.intervalId) {
+      clearInterval(this.janusTimer.intervalId);
+      this.janusTimer.intervalId = null;
+    }
+    this.janusTimer.isRunning = false;
+    const chkEnd = document.getElementById('chk-janus-endalert')?.checked;
+
+    if (chkEnd) {
+      window.audioNotifier.notify('솔 야누스 재사용!', 'chime');
+    }
+  }
+}
+
+window.timerModule = new TimerModule();
