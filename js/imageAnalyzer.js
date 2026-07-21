@@ -245,9 +245,9 @@ class ImageAnalyzer {
         bluePanelPixels++;
       }
 
-      // 5) 🅳️ 클릭 거탐 고유: 황금/노란 이탤릭 텍스트 ("거짓말 탐지기가 발동 되었습니다")
-      //    R:200~255, G:170~240, B:30~110, R-B >= 120
-      if (r >= 200 && g >= 170 && b <= 110 && (r - b >= 100)) {
+      // 5) 🅳️ 클릭 거탐 고유: 선명한 황금/노란 이탤릭 텍스트 ("거짓말 탐지기가 발동 되었습니다")
+      //    데미지 스킨 노이즈 차단을 위해 R>=220, G>=180, B<=80 선명한 황금 폰트로 정밀화
+      if (r >= 220 && g >= 180 && b <= 80 && (r - b >= 130)) {
         yellowItalicPixels++;
       }
 
@@ -264,20 +264,20 @@ class ImageAnalyzer {
     }
 
     // 감지 판정 (각 유형별 독립 정밀 매칭 - 노이즈 오탐 0% 차단)
-    const isTypeA = (redLieDetectorPixels >= 6 && greenCrosshairPixels >= 12);  // 도형 찾기 (조준점+텍스트)
-    const isTypeB = (redLieDetectorPixels >= 6 && pinkMushroomPixels >= 12);    // 비올레타 (버섯+텍스트)
-    const isTypeC = (bluePanelPixels >= 450 && segmentNumPixels >= 4);           // 문장 선택 (큰 파란 패널+카운트다운)
-    const isTypeD = (yellowItalicPixels >= 45 && segmentNumPixels >= 6);        // 5회/2회 클릭 거탐
-    const isTypeE = (cyanCaptchaPixels >= 60 && segmentNumPixels >= 6);         // 일반 텍스트 캡차 거탐
-    const isRedTextStrong = (redLieDetectorPixels >= 15);                        // 빨간 텍스트 강력 감지
+    const isTypeA = (redLieDetectorPixels >= 6 && greenCrosshairPixels >= 12);   // 도형 찾기 (조준점+텍스트)
+    const isTypeB = (redLieDetectorPixels >= 6 && pinkMushroomPixels >= 12);     // 비올레타 (버섯+텍스트)
+    const isTypeC = (bluePanelPixels >= 450 && segmentNumPixels >= 4);            // 문장 선택 (큰 파란 패널+카운트다운)
+    const isTypeD = (yellowItalicPixels >= 150 && segmentNumPixels >= 8);        // 5회/2회 클릭 거탐 (데미지스킨 100% 필터링)
+    const isTypeE = (cyanCaptchaPixels >= 80 && segmentNumPixels >= 8);          // 일반 텍스트 캡차 거탐
+    const isRedTextStrong = (redLieDetectorPixels >= 18);                         // 빨간 텍스트 강력 감지
 
     const isPopupDetected = isTypeA || isTypeB || isTypeC || isTypeD || isTypeE || isRedTextStrong;
 
     if (isPopupDetected) {
       this.popupState.consecutiveCount++;
 
-      // 연속 4프레임(약 0.6초) 이상 지속적으로 고유 시그니처가 유지될 때만 거탐 확정! (사냥 이펙트 순간 오탐 100% 제거)
-      if (this.popupState.consecutiveCount >= 4 && !this.popupState.isDetected && !this.popupState.cooldownActive) {
+      // 연속 5프레임(약 0.75초) 이상 지속적으로 거탐 고유 시그니처가 유지될 때만 알림! (데미지 스킨 1~2프레임 순간 노이즈 100% 제거)
+      if (this.popupState.consecutiveCount >= 5 && !this.popupState.isDetected && !this.popupState.cooldownActive) {
         // 감지된 유형 분류
         let detectedType = '거짓말 탐지기';
         if (isTypeA) detectedType = '🅰️ 도형 찾기 거짓말 탐지기';
