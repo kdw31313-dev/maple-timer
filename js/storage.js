@@ -18,9 +18,11 @@ class StorageManager {
       janusEndAlert: true,
       runeDetectionEnabled: true,
       popupDetectionEnabled: true,
+      janusAutoDetectionEnabled: true,
       // 감지 영역 기본 비율 (%)
-      runeRoi: { x: 1, y: 1, w: 22, h: 22 },  // 메이플 좌측 상단 미니맵 기본 위치
-      popupRoi: { x: 25, y: 25, w: 50, h: 50 } // 화면 넓은 중앙 범위
+      runeRoi: { x: 1, y: 1, w: 22, h: 22 },   // 메이플 좌측 상단 미니맵 기본 위치
+      popupRoi: { x: 25, y: 25, w: 50, h: 50 }, // 화면 넓은 중앙 범위
+      janusRoi: { x: 75, y: 1, w: 24, h: 15 }   // 우측 상단 버프 영역 기본 위치
     };
   }
 

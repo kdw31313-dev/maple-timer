@@ -22,9 +22,20 @@ class ImageAnalyzer {
       cooldownActive: false
     };
 
+    // 솔 야누스 버프 감지 상태
+    this.janusState = {
+      isBuffActive: false,
+      consecutiveActiveCount: 0,
+      consecutiveInactiveCount: 0,
+      flashCount: 0,
+      lastBrightness: 0,
+      alert10Triggered: false
+    };
+
     // 이벤트 콜백
     this.onRuneStatusChange = null;
     this.onPopupStatusChange = null;
+    this.onJanusStatusChange = null;
   }
 
   reset() {
@@ -37,6 +48,9 @@ class ImageAnalyzer {
     this.popupState.consecutiveCount = 0;
     this.popupState.isDetected = false;
     this.popupState.cooldownActive = false;
+
+    this.janusState.isBuffActive = false;
+    this.janusState.alert10Triggered = false;
   }
 
   /**
@@ -214,6 +228,81 @@ class ImageAnalyzer {
 
     // 강력 알림 (사이렌 + TTS)
     window.audioNotifier.notify('경고! 화면에 팝업 또는 거탐 창이 감지되었습니다.', 'siren');
+  }
+
+  /**
+   * 솔 야누스 버프 영역 분석 (아이콘 감지, 자동 타이머 싱크 & 10초 이하 감지)
+   * @param {ImageData} imageData 
+   */
+  processJanusFrame(imageData) {
+    if (!imageData || imageData.data.length === 0) return;
+
+    const data = imageData.data;
+    let janusIconPixels = 0;
+    let totalBrightness = 0;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+
+      const brightness = (r + g + b) / 3;
+      totalBrightness += brightness;
+
+      // 솔 야누스 특유의 보라색 기하학 원형 패턴 (R: 60~150, G: 30~110, B: 120~230)
+      const isJanusPurple = (r >= 55 && r <= 165 && g >= 25 && g <= 120 && b >= 110 && b <= 245);
+      if (isJanusPurple) {
+        janusIconPixels++;
+      }
+    }
+
+    const avgBrightness = totalBrightness / (data.length / 4);
+    const hasIcon = janusIconPixels >= 15;
+
+    // 아이콘 깜빡임(10초 이하) 진동 감지
+    const brightnessDiff = Math.abs(avgBrightness - this.janusState.lastBrightness);
+    this.janusState.lastBrightness = avgBrightness;
+
+    if (hasIcon) {
+      this.janusState.consecutiveActiveCount++;
+      this.janusState.consecutiveInactiveCount = 0;
+
+      // 야누스 버프 활성화 포착 (타이머 자동 시동)
+      if (!this.janusState.isBuffActive && this.janusState.consecutiveActiveCount >= 2) {
+        this.janusState.isBuffActive = true;
+        this.janusState.alert10Triggered = false;
+        
+        if (this.onJanusStatusChange) this.onJanusStatusChange('야누스 가동 중', false);
+
+        // 타이머 자동 시작
+        if (window.timerModule && !window.timerModule.janusTimer.isRunning) {
+          window.timerModule.startJanusTimer();
+        }
+      }
+
+      // 버프 아이콘이 깜빡거리거나(밝기 변동 > 12) 잔여 10초 이하 시점
+      if (this.janusState.isBuffActive && brightnessDiff > 12) {
+        this.janusState.flashCount++;
+        if (this.janusState.flashCount >= 3 && !this.janusState.alert10Triggered) {
+          this.triggerJanus10sAlert();
+        }
+      }
+    } else {
+      this.janusState.consecutiveInactiveCount++;
+      if (this.janusState.isBuffActive && this.janusState.consecutiveInactiveCount >= 5) {
+        // 야누스 버프 종료
+        this.janusState.isBuffActive = false;
+        this.janusState.flashCount = 0;
+        if (this.onJanusStatusChange) this.onJanusStatusChange('대기 중', false);
+      }
+    }
+  }
+
+  triggerJanus10sAlert() {
+    this.janusState.alert10Triggered = true;
+    if (this.onJanusStatusChange) this.onJanusStatusChange('10초 이하! 재사용 준비', true);
+
+    window.audioNotifier.notify('솔 야누스 10초 남았습니다. 재사용을 준비하세요!', 'beep');
   }
 }
 

@@ -40,6 +40,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  window.imageAnalyzer.onJanusStatusChange = (statusText, isDetected) => {
+    const pill = document.getElementById('janus-status-pill');
+    if (pill) {
+      pill.textContent = statusText;
+      if (isDetected) {
+        pill.className = 'status-pill detected';
+      } else {
+        pill.className = 'status-pill';
+      }
+    }
+  };
+
   // 4. UI 이벤트 바인딩
   bindEvents();
 });
@@ -72,6 +84,10 @@ function bindEvents() {
 
   document.getElementById('btn-select-popup-roi')?.addEventListener('click', () => {
     window.screenCaptureManager.setSelectionMode('popup');
+  });
+
+  document.getElementById('btn-select-janus-roi')?.addEventListener('click', () => {
+    window.screenCaptureManager.setSelectionMode('janus');
   });
 
   // --- 경험치 쿠폰 타이머 버튼 ---

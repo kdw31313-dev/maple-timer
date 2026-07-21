@@ -17,6 +17,7 @@ class ScreenCaptureManager {
     // ROI 좌표 (% 비율 단위)
     this.runeRoi = { x: 1, y: 1, w: 22, h: 22 }; // 메이플 좌측 상단 미니맵 기본 위치
     this.popupRoi = { x: 25, y: 25, w: 50, h: 50 };
+    this.janusRoi = { x: 75, y: 1, w: 24, h: 15 }; // 우측 상단 버프 영역 기본 위치
 
     // ROI 드래그 선택 상태
     this.selectingTarget = null; // 'rune' | 'popup' | null
@@ -183,6 +184,20 @@ class ScreenCaptureManager {
     }
   }
 
+    // 3. 솔 야누스 버프 ROI 처리
+    if (document.getElementById('toggle-janus-detection')?.checked) {
+      const jx = Math.floor((this.janusRoi.x / 100) * vWidth);
+      const jy = Math.floor((this.janusRoi.y / 100) * vHeight);
+      const jw = Math.floor((this.janusRoi.w / 100) * vWidth);
+      const jh = Math.floor((this.janusRoi.h / 100) * vHeight);
+
+      if (jw > 10 && jh > 10) {
+        const janusData = this.analysisCtx.getImageData(jx, jy, jw, jh);
+        window.imageAnalyzer.processJanusFrame(janusData);
+      }
+    }
+  }
+
   /* ===================================================
    * ROI 드래그 및 박스 그리기
    * =================================================== */
@@ -225,7 +240,7 @@ class ScreenCaptureManager {
     const w = Math.abs(this.dragCurrent.x - this.dragStart.x);
     const h = Math.abs(this.dragCurrent.y - this.dragStart.y);
 
-    if (w > 20 && h > 20) {
+    if (w > 15 && h > 15) {
       const roiPercent = {
         x: Math.round((x1 / cWidth) * 100),
         y: Math.round((y1 / cHeight) * 100),
@@ -237,12 +252,15 @@ class ScreenCaptureManager {
         this.runeRoi = roiPercent;
       } else if (this.selectingTarget === 'popup') {
         this.popupRoi = roiPercent;
+      } else if (this.selectingTarget === 'janus') {
+        this.janusRoi = roiPercent;
       }
 
       // 설정 저장
       const cfg = window.storageManager.loadConfig();
       cfg.runeRoi = this.runeRoi;
       cfg.popupRoi = this.popupRoi;
+      cfg.janusRoi = this.janusRoi;
       window.storageManager.saveConfig(cfg);
 
       window.imageAnalyzer.reset();
@@ -276,7 +294,7 @@ class ScreenCaptureManager {
 
       ctx.fillStyle = '#a855f7';
       ctx.font = 'bold 12px Pretendard';
-      ctx.fillText('룬 감지 영역', rx + 6, ry + 16);
+      ctx.fillText('룬 감지 영역 (미니맵)', rx + 6, ry + 16);
     }
 
     // 2. 팝업 ROI 박스
@@ -297,6 +315,26 @@ class ScreenCaptureManager {
       ctx.fillStyle = '#ffa502';
       ctx.font = 'bold 12px Pretendard';
       ctx.fillText('팝업/거탐 영역', px + 6, py + 16);
+    }
+
+    // 3. 솔 야누스 버프 ROI 박스
+    if (document.getElementById('toggle-janus-detection')?.checked) {
+      const jx = (this.janusRoi.x / 100) * cWidth;
+      const jy = (this.janusRoi.y / 100) * cHeight;
+      const jw = (this.janusRoi.w / 100) * cWidth;
+      const jh = (this.janusRoi.h / 100) * cHeight;
+
+      ctx.strokeStyle = '#00f2fe';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+      ctx.strokeRect(jx, jy, jw, jh);
+
+      ctx.fillStyle = 'rgba(0, 242, 254, 0.15)';
+      ctx.fillRect(jx, jy, jw, jh);
+
+      ctx.fillStyle = '#00f2fe';
+      ctx.font = 'bold 12px Pretendard';
+      ctx.fillText('야누스 버프 영역', jx + 6, jy + 16);
     }
 
     // 3. 현재 드래그 중인 임시 박스
