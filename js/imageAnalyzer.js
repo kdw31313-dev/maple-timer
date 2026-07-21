@@ -152,12 +152,12 @@ class ImageAnalyzer {
   }
 
   /**
-   * 팝업 영역 분석 (5종 거짓말 탐지기 통합 시각 패밀리 감지)
-   * 1. 클릭형 거탐 (반투명 레이어 창)
-   * 2. 비올레타 미니게임 (화면 중앙 대형 팝업)
-   * 3. 투명 도형형 (배경 방해/투명 객체)
-   * 4. 텍스트 문자 입력형 (고대비 텍스트 박스)
-   * 5. 정답 문장 선택형 (지시문 및 선택 버튼 창)
+   * 팝업 영역 분석 (5종 실물 거짓말 탐지기 고유 시각 패턴 정밀 탐지)
+   * 1. 비올레타 예고 모달 (주황/시안 헤더 박스)
+   * 2. 흑백 착시 기하학 비올레타 (고주파 흑백 엣지)
+   * 3. 한글 문자 입력형 (블루/레드 반투명 박스 + 빨간 글씨 박스)
+   * 4. 한글 문자 입력형 (레드 반투명 박스 + 붓글씨 텍스트)
+   * 5. 금빛 글씨 클릭형 거탐 (양양지/금빛 텍스트 + 클릭 지시문)
    * @param {ImageData} imageData 
    */
   processPopupFrame(imageData) {
@@ -173,10 +173,10 @@ class ImageAnalyzer {
 
     let highContrastPixels = 0;
     let dimmingPixels = 0;
+    let lieDetectorColorPixels = 0;
     let totalDiff = 0;
     const base = this.popupState.baselineData;
 
-    // 픽셀 휘도, 엣지 차분, 디밍(배경 어두워짐) 종합 체크
     for (let i = 0; i < data.length; i += 16) {
       const r = data[i];
       const g = data[i + 1];
@@ -193,28 +193,41 @@ class ImageAnalyzer {
 
       totalDiff += diff;
 
-      // 1) 거탐 특유의 고대비 텍스트/테두리/버튼 픽셀
-      if (diff > 45) {
+      // 1) 고대비 엣지/텍스트 픽셀
+      if (diff > 40) {
         highContrastPixels++;
       }
 
-      // 2) 거탐 등장 시 화면 디밍(배경 어두워짐/반투명 박스) 현상 픽셀
+      // 2) 배경 어두워짐/디밍 픽셀
       const curLuma = (r + g + b) / 3;
       const baseLuma = (rBase + gBase + bBase) / 3;
-      if (baseLuma - curLuma > 30) {
+      if (baseLuma - curLuma > 25) {
         dimmingPixels++;
+      }
+
+      // 3) 실물 거탐 5종 고유 색상 검사:
+      // - 금빛/주황색 거탐 글씨 (R>=200, G>=130, B<=80) [이미지 1 & 5]
+      // - 거탐 시안/네온 그린 카운트다운 글씨 (G>=180, R<=100) [이미지 1, 3, 4]
+      // - 붉은색 한글 박스 텍스트 (R>=180, G<=70, B<=70) [이미지 3 & 4]
+      const isGoldText = (r >= 200 && g >= 130 && b <= 80);
+      const isCyanNeon = (g >= 180 && r <= 100 && b >= 120);
+      const isRedText = (r >= 180 && g <= 70 && b <= 70);
+
+      if (isGoldText || isCyanNeon || isRedText) {
+        lieDetectorColorPixels++;
       }
     }
 
     const avgDiff = totalDiff / (pixelCount / 4);
     const contrastRatio = highContrastPixels / (pixelCount / 4);
     const dimmingRatio = dimmingPixels / (pixelCount / 4);
+    const colorRatio = lieDetectorColorPixels / (pixelCount / 4);
 
-    // 5종 거탐 공통 임계치 조건:
-    // - 평균 프레임 차분 > 26
-    // - 고대비 픽셀 비율 > 12% (텍스트/버튼/비올레타 레이어)
-    // - 디밍 픽셀 비율 > 18% (반투명 팝업 또는 중앙 화면 어두워짐)
-    const isPopupTriggered = (avgDiff > 26 || contrastRatio > 0.12 || dimmingRatio > 0.18);
+    // 5종 거탐 종합 탐지 조건:
+    // - 고유 색상 픽셀 등장 (colorRatio > 0.04) OR
+    // - 평균 차분 변동 > 24 OR
+    // - 고대비 비율 > 10% OR 디밍 비율 > 15%
+    const isPopupTriggered = (colorRatio > 0.04 || avgDiff > 24 || contrastRatio > 0.10 || dimmingRatio > 0.15);
 
     if (isPopupTriggered) {
       this.popupState.consecutiveCount++;
@@ -228,13 +241,11 @@ class ImageAnalyzer {
       this.popupState.consecutiveCount = Math.max(0, this.popupState.consecutiveCount - 1);
 
       if (this.popupState.cooldownActive) {
-        // 화면이 정상으로 돌아오면 리셋
         this.popupState.cooldownActive = false;
         this.popupState.isDetected = false;
         if (this.onPopupStatusChange) this.onPopupStatusChange('대기 중', false);
       }
 
-      // 점진적 배경 학습 업데이트
       if (!this.popupState.cooldownActive) {
         for (let i = 0; i < data.length; i += 16) {
           base[i] = base[i] * 0.9 + data[i] * 0.1;
