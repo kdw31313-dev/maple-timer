@@ -489,55 +489,102 @@ class ImageAnalyzer {
    * Clustering: 10초 이내 동시 종료 버프 묶어서 1회 알림!
    */
   processExpFrame(imageData) {
-    if (!imageData || imageData.data.length === 0) return;
+    if (!imageData || !imageData.data || imageData.data.length === 0) return;
 
     const data = imageData.data;
+    const width = imageData.width;
+    const height = imageData.height;
 
-    // ===== 1. 4대 Matcher + Number Recognizer 동시 스캔 =====
-    let unionPowerPixels = 0;  // 유니온의 힘 (레드-골드 뱃지)
-    let unionWealthPixels = 0; // 유니온의 부 (황금 동전 뱃지)
-    let elixirPixels = 0;      // 비약 (재획비 / 소형 재획비)
-    let expCouponPixels = 0;   // 경험치 쿠폰 (MVP / EXP+)
-    let digitPixels = 0;       // 🔢 숫자 픽셀 (흰색/밝은 숫자 = 남은 시간 표시)
+    // ===== 1. 4대 Matcher 스캔 & 버프 아이콘 위치 포착 =====
+    let unionPowerPixels = 0;  // 유니온의 힘
+    let unionWealthPixels = 0; // 유니온의 부
+    let elixirPixels = 0;      // 비약
+    let expCouponPixels = 0;   // 경험치 쿠폰
 
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
+    let buffMinX = width, buffMaxX = 0, buffMinY = height, buffMaxY = 0;
+    let buffIconTotalPixels = 0;
 
-      // 1) 유니온의 힘 (레드-골드)
-      if (r >= 190 && g >= 140 && b <= 90) unionPowerPixels++;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
 
-      // 2) 유니온의 부 (황금 동전)
-      if (r >= 210 && g >= 170 && b <= 70) unionWealthPixels++;
+        let isBuffPixel = false;
 
-      // 3) 비약 (재획비/소형재획비 청록 병 + 황금 캡)
-      if ((r <= 160 && g >= 130 && b >= 150) || (r >= 170 && g >= 140 && b <= 130)) elixirPixels++;
+        // 1) 유니온의 힘 (레드-골드)
+        if (r >= 190 && g >= 140 && b <= 90) { unionPowerPixels++; isBuffPixel = true; }
+        // 2) 유니온의 부 (황금 동전)
+        else if (r >= 210 && g >= 170 && b <= 70) { unionWealthPixels++; isBuffPixel = true; }
+        // 3) 비약 (재획비/소형재획비 청록 병 + 황금 캡)
+        else if ((r <= 160 && g >= 130 && b >= 150) || (r >= 170 && g >= 140 && b <= 130)) { elixirPixels++; isBuffPixel = true; }
+        // 4) 경험치 쿠폰 (단풍잎/MVP/EXP+)
+        else if (r >= 200 && g >= 200 && b >= 200) { expCouponPixels++; isBuffPixel = true; }
 
-      // 4) 경험치 쿠폰 (단풍잎/MVP/EXP+)
-      if (r >= 200 && g >= 200 && b >= 200) expCouponPixels++;
-
-      // 🔢 Number Recognizer: 버프 아이콘 위 흰색/밝은 숫자 픽셀 ("13", "9:24", "8" 등)
-      //    밝은 흰색/연회색 숫자: R >= 180, G >= 180, B >= 180
-      if (r >= 180 && g >= 180 && b >= 180) {
-        digitPixels++;
+        if (isBuffPixel) {
+          buffIconTotalPixels++;
+          if (x < buffMinX) buffMinX = x;
+          if (x > buffMaxX) buffMaxX = x;
+          if (y < buffMinY) buffMinY = y;
+          if (y > buffMaxY) buffMaxY = y;
+        }
       }
     }
 
-    // ===== 2. Matcher: 4대 버프 분류 =====
+    // ===== 2. 버프 아이콘 바운딩 박스 근처의 진짜 숫자 폰트 픽셀만 정밀 스캔 =====
+    let digitPixels = 0;
+
+    const scanMinX = buffIconTotalPixels >= 3 ? Math.max(0, buffMinX - 10) : 0;
+    const scanMaxX = buffIconTotalPixels >= 3 ? Math.min(width - 1, buffMaxX + 10) : width - 1;
+    const scanMinY = buffIconTotalPixels >= 3 ? Math.max(0, buffMinY - 10) : 0;
+    const scanMaxY = buffIconTotalPixels >= 3 ? Math.min(height - 1, buffMaxY + 10) : height - 1;
+
+    for (let y = scanMinY; y <= scanMaxY; y++) {
+      for (let x = scanMinX; x <= scanMaxX; x++) {
+        const idx = (y * width + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+
+        // 밝은 노란색/연두색/흰색 폰트 (R>=180, G>=180)
+        if (r >= 180 && g >= 180) {
+          // 주변 1픽셀에 검은색 아웃라인 테두리가 있는지 확인 (진짜 숫자 폰트 검증)
+          let hasBlackBorder = false;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = x + dx;
+              const ny = y + dy;
+              if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                const nIdx = (ny * width + nx) * 4;
+                const nr = data[nIdx];
+                const ng = data[nIdx + 1];
+                const nb = data[nIdx + 2];
+                if (nr <= 70 && ng <= 70 && nb <= 70) {
+                  hasBlackBorder = true;
+                  break;
+                }
+              }
+            }
+            if (hasBlackBorder) break;
+          }
+
+          if (hasBlackBorder) {
+            digitPixels++;
+          }
+        }
+      }
+    }
+
+    // ===== 3. Matcher: 4대 버프 분류 =====
     const currentDetectedSet = new Set();
     if (unionPowerPixels >= 6) currentDetectedSet.add('유니온의 힘');
     if (unionWealthPixels >= 6) currentDetectedSet.add('유니온의 부');
     if (elixirPixels >= 6) currentDetectedSet.add('재물 획득의 약(비약)');
     if (expCouponPixels >= 6) currentDetectedSet.add('경험치 쿠폰');
 
-    // 아이콘 자체가 존재하는지 판단 (밝기 기반)
-    let totalBright = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      const br = (data[i] + data[i + 1] + data[i + 2]) / 3;
-      if (br > 40) totalBright++;
-    }
-    const hasBuffIcons = (totalBright >= 15) || (currentDetectedSet.size > 0);
+    const hasBuffIcons = (buffIconTotalPixels >= 6) || (currentDetectedSet.size > 0);
 
     if (hasBuffIcons) {
       this.expBuffState.consecutiveActiveCount++;
