@@ -238,8 +238,19 @@ class ScreenCaptureManager {
     }
 
     navigator.mediaDevices.getDisplayMedia({
-      video: true,
+      video: {
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        frameRate: { ideal: 30 }
+      },
       audio: false
+    })
+    .catch(() => {
+      // 2차 폴백: 기본 비디오 옵션
+      return navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false
+      });
     })
     .then((stream) => {
       this.mediaStream = stream;
