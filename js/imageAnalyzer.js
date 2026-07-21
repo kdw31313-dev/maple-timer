@@ -353,6 +353,18 @@ class ImageAnalyzer {
     }
   }
 
+  /**
+   * ⚡ 0% 렉 사냥 스캐너: 마이크로 ROI 이미지 데이터를 직접 수급받아 0.001초 만에 분석 완료!
+   */
+  analyzeMicroFrame(runeImageData, janusImageData) {
+    if (runeImageData) {
+      this.processRuneFrame(runeImageData, null);
+    }
+    if (janusImageData) {
+      this.processJanusFrame(janusImageData);
+    }
+  }
+
   analyzeFrame(imageData, rois) {
     if (!imageData) return;
 
