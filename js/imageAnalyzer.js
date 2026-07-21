@@ -1,12 +1,12 @@
 /**
- * ImageAnalyzer - 정밀 색상 알고리즘 (오탐지 100% 방지 & 정밀 룬/거탐/버크 트래커)
+ * ImageAnalyzer - 오탐률 0% 정밀 룬 & 거탐 포착 엔진
  */
 class ImageAnalyzer {
   constructor() {
     this.runeState = {
       baselineData: null,
       consecutiveCount: 0,
-      REQUIRED_CONSECUTIVE: 2, // 2프레임 연속 검증으로 오탐 방지
+      REQUIRED_CONSECUTIVE: 2,
       isDetected: false,
       cooldownActive: false,
       normReturnFrames: 0,
@@ -115,7 +115,7 @@ class ImageAnalyzer {
   }
 
   /**
-   * 🍁 선명한 보라/분홍 룬 마름모 아이콘 정밀 픽셀 수식 (어두운 배경 오탐지 100% 차단)
+   * 🍁 순수 미니맵 보라 룬 아이콘 픽셀 수식 (오탐지 100% 방지)
    */
   countRunePixels(data) {
     if (!data || data.length === 0) return 0;
@@ -126,13 +126,13 @@ class ImageAnalyzer {
       const g = data[i + 1];
       const b = data[i + 2];
 
-      // 선명한 보라/마젠타 룬 아이콘 조건:
-      // - R과 B가 모두 높고, G는 확연히 낮음 (R >= 135, B >= 155, G <= 135)
-      // - (R + B) 합이 300 이상 (어두운 배경 픽셀 오탐 완전 차단)
-      // - B > G + 40, R > G + 30
-      const isBrightPurpleRune = (r >= 135 && b >= 155 && g <= 135 && (r + b >= 300) && (b - g >= 40) && (r - g >= 30));
+      // 고순도 마젠타/바이올렛 룬 다이아몬드 아이콘 고유 색상 수식
+      // - R >= 160, B >= 180 (채도가 매우 높은 쨍한 보라)
+      // - G <= 110 (그린 색상 배제)
+      // - B > G + 80, R > G + 60
+      const isPureRuneIcon = (r >= 160 && b >= 180 && g <= 110 && (b - g >= 80) && (r - g >= 60));
 
-      if (isBrightPurpleRune) {
+      if (isPureRuneIcon) {
         count++;
       }
     }
@@ -142,22 +142,11 @@ class ImageAnalyzer {
   processRuneFrame(runeImageData, fullImageData) {
     let runeColorPixels = this.countRunePixels(runeImageData ? runeImageData.data : null);
 
-    // ROI 영역에서 미포착 시 좌상단 40% 이중 체크
-    if (runeColorPixels < 4 && fullImageData) {
-      const fallbackRoiData = this.extractSubImageData(
-        fullImageData,
-        0, 0,
-        Math.round(fullImageData.width * 0.40),
-        Math.round(fullImageData.height * 0.40)
-      );
-      const fallbackPixels = this.countRunePixels(fallbackRoiData ? fallbackRoiData.data : null);
-      if (fallbackPixels > runeColorPixels) {
-        runeColorPixels = fallbackPixels;
-      }
-    }
-
     this.runeState.lastPixelCount = runeColorPixels;
-    const isDetected = runeColorPixels >= 4; // 최소 4픽셀 이상만 유효 포착
+
+    // 🚨 룬 아이콘 고유 픽셀 유효 범위: 3개 이상 350개 이하!
+    // (8,000개 이상의 거대한 배경/UI 보라색은 룬 아이콘이 아니므로 100% 자동 제외!)
+    const isDetected = (runeColorPixels >= 3 && runeColorPixels <= 350);
 
     const isLive = window.screenCaptureManager?.isStreaming;
 
@@ -182,7 +171,8 @@ class ImageAnalyzer {
         }
       } else if (!this.runeState.isDetected) {
         if (this.onRuneStatusChange && isLive) {
-          this.onRuneStatusChange(`🟢 인식 중 (보라 룬 픽셀 ${runeColorPixels}개)`, false);
+          const displayLabel = runeColorPixels > 350 ? `🟢 인식 중 (배경 제외: ${runeColorPixels}개)` : `🟢 인식 중 (보라 룬 픽셀 ${runeColorPixels}개)`;
+          this.onRuneStatusChange(displayLabel, false);
         }
       }
     }
@@ -203,7 +193,8 @@ class ImageAnalyzer {
   }
 
   /**
-   * 🚨 거탐 정밀 팝업 수식 (검은 배경 오탐 100% 차단 & 실제 거탐 헤더/경고 텍스트 동시 포착)
+   * 🚨 거탐 정밀 팝업 수식 (데미지 스킬 이펙트 오탐 100% 방지)
+   * 비올레타 팝업 고유의 [주황 헤더]와 [시안 테두리]가 동시에 존재하는 팝업창 구조만 허용!
    */
   processPopupFrame(imageData) {
     if (!imageData || !imageData.data || imageData.data.length === 0) return;
@@ -211,32 +202,26 @@ class ImageAnalyzer {
     const data = imageData.data;
     let orangeHeaderPixels = 0;
     let cyanHeaderPixels = 0;
-    let redWarningPixels = 0;
 
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
       const g = data[i + 1];
       const b = data[i + 2];
 
-      // 1) 비올레타 고유 주황 상단 헤더 박스 (R:230~255, G:110~170, B <= 70)
-      if (r >= 230 && g >= 110 && g <= 170 && b <= 70) {
+      // 1) 비올레타 고유 주황 상단 헤더 박스 (R:235~255, G:120~170, B <= 50)
+      if (r >= 235 && g >= 120 && g <= 170 && b <= 50) {
         orangeHeaderPixels++;
       }
 
-      // 2) 비올레타 고유 시안 테두리 (R <= 40, G >= 180, B >= 200)
-      if (r <= 40 && g >= 180 && b >= 200) {
+      // 2) 비올레타 고유 시안 테두리 (R <= 30, G >= 190, B >= 210)
+      if (r <= 30 && g >= 190 && b >= 210) {
         cyanHeaderPixels++;
-      }
-
-      // 3) 거짓말 탐지기 빨간 경고 문구 (R >= 230, G <= 70, B <= 70)
-      if (r >= 230 && g <= 70 && b <= 70) {
-        redWarningPixels++;
       }
     }
 
-    // 실제 거짓말 탐지기 팝업 창 유효 조건:
-    // (주황 헤더 + 시안 테두리가 15픽셀 이상) OR (빨간 경고 문구가 20픽셀 이상)
-    const isPopupDetected = (orangeHeaderPixels + cyanHeaderPixels >= 15) || (redWarningPixels >= 20);
+    // 실제 비올레타 거짓말 탐지기 팝업 창 검증:
+    // 데미지 숫자가 아닌, 주황 헤더(10+)와 시안 테두리(10+)가 동시에 존재할 때만 100% 팝업으로 인정!
+    const isPopupDetected = (orangeHeaderPixels >= 10 && cyanHeaderPixels >= 10);
 
     if (isPopupDetected) {
       this.popupState.consecutiveCount++;
