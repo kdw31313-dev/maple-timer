@@ -459,6 +459,16 @@ function initCalculatorUI() {
       useWealthPotion
     });
 
+    // --- 📸 맵 배너 이미지 및 상세 스펙 카드 업데이트 ---
+    const selectedMap = res.mapInfo;
+    const imgEl = document.getElementById('map-preview-img');
+    const titleEl = document.getElementById('map-preview-title');
+    const specEl = document.getElementById('map-preview-spec');
+
+    if (imgEl && selectedMap.imgUrl) imgEl.src = selectedMap.imgUrl;
+    if (titleEl) titleEl.textContent = `📍 [${selectedMap.region}] ${selectedMap.name}`;
+    if (specEl) specEl.textContent = `몬스터 Lv.${selectedMap.mobLevel} | 젠당 ${selectedMap.spawnPerWave}마리 | 1시간 최대 ${selectedMap.hourlyMax.toLocaleString()}마리`;
+
     if (!isManual6MinKills) {
       kills6minInput.value = res.actual6MinKills;
     }

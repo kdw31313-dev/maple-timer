@@ -442,10 +442,22 @@
             </div>
 
             <div class="form-group">
-              <label for="calc-map-select">🗺️ 사냥터 선택 (자동 마릿수 입력)</label>
+              <label for="calc-map-select">🗺️ 사냥터 선택 (2026 최신 200~295레벨 전 사냥터 수록)</label>
               <select id="calc-map-select" class="select-field">
                 <!-- calculator.js에서 자동 동적 채움 -->
               </select>
+            </div>
+
+            <!-- 📸 선택된 메이플 실존 사냥터 맵 배너 사진 카드리프 -->
+            <div id="map-preview-card" style="margin-bottom:16px; border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.4); position:relative;">
+              <img id="map-preview-img" src="https://maplestory.dn.nexoncdn.co.kr/DesignScript/images/maple/town/img_grandis_arteria.jpg" alt="사냥터 맵 배너" style="width:100%; height:130px; object-fit:cover; filter:brightness(0.75); display:block;">
+              <div style="position:absolute; bottom:0; left:0; right:0; padding:8px 12px; background:linear-gradient(transparent, rgba(0,0,0,0.9)); display:flex; justify-content:space-between; align-items:flex-end;">
+                <div>
+                  <strong id="map-preview-title" style="color:#fff; font-size:0.95rem; display:block;">아르테리아 - 최하층 통로 2</strong>
+                  <span id="map-preview-spec" style="font-size:0.75rem; color:var(--accent-gold);">몬스터 Lv.282 | 젠당 40마리 | 1시간 최대 19,200마리</span>
+                </div>
+                <span id="map-preview-ratio-badge" class="badge badge-info" style="font-size:0.75rem;">12초 주기 480젠</span>
+              </div>
             </div>
 
             <div class="form-group">
