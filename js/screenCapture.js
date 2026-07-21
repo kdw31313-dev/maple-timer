@@ -1,5 +1,5 @@
 /**
- * ScreenCaptureManager - WebRTC Screen Capture & 동적 창 위치/해상도 실시간 추적 모듈
+ * ScreenCaptureManager - WebRTC Screen Capture & 백그라운드 실시간 멈춤 방지 연속 스캔 모듈
  */
 class ScreenCaptureManager {
   constructor() {
@@ -12,7 +12,7 @@ class ScreenCaptureManager {
     this.overlayCtx = this.overlayCanvas ? this.overlayCanvas.getContext('2d') : null;
 
     this.isStreaming = false;
-    this.animationFrameId = null;
+    this.loopIntervalId = null;
 
     // ROI 좌표 (% 비율 단위)
     this.runeRoi = { x: 1, y: 1, w: 25, h: 25 }; // 메이플 좌측 상단 미니맵 기본 위치
@@ -47,7 +47,6 @@ class ScreenCaptureManager {
       return;
     }
 
-    // 🚨 순수 동기 getDisplayMedia 호출
     navigator.mediaDevices.getDisplayMedia({
       video: true,
       audio: false
@@ -90,9 +89,9 @@ class ScreenCaptureManager {
     }
 
     this.isStreaming = false;
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
+    if (this.loopIntervalId) {
+      clearInterval(this.loopIntervalId);
+      this.loopIntervalId = null;
     }
 
     if (this.videoEl) this.videoEl.classList.add('hidden');
@@ -114,7 +113,7 @@ class ScreenCaptureManager {
       badge.className = isConnected ? 'status-badge live' : 'status-badge disconnected';
     }
     if (text) {
-      text.textContent = isConnected ? '실시간 창 분석 중' : '연결 안 됨';
+      text.textContent = isConnected ? '🟢 실시간 화면 무한 연속 감지 중 (10 FPS)' : '연결 안 됨';
     }
     if (startBtn) startBtn.classList.toggle('hidden', isConnected);
     if (stopBtn) stopBtn.classList.toggle('hidden', !isConnected);
@@ -244,17 +243,24 @@ class ScreenCaptureManager {
     this.overlayCtx.fillText(label, rx + 4, ry > 16 ? ry - 4 : ry + 14);
   }
 
+  /**
+   * 🚨 핵심: 크롬 백그라운드 탭 멈춤 방지를 위한 setInterval (100ms = 초당 10회 무한 실시간 분석)
+   */
   startLoop() {
-    const loop = () => {
-      if (!this.isStreaming) return;
+    if (this.loopIntervalId) {
+      clearInterval(this.loopIntervalId);
+    }
+
+    this.loopIntervalId = setInterval(() => {
+      if (!this.isStreaming || !this.videoEl) return;
 
       if (this.videoEl.readyState === this.videoEl.HAVE_ENOUGH_DATA) {
-        // 🚨 핵심: 메이플 창을 옮기거나 크기를 조절하면 해상도가 실시간으로 변경되므로 매 프레임 동적 갱신!
         if (this.videoEl.videoWidth !== this.analysisCanvas.width ||
             this.videoEl.videoHeight !== this.analysisCanvas.height) {
           this.resizeCanvas();
         }
 
+        // 비디오 프레임을 캔버스에 계속 갱신하여 그리기!
         this.analysisCtx.drawImage(
           this.videoEl,
           0, 0,
@@ -268,7 +274,7 @@ class ScreenCaptureManager {
           this.analysisCanvas.height
         );
 
-        // 실시간 이미지 감지 엔진 분석
+        // 실시간 이미지 감지 엔진 호출
         if (window.imageAnalyzer) {
           window.imageAnalyzer.analyzeFrame(imageData, {
             runeRoi: this.runeRoi,
@@ -277,11 +283,7 @@ class ScreenCaptureManager {
           });
         }
       }
-
-      this.animationFrameId = requestAnimationFrame(loop);
-    };
-
-    this.animationFrameId = requestAnimationFrame(loop);
+    }, 100); // 100ms마다 초당 10번 무한 실시간 분석!
   }
 }
 
