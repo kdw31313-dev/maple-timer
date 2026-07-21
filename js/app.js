@@ -415,15 +415,24 @@ function initCalculatorUI() {
 
   let isManual6MinKills = false;
 
-  // 1) 맵 목록 셀렉트 채우기 (MapleWidget & Mapleroad 오피셜 DB)
+  // 1) 맵 목록 셀렉트 채우기 (Optgroup 지역별 그룹화로 UI 시독성 극대화)
   mapSelect.innerHTML = '';
+  const regionGroups = {};
+
   window.huntingCalculator.mapDatabase.forEach((item, idx) => {
+    if (!regionGroups[item.region]) {
+      const group = document.createElement('optgroup');
+      group.label = `📍 ${item.region} (Lv.${item.mobLevel}~`;
+      regionGroups[item.region] = group;
+      mapSelect.appendChild(group);
+    }
+
     const opt = document.createElement('option');
     opt.value = idx;
     const max6m = Math.round(item.hourlyMax / 10);
-    opt.textContent = `[${item.region}] ${item.name} (젠당 ${item.spawnPerWave}마리 | 6분 ${max6m.toLocaleString()}마리 | 1시간 ${item.hourlyMax.toLocaleString()}마리)`;
+    opt.textContent = `${item.name} (젠당 ${item.spawnPerWave}마리 | 6분 ${max6m.toLocaleString()}마리 | 1시간 ${item.hourlyMax.toLocaleString()}마리)`;
     if (item.name.includes('최하층 통로 2')) opt.selected = true;
-    mapSelect.appendChild(opt);
+    regionGroups[item.region].appendChild(opt);
   });
 
   const updateCalculations = () => {

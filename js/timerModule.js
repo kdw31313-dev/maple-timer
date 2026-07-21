@@ -68,9 +68,15 @@ class TimerModule {
     }
 
     this.expTimer.isRunning = true;
+    const startTime = Date.now();
+    const initialRem = this.expTimer.remainingSeconds;
+
     this.expTimer.intervalId = setInterval(() => {
-      if (this.expTimer.remainingSeconds > 0) {
-        this.expTimer.remainingSeconds--;
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const currentRem = Math.max(0, initialRem - elapsed);
+
+      this.expTimer.remainingSeconds = currentRem;
+      if (currentRem > 0) {
         this.checkExpAlerts();
       } else {
         this.handleExpEnd();
@@ -162,9 +168,15 @@ class TimerModule {
 
     if (this.onJanusTick) this.onJanusTick(this.janusTimer);
 
+    const startTime = Date.now();
+    const initialRem = this.janusTimer.remainingSeconds;
+
     this.janusTimer.intervalId = setInterval(() => {
-      if (this.janusTimer.remainingSeconds > 0) {
-        this.janusTimer.remainingSeconds--;
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const currentRem = Math.max(0, initialRem - elapsed);
+
+      this.janusTimer.remainingSeconds = currentRem;
+      if (currentRem > 0) {
         this.checkJanusAlerts();
       } else {
         this.handleJanusEnd();
@@ -194,6 +206,14 @@ class TimerModule {
     }
   }
 
+  handleJanusEnd() {
+    this.resetJanusTimer();
+    const chkEnd = document.getElementById('chk-janus-endalert')?.checked;
+    if (chkEnd) {
+      window.audioNotifier.notify('솔 야누스 재설치가 필요합니다!', 'beep');
+    }
+  }
+
   /* ===================================================
    * 3. 사냥 필수 도핑 버프 타이머 메서드 (재획비, MVP, 익스골드)
    * =================================================== */
@@ -211,9 +231,15 @@ class TimerModule {
     item.isRunning = true;
     if (this.onDopingTick) this.onDopingTick(key, item);
 
+    const startTime = Date.now();
+    const initialRem = item.remSecs;
+
     item.intervalId = setInterval(() => {
-      if (item.remSecs > 0) {
-        item.remSecs--;
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const currentRem = Math.max(0, initialRem - elapsed);
+
+      item.remSecs = currentRem;
+      if (currentRem > 0) {
         this.checkDopingAlerts(key, item);
       } else {
         this.handleDopingEnd(key, item);

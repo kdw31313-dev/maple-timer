@@ -173,6 +173,7 @@ class AudioNotifier {
   speak(text) {
     if (!('speechSynthesis' in window)) return;
     try {
+      window.speechSynthesis.cancel(); // 이전 덜 끝난 음성 캔슬하여 엉킴 100% 방지
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'ko-KR';
       utterance.rate = 1.05;
