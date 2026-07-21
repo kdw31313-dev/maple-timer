@@ -354,14 +354,17 @@ class ImageAnalyzer {
   }
 
   /**
-   * ⚡ 0% 렉 사냥 스캐너: 마이크로 ROI 이미지 데이터를 직접 수급받아 0.001초 만에 분석 완료!
+   * ⚡ 0% 렉 사냥 스캐너: 마이크로 ROI + 전체 화면 240x135 다운샘플링 데이터를 직접 수급받아 0% 렉 감지!
    */
-  analyzeMicroFrame(runeImageData, janusImageData) {
+  analyzeMicroFrame(runeImageData, janusImageData, popupImageData) {
     if (runeImageData) {
       this.processRuneFrame(runeImageData, null);
     }
     if (janusImageData) {
       this.processJanusFrame(janusImageData);
+    }
+    if (popupImageData) {
+      this.processPopupFrame(popupImageData);
     }
   }
 
