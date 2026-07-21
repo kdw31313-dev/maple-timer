@@ -383,6 +383,10 @@ class ImageAnalyzer {
         if (!this.janusState.alertExpiredTriggered) {
           this.triggerJanusExpiredAlert();
         }
+      } else if (!this.janusState.isBuffActive && this.janusState.consecutiveInactiveCount >= 3) {
+        if (this.onJanusStatusChange) {
+          this.onJanusStatusChange('⚪ 대기 중 (인식되지 않음)', false);
+        }
       }
     }
   }
@@ -530,6 +534,10 @@ class ImageAnalyzer {
         this.expBuffState.peakDigitPixelCount = 0;
         if (!this.expBuffState.alertExpiredTriggered) {
           this.triggerExpBuffExpiredAlert();
+        }
+      } else if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveInactiveCount >= 5) {
+        if (this.onExpBuffStatusChange) {
+          this.onExpBuffStatusChange('⚪ 대기 중 (인식되지 않음)', false);
         }
       }
     }

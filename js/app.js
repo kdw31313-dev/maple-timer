@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pill.className = 'status-pill detected';
       } else {
         const isLive = window.screenCaptureManager?.isStreaming;
-        pill.textContent = isLive ? '🟢 인식 중 (실시간 감지)' : statusText;
+        pill.textContent = isLive ? '🟢 미니맵 스캔 중 (인식되지 않음)' : statusText;
         pill.className = isLive ? 'status-pill active' : 'status-pill';
       }
     }
@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pill.className = 'status-pill detected';
       } else {
         const isLive = window.screenCaptureManager?.isStreaming;
-        pill.textContent = isLive ? '🟢 인식 중 (100% 자동분석)' : statusText;
+        pill.textContent = isLive ? '🟢 거탐 감시 중 (인식되지 않음)' : statusText;
         pill.className = isLive ? 'status-pill active' : 'status-pill';
       }
     }
@@ -74,9 +74,21 @@ document.addEventListener('DOMContentLoaded', () => {
         pill.textContent = statusText;
         pill.className = 'status-pill detected';
       } else {
-        const isLive = window.screenCaptureManager?.isStreaming;
-        pill.textContent = isLive ? '🟢 인식 중 (실시간 감지)' : statusText;
-        pill.className = isLive ? 'status-pill active' : 'status-pill';
+        pill.textContent = statusText || '⚪ 대기 중 (인식되지 않음)';
+        pill.className = statusText?.includes('가동 중') ? 'status-pill active' : 'status-pill';
+      }
+    }
+  };
+
+  window.imageAnalyzer.onExpBuffStatusChange = (statusText, isDetected) => {
+    const pill = document.getElementById('exp-status-pill');
+    if (pill) {
+      if (isDetected) {
+        pill.textContent = statusText;
+        pill.className = 'status-pill detected';
+      } else {
+        pill.textContent = statusText || '⚪ 대기 중 (인식되지 않음)';
+        pill.className = statusText?.includes('가동 중') ? 'status-pill active' : 'status-pill';
       }
     }
   };

@@ -323,6 +323,7 @@ class ScreenCaptureManager {
     const runePill = document.getElementById('rune-status-pill');
     const popupPill = document.getElementById('popup-status-pill');
     const janusPill = document.getElementById('janus-status-pill');
+    const expPill = document.getElementById('exp-status-pill');
 
     if (badge) {
       badge.className = isConnected ? 'status-badge live' : 'status-badge disconnected';
@@ -333,21 +334,26 @@ class ScreenCaptureManager {
 
     if (isConnected) {
       if (runePill && !window.imageAnalyzer?.runeState.isDetected) {
-        runePill.textContent = '🟢 미니맵 스캔 중';
+        runePill.textContent = '🟢 미니맵 스캔 중 (인식되지 않음)';
         runePill.className = 'status-pill active';
       }
       if (popupPill && !window.imageAnalyzer?.popupState.isDetected) {
-        popupPill.textContent = '🟢 거탐 감시 중 (3종 매칭 대기)';
+        popupPill.textContent = '🟢 거탐 감시 중 (인식되지 않음)';
         popupPill.className = 'status-pill active';
       }
       if (janusPill && !window.imageAnalyzer?.janusState.isBuffActive) {
-        janusPill.textContent = '🟢 1사분면 6대 버프 자동 추적 중';
-        janusPill.className = 'status-pill active';
+        janusPill.textContent = '⚪ 대기 중 (인식되지 않음)';
+        janusPill.className = 'status-pill';
+      }
+      if (expPill && !window.imageAnalyzer?.expBuffState.isBuffActive) {
+        expPill.textContent = '⚪ 대기 중 (인식되지 않음)';
+        expPill.className = 'status-pill';
       }
     } else {
-      if (runePill) { runePill.textContent = '⚪ 대기 중'; runePill.className = 'status-pill'; }
-      if (popupPill) { popupPill.textContent = '⚪ 대기 중'; popupPill.className = 'status-pill'; }
-      if (janusPill) { janusPill.textContent = '⚪ 대기 중'; janusPill.className = 'status-pill'; }
+      if (runePill) { runePill.textContent = '⚪ 대기 중 (연결 안 됨)'; runePill.className = 'status-pill'; }
+      if (popupPill) { popupPill.textContent = '⚪ 대기 중 (연결 안 됨)'; popupPill.className = 'status-pill'; }
+      if (janusPill) { janusPill.textContent = '⚪ 대기 중 (인식되지 않음)'; janusPill.className = 'status-pill'; }
+      if (expPill) { expPill.textContent = '⚪ 대기 중 (인식되지 않음)'; expPill.className = 'status-pill'; }
     }
 
     if (startBtn) startBtn.classList.toggle('hidden', isConnected);
@@ -381,11 +387,12 @@ class ScreenCaptureManager {
 
     if (!this.isStreaming) return;
 
-    this.drawRoiBox(this.runeRoi, 'rgba(255, 0, 128, 0.8)', '📍 미니맵 (룬)');
-    this.drawRoiBox(this.janusRoi, 'rgba(155, 89, 182, 0.8)', '⚡ 1사분면 버프 (자동파서)');
+    // 1사분면 (메이플 화면 우상단 최상단 1줄 제외 파서 영역) 시각적 반투명 가이드 그리기
+    this.drawRoiBox(this.janusRoi, 'rgba(155, 89, 182, 0.9)', '↗️ 메이플 1사분면 (버프/야누스 자동파서 영역)', 'rgba(155, 89, 182, 0.18)');
+    this.drawRoiBox(this.runeRoi, 'rgba(255, 0, 128, 0.9)', '📍 미니맵 (룬)');
   }
 
-  drawRoiBox(roi, color, label) {
+  drawRoiBox(roi, color, label, fillColor = null) {
     const w = this.overlayCanvas.width;
     const h = this.overlayCanvas.height;
 
@@ -394,13 +401,27 @@ class ScreenCaptureManager {
     const rw = (roi.w / 100) * w;
     const rh = (roi.h / 100) * h;
 
-    this.overlayCtx.strokeStyle = color;
-    this.overlayCtx.lineWidth = 2;
-    this.overlayCtx.strokeRect(rx, ry, rw, rh);
+    if (fillColor) {
+      this.overlayCtx.fillStyle = fillColor;
+      this.overlayCtx.fillRect(rx, ry, rw, rh);
+    }
 
+    this.overlayCtx.strokeStyle = color;
+    this.overlayCtx.lineWidth = 2.5;
+    this.overlayCtx.setLineDash([6, 3]);
+    this.overlayCtx.strokeRect(rx, ry, rw, rh);
+    this.overlayCtx.setLineDash([]);
+
+    // 배경 라벨 뱃지
     this.overlayCtx.fillStyle = color;
-    this.overlayCtx.font = '12px sans-serif';
-    this.overlayCtx.fillText(label, rx + 4, ry > 16 ? ry - 4 : ry + 14);
+    this.overlayCtx.font = 'bold 12px sans-serif';
+    const textWidth = this.overlayCtx.measureText(label).width;
+    
+    const labelY = ry > 22 ? ry - 22 : ry + 2;
+    this.overlayCtx.fillRect(rx, labelY, textWidth + 12, 20);
+
+    this.overlayCtx.fillStyle = '#ffffff';
+    this.overlayCtx.fillText(label, rx + 6, labelY + 14);
   }
 
   captureBuffSnapshot() {
