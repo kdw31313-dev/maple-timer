@@ -21,9 +21,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // 2. 사냥 효율 계산기 (Mapleroad Style) 초기화
   initCalculatorUI();
 
-  // 3. 그란디스 사냥터 포탈 가이드 초기화
-  initPortalGuideUI();
-
   // 4. 설정 불러오기 및 적용
   const config = window.storageManager.loadConfig();
   applyConfigToUI(config);
@@ -432,40 +429,6 @@ function initCalculatorUI() {
   updateCalculations();
 }
 
-/**
- * 그란디스 사냥터 포탈 가이드 동적 렌더링
- */
-function initPortalGuideUI() {
-  const container = document.getElementById('portal-guide-list');
-  if (!container || !window.portalGuide) return;
-
-  container.innerHTML = '';
-  window.portalGuide.guideData.forEach(regionGroup => {
-    const groupDiv = document.createElement('div');
-    groupDiv.className = 'portal-region-group';
-    groupDiv.innerHTML = `<h3>🏛️ ${regionGroup.region}</h3>`;
-
-    regionGroup.maps.forEach(mapInfo => {
-      const card = document.createElement('div');
-      card.className = 'portal-map-card';
-      
-      let portalItemsHtml = '';
-      mapInfo.portals.forEach(p => {
-        portalItemsHtml += `<div class="portal-item">📍 <strong>${p.pos}</strong> ➔ ${p.destination} (<em>${p.usage}</em>)</div>`;
-      });
-
-      card.innerHTML = `
-        <h4>🗺️ ${mapInfo.name}</h4>
-        ${mapInfo.svgDiagram ? `<div class="map-diagram-container" style="margin:10px 0;">${mapInfo.svgDiagram}</div>` : ''}
-        ${portalItemsHtml}
-        <div style="font-size:0.85rem; color:var(--accent-gold); margin-top:8px;">💡 <strong>동선 꿀팁:</strong> ${mapInfo.tip}</div>
-      `;
-      groupDiv.appendChild(card);
-    });
-
-    container.appendChild(groupDiv);
-  });
-}
 
 /**
  * 저장된 설정을 UI에 반영
