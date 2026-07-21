@@ -228,28 +228,33 @@ class ImageAnalyzer {
       const brightness = (r + g + b) / 3;
       totalBrightness += brightness;
 
-      if (r >= 50 && r <= 175 && g >= 20 && g <= 130 && b >= 100 && b <= 250) {
+      // 1. 솔 야누스 (보라 원형 아이콘)
+      if (r >= 40 && r <= 185 && g >= 10 && g <= 140 && b >= 90 && b <= 255) {
         janusIconPixels++;
       }
 
-      const isWhiteLeaf = (r >= 210 && g >= 210 && b >= 210);
-      const isLeafBg = (b >= 160 && (r >= 80 || g >= 80));
+      // 2. 단풍잎 경쿠 (중앙 단풍잎 + 시안/블루 배경)
+      const isWhiteLeaf = (r >= 200 && g >= 200 && b >= 200);
+      const isLeafBg = (b >= 150 && (r >= 70 || g >= 70));
       if (isWhiteLeaf || isLeafBg) {
         mapleLeafCouponPixels++;
       }
 
-      const isMvpPurpleOrCyan = ((r >= 130 && g <= 150 && b >= 180) || (r <= 130 && g >= 150 && b >= 200));
+      // 3. MVP 경험치 쿠폰 (보라/시안/핑크 뱃지)
+      const isMvpPurpleOrCyan = ((r >= 120 && g <= 160 && b >= 170) || (r <= 140 && g >= 140 && b >= 190));
       if (isMvpPurpleOrCyan) {
         mvpCouponPixels++;
       }
 
-      const isExpPlus = (r <= 150 && g >= 155 && b >= 190);
+      // 4. EXP+ 및 몬스터파크 익스트림 골드 포션
+      const isExpPlus = (r <= 160 && g >= 145 && b >= 170);
       if (isExpPlus) {
         expPlusPixels++;
       }
 
-      const isTealFlask = (r <= 150 && g >= 140 && b >= 160);
-      const isGoldCap = (r >= 180 && g >= 150 && b <= 120);
+      // 5. 소형 재물 획득의 약 / 재물 획득의 약 (청록/황금 포션 병)
+      const isTealFlask = (r <= 160 && g >= 130 && b >= 150);
+      const isGoldCap = (r >= 170 && g >= 140 && b <= 130);
       if (isTealFlask || isGoldCap) {
         smallWealthPixels++;
       }
