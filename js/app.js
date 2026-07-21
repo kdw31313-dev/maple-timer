@@ -389,27 +389,37 @@ function initCalculatorUI() {
     // 6분 마릿수 자동 채움 (사용자가 수동 변경하지 않은 경우)
     kills6minInput.value = res.actual6MinKills;
 
-    // 결과 렌더링
-    document.getElementById('res-hourly-kills').textContent = `${res.hourlyKills.toLocaleString()} 마리`;
-    document.getElementById('res-2hr-kills').textContent = `${res.twoHourKills.toLocaleString()} 마리`;
+    // 결과 렌더링 (Mapleroad 정밀 렌더링 모듈)
+    document.getElementById('res-drop-rate-val').textContent = `${dropRatePct}%`;
+    document.getElementById('res-meso-rate-val').textContent = `${mesoRatePct}%`;
 
-    const ratioLabel = res.expLevelMult === 1.2 ? '±0~1 레벨 (+20% 보너스!)' :
-                       res.expLevelMult === 1.1 ? '±2 레벨 (+10% 보너스)' :
-                       res.expLevelMult === 1.05 ? '±3~4 레벨 (+5% 보너스)' : '100% 정상 경험치';
-    document.getElementById('res-level-ratio').textContent = ratioLabel;
+    const bagRatePill = document.getElementById('res-meso-bag-rate');
+    if (bagRatePill) {
+      bagRatePill.textContent = `${res.mesoBagDropRate}% (${res.mesoBagDropRate >= 100 ? '확정 드롭' : '미확정 드롭'})`;
+      bagRatePill.className = res.mesoBagDropRate >= 100 ? 'badge badge-success' : 'badge badge-warning';
+    }
 
-    // 예상 경험치 (가상 퍼센트 산출)
-    const expPctHourly = ((res.hourlyExpTotal / (userLevel * 250000000000)) * 100).toFixed(3);
-    const expPct2Hr = (expPctHourly * 2).toFixed(3);
-
-    document.getElementById('res-hourly-exp').textContent = `약 +${expPctHourly}%`;
-    document.getElementById('res-2hr-exp').textContent = `약 +${expPct2Hr}%`;
-
+    // 30분 / 1시간 / 1재획 메소
+    const thirtyMinMan = Math.round(res.thirtyMinMeso / 10000);
     const hourlyMesoMan = Math.round(res.hourlyMesoTotal / 10000);
+    const hourlyMesoEok = (res.hourlyMesoTotal / 100000000).toFixed(2);
     const twoHrMesoEok = (res.twoHourMesoTotal / 100000000).toFixed(2);
 
-    document.getElementById('res-hourly-meso').textContent = `약 ${hourlyMesoMan.toLocaleString()} 만 메소`;
+    document.getElementById('res-30min-meso').textContent = `약 ${thirtyMinMan.toLocaleString()} 만 메소`;
+    document.getElementById('res-hourly-meso').textContent = `약 ${hourlyMesoEok} 억 (${hourlyMesoMan.toLocaleString()} 만) 메소`;
     document.getElementById('res-2hr-meso').textContent = `약 ${twoHrMesoEok} 억 메소`;
+
+    // 일일 제한까지 총 획득 메소 및 시간
+    const capMesoEok = (res.totalMesoAtCap / 100000000).toFixed(2);
+    document.getElementById('res-cap-total-meso').textContent = `약 ${capMesoEok} 억 메소`;
+    document.getElementById('res-cap-time-needed').textContent = `약 ${res.timeToCapFormatted}`;
+
+    // 마릿수 & 경험치
+    document.getElementById('res-hourly-kills').textContent = `${res.hourlyKills.toLocaleString()} 마리 / ${res.twoHourKills.toLocaleString()} 마리`;
+
+    const expPctHourly = ((res.hourlyExpTotal / (userLevel * 250000000000)) * 100).toFixed(3);
+    const expPct2Hr = (expPctHourly * 2).toFixed(3);
+    document.getElementById('res-2hr-exp').textContent = `약 +${expPct2Hr}%`;
     document.getElementById('res-2hr-erda').textContent = `약 ${res.solErdaPieces2Hr} 개`;
   };
 
