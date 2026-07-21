@@ -96,23 +96,18 @@ class TimerModule {
   }
 
   resetExpFlags() {
-    this.expTimer.alert60Triggered = false;
-    this.expTimer.alert30Triggered = false;
+    this.expTimer.alert10Triggered = false;
     this.expTimer.alertEndTriggered = false;
     this.stopExpEndRepeat();
   }
 
   checkExpAlerts() {
     const rem = this.expTimer.remainingSeconds;
-    const chk60 = document.getElementById('chk-exp-alert-60')?.checked;
-    const chk30 = document.getElementById('chk-exp-alert-30')?.checked;
+    const chk10 = document.getElementById('chk-exp-alert-10')?.checked;
 
-    if (rem === 60 && chk60 && !this.expTimer.alert60Triggered) {
-      this.expTimer.alert60Triggered = true;
-      window.audioNotifier.notify('경험치 쿠폰 종료 1분 전입니다', 'chime');
-    } else if (rem === 30 && chk30 && !this.expTimer.alert30Triggered) {
-      this.expTimer.alert30Triggered = true;
-      window.audioNotifier.notify('경험치 쿠폰 종료 30초 전입니다', 'chime');
+    if (rem === 10 && chk10 && !this.expTimer.alert10Triggered) {
+      this.expTimer.alert10Triggered = true;
+      window.audioNotifier.notify('경험치 쿠폰 종료 10초 전입니다', 'chime');
     }
   }
 
@@ -251,15 +246,11 @@ class TimerModule {
 
   checkDopingAlerts(key, item) {
     const rem = item.remSecs;
-    const chk5m = document.getElementById('chk-doping-5m')?.checked;
-    const chk1m = document.getElementById('chk-doping-1m')?.checked;
+    const chk10s = document.getElementById('chk-doping-10s')?.checked;
 
-    if (rem === 300 && chk5m && !item.alert5m) {
-      item.alert5m = true;
-      window.audioNotifier.notify(`${item.name} 종료 5분 전입니다`, 'chime');
-    } else if (rem === 60 && chk1m && !item.alert1m) {
-      item.alert1m = true;
-      window.audioNotifier.notify(`${item.name} 종료 1분 전입니다`, 'chime');
+    if (rem === 10 && chk10s && !item.alert10s) {
+      item.alert10s = true;
+      window.audioNotifier.notify(`${item.name} 버프 종료 10초 전입니다`, 'chime');
     }
   }
 
