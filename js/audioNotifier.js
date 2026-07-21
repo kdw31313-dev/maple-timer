@@ -36,7 +36,7 @@ class AudioNotifier {
       }
     }
     if (this.audioCtx && this.audioCtx.state === 'suspended') {
-      this.audioCtx.resume().catch(e => console.log('AudioContext resume:', e));
+      this.audioCtx.resume().catch(e => console.log('AudioContext resume error:', e));
     }
   }
 

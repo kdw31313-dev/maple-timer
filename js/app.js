@@ -271,9 +271,41 @@ function bindEvents() {
     saveCurrentConfig();
   });
 
-  // 소리 테스트 버튼
+  // 메인 소리 테스트 버튼 (상단/설정 탭)
   document.getElementById('btn-test-sound')?.addEventListener('click', () => {
-    window.audioNotifier.notify('알림 테스트입니다', soundSelect ? soundSelect.value : 'chime');
+    if (window.audioNotifier) {
+      window.audioNotifier.initAudioContext();
+      window.audioNotifier.notify('알림 테스트입니다', soundSelect ? soundSelect.value : 'chime');
+    }
+  });
+
+  // 🔊 항목별 개별 사운드 선택 및 미리듣기 테스트 버튼 이벤트 바인딩
+  ['rune', 'popup', 'janus', 'exp'].forEach(cat => {
+    const selectEl = document.getElementById(`select-sound-${cat}`);
+    if (selectEl) {
+      selectEl.addEventListener('change', (e) => {
+        const val = e.target.value;
+        if (window.audioNotifier) {
+          window.audioNotifier.initAudioContext();
+          window.audioNotifier.setCustomSound(cat, val);
+          window.audioNotifier.playSoundPreset(val); // 선택 변경 시 바로 1회 미리듣기!
+        }
+        saveCurrentConfig();
+      });
+    }
+  });
+
+  document.querySelectorAll('.btn-test-sound').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const cat = btn.getAttribute('data-sound-cat');
+      const selectEl = document.getElementById(`select-sound-${cat}`);
+      const soundVal = selectEl ? selectEl.value : 'chime';
+      if (window.audioNotifier) {
+        window.audioNotifier.initAudioContext();
+        window.audioNotifier.playSoundPreset(soundVal);
+      }
+    });
   });
 
   // PIP 버튼
@@ -461,35 +493,6 @@ function initCalculatorUI() {
   if (useWealthChk) useWealthChk.addEventListener('change', updateCalculations);
 
   updateCalculations();
-}
-
-
-  // 항목별 커스텀 사운드 설정 및 미리듣기 버튼 이벤트 바인딩
-  ['rune', 'popup', 'janus', 'exp'].forEach(cat => {
-    const selectEl = document.getElementById(`select-sound-${cat}`);
-    if (selectEl) {
-      selectEl.addEventListener('change', (e) => {
-        const val = e.target.value;
-        if (window.audioNotifier) {
-          window.audioNotifier.setCustomSound(cat, val);
-          window.audioNotifier.playSoundPreset(val); // 선택 시 바로 1회 미리듣기!
-        }
-        saveCurrentConfig();
-      });
-    }
-  });
-
-  document.querySelectorAll('.btn-test-sound').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const cat = e.target.getAttribute('data-sound-cat');
-      const selectEl = document.getElementById(`select-sound-${cat}`);
-      const soundVal = selectEl ? selectEl.value : 'chime';
-      if (window.audioNotifier) {
-        window.audioNotifier.initAudioContext();
-        window.audioNotifier.playSoundPreset(soundVal);
-      }
-    });
-  });
 }
 
 
