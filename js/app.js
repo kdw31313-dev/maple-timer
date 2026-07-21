@@ -118,6 +118,10 @@ function bindEvents() {
     window.screenCaptureManager.openRoiModal('janus');
   });
 
+  document.getElementById('btn-select-exp-roi')?.addEventListener('click', () => {
+    window.screenCaptureManager.openRoiModal('exp');
+  });
+
   // --- 경험치 쿠폰 타이머 버튼 ---
   const expStartBtn = document.getElementById('btn-exp-start');
   const expPauseBtn = document.getElementById('btn-exp-pause');

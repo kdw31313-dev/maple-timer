@@ -427,15 +427,125 @@ class ImageAnalyzer {
     }
   }
 
-  analyzeMicroFrame(runeImageData, janusImageData, popupImageData) {
+  /**
+   * ⚡ 4대 마이크로 ROI 독립 수급 분석
+   */
+  analyze4MicroFrames(runeImageData, janusImageData, expImageData, popupImageData) {
     if (runeImageData) {
       this.processRuneFrame(runeImageData, null);
     }
     if (janusImageData) {
       this.processJanusFrame(janusImageData);
     }
+    if (expImageData) {
+      this.processExpFrame(expImageData);
+    }
     if (popupImageData) {
       this.processPopupFrame(popupImageData);
+    }
+  }
+
+  processExpFrame(imageData) {
+    if (!imageData || imageData.data.length === 0) return;
+
+    const data = imageData.data;
+    let mapleLeafCouponPixels = 0;
+    let mvpCouponPixels = 0;
+    let expPlusPixels = 0;
+    let smallWealthPixels = 0;
+    let totalBrightness = 0;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+
+      const brightness = (r + g + b) / 3;
+      totalBrightness += brightness;
+
+      const isWhiteLeaf = (r >= 200 && g >= 200 && b >= 200);
+      const isLeafBg = (b >= 150 && (r >= 70 || g >= 70));
+      if (isWhiteLeaf || isLeafBg) {
+        mapleLeafCouponPixels++;
+      }
+
+      const isMvpPurpleOrCyan = ((r >= 120 && g <= 160 && b >= 170) || (r <= 140 && g >= 140 && b >= 190));
+      if (isMvpPurpleOrCyan) {
+        mvpCouponPixels++;
+      }
+
+      const isExpPlus = (r <= 160 && g >= 145 && b >= 170);
+      if (isExpPlus) {
+        expPlusPixels++;
+      }
+
+      const isTealFlask = (r <= 160 && g >= 130 && b >= 150);
+      const isGoldCap = (r >= 170 && g >= 140 && b <= 130);
+      if (isTealFlask || isGoldCap) {
+        smallWealthPixels++;
+      }
+    }
+
+    const avgBrightness = totalBrightness / (data.length / 4);
+
+    // 📸 1. AI 캡처 학습된 버프 소멸/종료 실시간 트래커
+    if (this.learnedBuffState.isLearned) {
+      let currentActivePixels = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const br = (data[i] + data[i + 1] + data[i + 2]) / 3;
+        if (br > 50) currentActivePixels++;
+      }
+
+      if (currentActivePixels < this.learnedBuffState.baselinePixels * 0.45) {
+        this.expBuffState.consecutiveInactiveCount++;
+        if (this.expBuffState.consecutiveInactiveCount >= 2) {
+          this.triggerExpBuffExpiredAlert();
+        }
+      } else {
+        this.expBuffState.consecutiveInactiveCount = 0;
+      }
+      return;
+    }
+
+    // 2. 오토 프리셋 버프 감지
+    const detectedBuffName = smallWealthPixels >= 6 ? '소형 재물 획득의 약 (30분)' :
+                             mvpCouponPixels >= 6 ? 'R+ MVP 경험치 쿠폰' :
+                             expPlusPixels >= 6 ? 'EXP+ 추가 경험치 쿠폰' :
+                             mapleLeafCouponPixels >= 6 ? '단풍잎 경험치 쿠폰 (2x/3x/4x)' : null;
+
+    const hasExpBuffIcon = detectedBuffName !== null;
+    const expBrightnessDiff = Math.abs(avgBrightness - this.expBuffState.lastBrightness);
+    this.expBuffState.lastBrightness = avgBrightness;
+
+    if (hasExpBuffIcon) {
+      this.expBuffState.consecutiveActiveCount++;
+      this.expBuffState.consecutiveInactiveCount = 0;
+
+      if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveActiveCount >= 1) {
+        this.expBuffState.isBuffActive = true;
+        this.expBuffState.alert10Triggered = false;
+        if (this.onExpBuffStatusChange) this.onExpBuffStatusChange(`${detectedBuffName} 가동 중`, false);
+
+        if (window.timerModule && !window.timerModule.expTimer.isRunning) {
+          window.timerModule.startExpTimer();
+        }
+      }
+
+      const isExp10sTimer = window.timerModule && window.timerModule.expTimer.isRunning && window.timerModule.expTimer.remainingSeconds <= 10;
+      if (this.expBuffState.isBuffActive && (expBrightnessDiff > 5 || isExp10sTimer)) {
+        this.expBuffState.flashCount++;
+        if (this.expBuffState.flashCount >= 1 && !this.expBuffState.alert10Triggered) {
+          this.triggerExpBuff10sAlert(detectedBuffName || '도핑 버프');
+        }
+      }
+    } else {
+      this.expBuffState.consecutiveInactiveCount++;
+      if (this.expBuffState.isBuffActive && this.expBuffState.consecutiveInactiveCount >= 5) {
+        this.expBuffState.isBuffActive = false;
+        this.expBuffState.flashCount = 0;
+        const isLive = window.screenCaptureManager?.isStreaming;
+        if (this.onExpBuffStatusChange) this.onExpBuffStatusChange(isLive ? '🟢 도핑 버프 스캔 중' : '⚪ 대기 중', false);
+      }
     }
   }
 
