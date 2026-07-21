@@ -435,6 +435,10 @@ function initCalculatorUI() {
     regionGroups[item.region].appendChild(opt);
   });
 
+  const currentExpInput = document.getElementById('calc-current-exp');
+  const targetLevelInput = document.getElementById('calc-target-level');
+  const dailyHoursInput = document.getElementById('calc-daily-hours');
+
   const updateCalculations = () => {
     const userLevel = parseInt(levelInput.value, 10) || 280;
     const mapIndex = parseInt(mapSelect.value, 10) || 0;
@@ -443,6 +447,10 @@ function initCalculatorUI() {
     const mesoRatePct = parseFloat(mesoRateInput.value) || 0;
     const dropRatePct = parseFloat(dropRateInput.value) || 100;
     const useWealthPotion = useWealthChk ? useWealthChk.checked : true;
+
+    const currentExpPct = parseFloat(currentExpInput?.value) || 0;
+    const targetLevel = parseInt(targetLevelInput?.value, 10) || (userLevel + 1);
+    const dailyPlayHours = parseFloat(dailyHoursInput?.value) || 2;
 
     const custom6min = isManual6MinKills ? (parseInt(kills6minInput.value, 10) || null) : null;
 
@@ -456,7 +464,10 @@ function initCalculatorUI() {
       expBuffPct,
       mesoRatePct,
       dropRatePct,
-      useWealthPotion
+      useWealthPotion,
+      currentExpPct,
+      targetLevel,
+      dailyPlayHours
     });
 
     // --- 📸 맵 배너 이미지 및 상세 스펙 카드 업데이트 ---
@@ -472,6 +483,13 @@ function initCalculatorUI() {
     if (!isManual6MinKills) {
       kills6minInput.value = res.actual6MinKills;
     }
+
+    // --- 🚀 Mapleroad 정밀 리포트 결과 렌더링 ---
+    const goalMesoEok = (res.totalGoalMesoExpected / 100000000).toFixed(1);
+    document.getElementById('res-goal-dday').textContent = `약 ${res.daysNeededForGoal} 일 (D-${res.daysNeededForGoal}) - 총 ${res.totalGoalHoursNeeded}시간`;
+    document.getElementById('res-goal-rehoek-total').textContent = `약 ${res.totalGoalRehoekCount} 개 (${res.targetLevel}레벨 달성까지)`;
+    document.getElementById('res-goal-meso-total').textContent = `약 ${goalMesoEok} 억 메소`;
+    document.getElementById('res-goal-erda-total').textContent = `약 ${res.totalGoalErdaExpected.toLocaleString()} 개`;
 
     // --- 100% 동적 결과 카드 렌더링 ---
     // 1) 일일 메소 제한 & 필요 재획량
@@ -515,6 +533,9 @@ function initCalculatorUI() {
   expBuffInput.addEventListener('input', updateCalculations);
   mesoRateInput.addEventListener('input', updateCalculations);
   dropRateInput.addEventListener('input', updateCalculations);
+  if (currentExpInput) currentExpInput.addEventListener('input', updateCalculations);
+  if (targetLevelInput) targetLevelInput.addEventListener('input', updateCalculations);
+  if (dailyHoursInput) dailyHoursInput.addEventListener('input', updateCalculations);
   if (useWealthChk) useWealthChk.addEventListener('change', updateCalculations);
 
   updateCalculations();

@@ -486,6 +486,23 @@
               </div>
             </div>
 
+            <!-- Mapleroad 스타일 목표 레벨 분석 입력 폼 -->
+            <div class="form-row">
+              <div class="form-group">
+                <label for="calc-current-exp">📊 현재 경험치 (%)</label>
+                <input type="number" id="calc-current-exp" class="input-field" value="25.5" step="0.1" min="0" max="99.9">
+              </div>
+              <div class="form-group">
+                <label for="calc-target-level">🎯 목표 레벨</label>
+                <input type="number" id="calc-target-level" class="input-field" value="285" min="200" max="300">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="calc-daily-hours">⏳ 하루 평균 사냥 시간 (시간/일)</label>
+              <input type="number" id="calc-daily-hours" class="input-field" value="2" step="0.5" min="0.5" max="24">
+            </div>
+
             <div class="form-group" style="margin-top:6px;">
               <label style="color:var(--accent-gold); cursor:pointer;">
                 <input type="checkbox" id="chk-calc-use-wealth" checked> 🧪 재물 획득의 약 (재획비 / 소형재획비 1.2배 곱연산 적용)
@@ -495,6 +512,26 @@
 
           <!-- 우측: 유저 수식 기반 정밀 연산 결과 카드 -->
           <div class="calc-result-panel">
+            <!-- 🌟 0) Mapleroad 스타일 목표 레벨 D-Day 정밀 달성 분석 카드 (핵심!) -->
+            <div class="result-card-box highlight" style="border-color: #9b59b6; background: rgba(155, 89, 182, 0.15);">
+              <h3><span class="icon">🚀</span> Mapleroad 목표 레벨 달성 예상 분석 (D-Day)</h3>
+              <div class="result-row">
+                <span>목표 달성 예상 소요 일수:</span>
+                <strong id="res-goal-dday" style="color:#e056fd; font-size:1.1rem;">약 42 일 (D-42)</strong>
+              </div>
+              <div class="result-row">
+                <span>필요 총 재획비 수량 (2시간=1재):</span>
+                <strong id="res-goal-rehoek-total" style="color:var(--accent-gold); font-size:1.05rem;">약 42.0 개</strong>
+              </div>
+              <div class="result-row">
+                <span>목표 달성 시 누적 예상 메소:</span>
+                <strong id="res-goal-meso-total" style="color:#00f2fe; font-size:1.05rem;">약 86 억 메소</strong>
+              </div>
+              <div class="result-row">
+                <span>목표 달성 시 누적 솔 에르다 조각:</span>
+                <strong id="res-goal-erda-total" style="color:#e056fd; font-size:1.05rem;">약 302 개</strong>
+              </div>
+            </div>
             <!-- 1) 메소 제한 도달 필요 마릿수 & 필요 재획량 (핵심!) -->
             <div class="result-card-box highlight" style="border-color: #00f2fe;">
               <h3><span class="icon">🛑</span> 일일 메소 제한 & 필요 재획량</h3>

@@ -104,6 +104,23 @@ class HuntingCalculator {
     return 1.00;
   }
 
+  // ===== 2026 메이플스토리 200~300 오피셜 레벨별 필요 경험치(필경) 수식 =====
+  getRequiredExpForLevel(lvl) {
+    if (lvl < 200) return 0;
+    if (lvl === 200) return 2207026470;
+    if (lvl < 210) return Math.round(2207026470 * Math.pow(1.06, lvl - 200));
+    if (lvl < 220) return Math.round(8970000000 * Math.pow(1.05, lvl - 210));
+    if (lvl < 220) return Math.round(22500000000 * Math.pow(1.04, lvl - 220));
+    if (lvl < 240) return Math.round(52000000000 * Math.pow(1.035, lvl - 230));
+    if (lvl < 250) return Math.round(112000000000 * Math.pow(1.03, lvl - 240));
+    if (lvl < 260) return Math.round(220000000000 * Math.pow(1.025, lvl - 250));
+    if (lvl < 270) return Math.round(380000000000 * Math.pow(1.022, lvl - 260));
+    if (lvl < 280) return Math.round(620000000000 * Math.pow(1.02, lvl - 270));
+    if (lvl < 290) return Math.round(980000000000 * Math.pow(1.018, lvl - 280));
+    if (lvl <= 300) return Math.round(1550000000000 * Math.pow(1.015, lvl - 290));
+    return 2000000000000;
+  }
+
   calculate(params) {
     const {
       userLevel = 280,
@@ -181,6 +198,27 @@ class HuntingCalculator {
     const solErdaPiecesHourly = (hourlyKills / 1000) * 1.8 * (dropRatePct / 100);
     const solErdaPieces2Hr = solErdaPiecesHourly * 2;
 
+    // 11) Mapleroad 스타일 목표 레벨 D-Day & 필요 총 재획비/경쿠 연산
+    const targetLevel = params.targetLevel || Math.min(300, userLevel + 1);
+    const currentExpPct = params.currentExpPct || 0;
+    const dailyPlayHours = params.dailyPlayHours || 2; // 하루 평균 사냥 시간 (기본 2시간 = 1재획)
+
+    let totalGoalExpNeeded = 0;
+    const curLevelReqExp = this.getRequiredExpForLevel(userLevel);
+    const remainingCurLevelExp = Math.round(curLevelReqExp * (1 - currentExpPct / 100));
+
+    totalGoalExpNeeded += remainingCurLevelExp;
+
+    for (let l = userLevel + 1; l < targetLevel; l++) {
+      totalGoalExpNeeded += this.getRequiredExpForLevel(l);
+    }
+
+    const totalGoalHoursNeeded = hourlyExpTotal > 0 ? (totalGoalExpNeeded / hourlyExpTotal) : 0;
+    const totalGoalRehoekCount = (totalGoalHoursNeeded / 2).toFixed(1); // 2시간 = 1재획
+    const daysNeededForGoal = dailyPlayHours > 0 ? Math.ceil(totalGoalHoursNeeded / dailyPlayHours) : 0;
+    const totalGoalMesoExpected = Math.round(totalGoalHoursNeeded * hourlyMesoTotal);
+    const totalGoalErdaExpected = Math.round(totalGoalHoursNeeded * solErdaPiecesHourly);
+
     return {
       mapInfo: map,
       userLevel,
@@ -208,7 +246,18 @@ class HuntingCalculator {
       timeToCapFormatted,
       hourlyExpTotal,
       twoHourExpTotal,
-      solErdaPieces2Hr: solErdaPieces2Hr.toFixed(1)
+      solErdaPiecesHourly,
+      solErdaPieces2Hr,
+      // Mapleroad 정밀 리포트 항목
+      targetLevel,
+      currentExpPct,
+      dailyPlayHours,
+      totalGoalExpNeeded,
+      totalGoalHoursNeeded: totalGoalHoursNeeded.toFixed(1),
+      totalGoalRehoekCount,
+      daysNeededForGoal,
+      totalGoalMesoExpected,
+      totalGoalErdaExpected
     };
   }
 }
