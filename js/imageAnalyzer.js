@@ -248,6 +248,7 @@ class ImageAnalyzer {
       const brightness = (r + g + b) / 3;
       totalBrightness += brightness;
 
+      // 6차 솔 야누스 우상단 버프 아이콘 고유 보라/시안 오라 픽셀
       if (r >= 40 && r <= 185 && g >= 10 && g <= 140 && b >= 90 && b <= 255) {
         janusIconPixels++;
       }
@@ -265,7 +266,7 @@ class ImageAnalyzer {
       if (!this.janusState.isBuffActive && this.janusState.consecutiveActiveCount >= 1) {
         this.janusState.isBuffActive = true;
         this.janusState.alert10Triggered = false;
-        if (this.onJanusStatusChange) this.onJanusStatusChange('야누스 가동 중', false);
+        if (this.onJanusStatusChange) this.onJanusStatusChange('⚡ 솔 야누스 가동 중', false);
 
         if (window.timerModule && !window.timerModule.janusTimer.isRunning) {
           window.timerModule.startJanusTimer();
@@ -280,13 +281,21 @@ class ImageAnalyzer {
         }
       }
     } else {
+      // 🚨 5석펫 사냥 최적화: 우상단 버프창에서 야누스 아이콘이 꺼지는(소멸) 순간 0.1초 즉시 재사용 알림!
       this.janusState.consecutiveInactiveCount++;
-      if (this.janusState.isBuffActive && this.janusState.consecutiveInactiveCount >= 5) {
+      if (this.janusState.isBuffActive && this.janusState.consecutiveInactiveCount >= 2) {
         this.janusState.isBuffActive = false;
         this.janusState.flashCount = 0;
-        const isLive = window.screenCaptureManager?.isStreaming;
-        if (this.onJanusStatusChange) this.onJanusStatusChange(isLive ? '🟢 야누스 스캔 중' : '⚪ 대기 중', false);
+        this.triggerJanusExpiredAlert();
       }
+    }
+  }
+
+  triggerJanusExpiredAlert() {
+    if (this.onJanusStatusChange) this.onJanusStatusChange('🚨 솔 야누스 종료됨!', true);
+
+    if (window.audioNotifier) {
+      window.audioNotifier.notify('솔 야누스 버프가 종료되었습니다! 야누스를 재설치하세요!', 'beep');
     }
   }
 
