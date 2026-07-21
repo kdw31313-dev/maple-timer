@@ -1,5 +1,5 @@
 /**
- * ScreenCaptureManager - 4대 독립 ROI (룬, 거탐, 야누스, EXP 도핑) 0% 렉 사냥 스캐너 모듈
+ * ScreenCaptureManager - 100% 무설정 자동 1사분면 버프 파서 & 0% 렉 사냥 스캐너 모듈
  */
 class ScreenCaptureManager {
   constructor() {
@@ -15,11 +15,9 @@ class ScreenCaptureManager {
     this.runeCanvas = document.createElement('canvas');
     this.runeCtx = this.runeCanvas.getContext('2d', { willReadFrequently: true });
 
+    // ⚡ 1사분면 100% 무설정 자동 버프 캔버스 (화면 우상단 1사분면 최상단 1줄 제외 전체)
     this.janusCanvas = document.createElement('canvas');
     this.janusCtx = this.janusCanvas.getContext('2d', { willReadFrequently: true });
-
-    this.expCanvas = document.createElement('canvas');
-    this.expCtx = this.expCanvas.getContext('2d', { willReadFrequently: true });
 
     // 🚨 거탐 전체 화면 다운샘플링 캔버스 (240x135 해상도)
     this.popupCanvas = document.createElement('canvas');
@@ -30,11 +28,10 @@ class ScreenCaptureManager {
     this.isStreaming = false;
     this.loopIntervalId = null;
 
-    // 4대 ROI 좌표 (% 비율 단위)
+    // ⚡ 1사분면 무설정 자동 캡처 범위 (% 비율 단위 - 1사분면 최상단 1줄 제외)
     this.runeRoi = { x: 1.5, y: 1.5, w: 14, h: 14 };
     this.popupRoi = { x: 0, y: 0, w: 100, h: 100 };
-    this.janusRoi = { x: 72, y: 1, w: 27, h: 12 };
-    this.expRoi = { x: 72, y: 12, w: 27, h: 14 };
+    this.janusRoi = { x: 55, y: 1.5, w: 44, h: 22 }; // 메이플 1사분면 전체 버프 영역 자동 탑재!
 
     // 200% 정밀 모달 관련 상태
     this.modalEl = document.getElementById('roi-modal');
@@ -43,7 +40,7 @@ class ScreenCaptureManager {
     this.modalWrapper = document.getElementById('roi-canvas-wrapper');
     this.modalViewport = document.getElementById('roi-modal-viewport');
 
-    this.modalTarget = null; // 'rune' | 'janus' | 'exp'
+    this.modalTarget = null;
     this.modalZoom = 2.0;
     this.modalTempRoi = { x: 0, y: 0, w: 0, h: 0 };
     this.isModalDragging = false;
@@ -158,7 +155,6 @@ class ScreenCaptureManager {
     this.modalTarget = targetType;
     if (targetType === 'rune') this.modalTempRoi = { ...this.runeRoi };
     else if (targetType === 'janus') this.modalTempRoi = { ...this.janusRoi };
-    else if (targetType === 'exp') this.modalTempRoi = { ...this.expRoi };
 
     const titleEl = document.getElementById('roi-modal-title');
     const subTitleEl = document.getElementById('roi-modal-subtitle');
@@ -167,11 +163,8 @@ class ScreenCaptureManager {
       if (titleEl) titleEl.textContent = '📍 미니맵 영역 지정 (200% 정밀 확대)';
       if (subTitleEl) subTitleEl.textContent = '미니맵의 내부 지도 영역만 마우스 드래그로 직사각형으로 지정하세요.';
     } else if (targetType === 'janus') {
-      if (titleEl) titleEl.textContent = '⚡ 솔 야누스 영역 지정 (200% 정밀 확대)';
-      if (subTitleEl) subTitleEl.textContent = '6차 솔 야누스 버프 아이콘이 위치하는 우측 상단 영역을 드래그하세요.';
-    } else if (targetType === 'exp') {
-      if (titleEl) titleEl.textContent = '🍁 사냥 도핑 / 경쿠 영역 지정 (200% 정밀 확대)';
-      if (subTitleEl) subTitleEl.textContent = '경쿠, 소형재획비, MVP 버프 아이콘이 위치하는 우측 상단 버프 줄을 드래그하세요.';
+      if (titleEl) titleEl.textContent = '⚡ 버프 영역 수동 지정 (200% 정밀 확대)';
+      if (subTitleEl) subTitleEl.textContent = '1사분면 자동 추적 외 수동으로 버프 줄 위치를 드래그하실 수도 있습니다.';
     }
 
     const vWidth = this.videoEl.videoWidth || 1280;
@@ -215,8 +208,8 @@ class ScreenCaptureManager {
 
     this.modalCtx.drawImage(this.videoEl, rx, ry, rw, rh, rx, ry, rw, rh);
 
-    const color = this.modalTarget === 'rune' ? '#ff0080' : this.modalTarget === 'janus' ? '#9b59b6' : '#f39c12';
-    const label = this.modalTarget === 'rune' ? '📍 미니맵 지도 선택 영역' : this.modalTarget === 'janus' ? '⚡ 솔 야누스 선택 영역' : '🍁 도핑/경쿠 선택 영역';
+    const color = this.modalTarget === 'rune' ? '#ff0080' : '#9b59b6';
+    const label = this.modalTarget === 'rune' ? '📍 미니맵 지도 선택 영역' : '⚡ 1사분면 버프 선택 영역';
 
     this.modalCtx.strokeStyle = color;
     this.modalCtx.lineWidth = 3;
@@ -239,8 +232,6 @@ class ScreenCaptureManager {
       this.runeRoi = { ...this.modalTempRoi };
     } else if (this.modalTarget === 'janus') {
       this.janusRoi = { ...this.modalTempRoi };
-    } else if (this.modalTarget === 'exp') {
-      this.expRoi = { ...this.modalTempRoi };
     }
 
     this.drawOverlay();
@@ -332,13 +323,12 @@ class ScreenCaptureManager {
     const runePill = document.getElementById('rune-status-pill');
     const popupPill = document.getElementById('popup-status-pill');
     const janusPill = document.getElementById('janus-status-pill');
-    const expPill = document.getElementById('exp-status-pill');
 
     if (badge) {
       badge.className = isConnected ? 'status-badge live' : 'status-badge disconnected';
     }
     if (text) {
-      text.textContent = isConnected ? '⚡ 4대 독립 ROI 0% 렉 사냥 스캐너 가동 중' : '연결 안 됨';
+      text.textContent = isConnected ? '⚡ 1사분면 100% 무설정 자동 파서 가동 중' : '연결 안 됨';
     }
 
     if (isConnected) {
@@ -351,18 +341,13 @@ class ScreenCaptureManager {
         popupPill.className = 'status-pill active';
       }
       if (janusPill && !window.imageAnalyzer?.janusState.isBuffActive) {
-        janusPill.textContent = '🟢 야누스 스캔 중';
+        janusPill.textContent = '🟢 1사분면 6대 버프 자동 추적 중';
         janusPill.className = 'status-pill active';
-      }
-      if (expPill && !window.imageAnalyzer?.expBuffState.isBuffActive) {
-        expPill.textContent = '🟢 도핑 버프 스캔 중';
-        expPill.className = 'status-pill active';
       }
     } else {
       if (runePill) { runePill.textContent = '⚪ 대기 중'; runePill.className = 'status-pill'; }
       if (popupPill) { popupPill.textContent = '⚪ 대기 중'; popupPill.className = 'status-pill'; }
       if (janusPill) { janusPill.textContent = '⚪ 대기 중'; janusPill.className = 'status-pill'; }
-      if (expPill) { expPill.textContent = '⚪ 대기 중'; expPill.className = 'status-pill'; }
     }
 
     if (startBtn) startBtn.classList.toggle('hidden', isConnected);
@@ -397,8 +382,7 @@ class ScreenCaptureManager {
     if (!this.isStreaming) return;
 
     this.drawRoiBox(this.runeRoi, 'rgba(255, 0, 128, 0.8)', '📍 미니맵 (룬)');
-    this.drawRoiBox(this.janusRoi, 'rgba(155, 89, 182, 0.8)', '⚡ 솔 야누스 버프');
-    this.drawRoiBox(this.expRoi, 'rgba(243, 156, 18, 0.8)', '🍁 경쿠/도핑 버프');
+    this.drawRoiBox(this.janusRoi, 'rgba(155, 89, 182, 0.8)', '⚡ 1사분면 버프 (자동파서)');
   }
 
   drawRoiBox(roi, color, label) {
@@ -419,9 +403,6 @@ class ScreenCaptureManager {
     this.overlayCtx.fillText(label, rx + 4, ry > 16 ? ry - 4 : ry + 14);
   }
 
-  /**
-   * 📸 내 버프 아이콘 스크린샷 캡처 & AI 실시간 색상 학습
-   */
   captureBuffSnapshot() {
     if (!this.isStreaming || !this.videoEl) {
       alert('먼저 상단의 [▶ 게임 창 공유 시작] 버튼을 눌러 메이플 화면을 연결해 주세요!');
@@ -431,10 +412,10 @@ class ScreenCaptureManager {
     const vWidth = this.videoEl.videoWidth || 1280;
     const vHeight = this.videoEl.videoHeight || 720;
 
-    const jx = Math.max(0, Math.round((this.expRoi.x / 100) * vWidth));
-    const jy = Math.max(0, Math.round((this.expRoi.y / 100) * vHeight));
-    const jw = Math.max(10, Math.round((this.expRoi.w / 100) * vWidth));
-    const jh = Math.max(10, Math.round((this.expRoi.h / 100) * vHeight));
+    const jx = Math.max(0, Math.round((this.janusRoi.x / 100) * vWidth));
+    const jy = Math.max(0, Math.round((this.janusRoi.y / 100) * vHeight));
+    const jw = Math.max(10, Math.round((this.janusRoi.w / 100) * vWidth));
+    const jh = Math.max(10, Math.round((this.janusRoi.h / 100) * vHeight));
 
     const snapCanvas = document.getElementById('buff-snapshot-canvas');
     const snapInfo = document.getElementById('buff-snapshot-info');
@@ -462,7 +443,7 @@ class ScreenCaptureManager {
   }
 
   /**
-   * ⚡ 4대 마이크로 ROI 독립 분석 루프
+   * ⚡ 100% 무설정 자동 1사분면 버프 파서 스캔 루프
    */
   startLoop() {
     if (this.loopIntervalId) {
@@ -476,7 +457,7 @@ class ScreenCaptureManager {
         const vWidth = this.videoEl.videoWidth || 1280;
         const vHeight = this.videoEl.videoHeight || 720;
 
-        // 1) 룬 미니맵 소형 마이크로 ROI
+        // 1) 룬 미니맵 마이크로 ROI
         const rx = Math.max(0, Math.round((this.runeRoi.x / 100) * vWidth));
         const ry = Math.max(0, Math.round((this.runeRoi.y / 100) * vHeight));
         const rw = Math.max(10, Math.round((this.runeRoi.w / 100) * vWidth));
@@ -489,7 +470,7 @@ class ScreenCaptureManager {
         this.runeCtx.drawImage(this.videoEl, rx, ry, rw, rh, 0, 0, rw, rh);
         const runeImageData = this.runeCtx.getImageData(0, 0, rw, rh);
 
-        // 2) 솔 야누스 마이크로 ROI
+        // 2) ⚡ 1사분면 전체 6대 버프 자동 파서 마이크로 ROI (최상단 1줄 자동 제외)
         const jx = Math.max(0, Math.round((this.janusRoi.x / 100) * vWidth));
         const jy = Math.max(0, Math.round((this.janusRoi.y / 100) * vHeight));
         const jw = Math.max(10, Math.round((this.janusRoi.w / 100) * vWidth));
@@ -502,25 +483,12 @@ class ScreenCaptureManager {
         this.janusCtx.drawImage(this.videoEl, jx, jy, jw, jh, 0, 0, jw, jh);
         const janusImageData = this.janusCtx.getImageData(0, 0, jw, jh);
 
-        // 3) 🍁 경쿠/도핑 마이크로 ROI
-        const ex = Math.max(0, Math.round((this.expRoi.x / 100) * vWidth));
-        const ey = Math.max(0, Math.round((this.expRoi.y / 100) * vHeight));
-        const ew = Math.max(10, Math.round((this.expRoi.w / 100) * vWidth));
-        const eh = Math.max(10, Math.round((this.expRoi.h / 100) * vHeight));
-
-        if (this.expCanvas.width !== ew || this.expCanvas.height !== eh) {
-          this.expCanvas.width = ew;
-          this.expCanvas.height = eh;
-        }
-        this.expCtx.drawImage(this.videoEl, ex, ey, ew, eh, 0, 0, ew, eh);
-        const expImageData = this.expCtx.getImageData(0, 0, ew, eh);
-
-        // 4) 🚨 거탐 전체 화면 240x135 초경량 다운샘플링 스캔
+        // 3) 🚨 거탐 전체 화면 240x135 다운샘플링 스캔
         this.popupCtx.drawImage(this.videoEl, 0, 0, vWidth, vHeight, 0, 0, 240, 135);
         const popupImageData = this.popupCtx.getImageData(0, 0, 240, 135);
 
         if (window.imageAnalyzer) {
-          window.imageAnalyzer.analyze4MicroFrames(runeImageData, janusImageData, expImageData, popupImageData);
+          window.imageAnalyzer.analyze4MicroFrames(runeImageData, janusImageData, janusImageData, popupImageData);
         }
       }
     }, 150);
