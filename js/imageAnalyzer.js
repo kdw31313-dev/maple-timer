@@ -95,8 +95,8 @@ class ImageAnalyzer {
       }
     }
 
-    // 미니맵 영역 내 분홍/보라 룬 아이콘 픽셀 뭉치(최소 12픽셀 이상) 발견 여부
-    const isColorMatched = runeColorPixels >= 12;
+    // 미니맵 영역 내 분홍/보라 룬 아이콘 픽셀 뭉치(최소 6픽셀 이상) 발견 여부
+    const isColorMatched = runeColorPixels >= 6;
 
     // 2. 기준 이미지(Baseline) 차분 분석
     if (!this.runeState.baselineData || this.runeState.baselineData.length !== data.length) {
@@ -343,7 +343,7 @@ class ImageAnalyzer {
     const avgBrightness = totalBrightness / (data.length / 4);
 
     // --- A. 솔 야누스 처리 ---
-    const hasJanusIcon = janusIconPixels >= 14;
+    const hasJanusIcon = janusIconPixels >= 8;
     const janusBrightnessDiff = Math.abs(avgBrightness - this.janusState.lastBrightness);
     this.janusState.lastBrightness = avgBrightness;
 
@@ -379,10 +379,10 @@ class ImageAnalyzer {
     }
 
     // --- B. 30분 경험치 쿠폰 & 소형 재획비 5종 통합 탐지 및 10초(0:10) 전 알림 ---
-    const detectedBuffName = smallWealthPixels >= 15 ? '소형 재물 획득의 약 (30분)' :
-                             mvpCouponPixels >= 16 ? 'R+ MVP 경험치 쿠폰' :
-                             expPlusPixels >= 16 ? 'EXP+ 추가 경험치 쿠폰' :
-                             mapleLeafCouponPixels >= 18 ? '단풍잎 경험치 쿠폰 (2x/3x/4x)' : null;
+    const detectedBuffName = smallWealthPixels >= 8 ? '소형 재물 획득의 약 (30분)' :
+                             mvpCouponPixels >= 8 ? 'R+ MVP 경험치 쿠폰' :
+                             expPlusPixels >= 8 ? 'EXP+ 추가 경험치 쿠폰' :
+                             mapleLeafCouponPixels >= 8 ? '단풍잎 경험치 쿠폰 (2x/3x/4x)' : null;
 
     const hasExpBuffIcon = detectedBuffName !== null;
     const expBrightnessDiff = Math.abs(avgBrightness - this.expBuffState.lastBrightness);

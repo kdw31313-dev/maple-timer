@@ -1,5 +1,5 @@
 /**
- * ScreenCaptureManager - WebRTC Screen Capture & ROI 선택 인터랙션 관리 모듈
+ * ScreenCaptureManager - WebRTC Screen Capture & 동적 창 위치/해상도 실시간 추적 모듈
  */
 class ScreenCaptureManager {
   constructor() {
@@ -15,9 +15,9 @@ class ScreenCaptureManager {
     this.animationFrameId = null;
 
     // ROI 좌표 (% 비율 단위)
-    this.runeRoi = { x: 1, y: 1, w: 22, h: 22 }; // 메이플 좌측 상단 미니맵 기본 위치
+    this.runeRoi = { x: 1, y: 1, w: 25, h: 25 }; // 메이플 좌측 상단 미니맵 기본 위치
     this.popupRoi = { x: 0, y: 0, w: 100, h: 100 }; // 메이플 전체 사냥 화면 범위
-    this.janusRoi = { x: 75, y: 1, w: 24, h: 15 }; // 우측 상단 버프 영역 기본 위치
+    this.janusRoi = { x: 70, y: 0, w: 30, h: 20 }; // 우측 상단 버프 영역 기본 위치
 
     // ROI 드래그 선택 상태
     this.selectingTarget = null;
@@ -37,9 +37,6 @@ class ScreenCaptureManager {
     window.addEventListener('resize', () => this.resizeCanvas());
   }
 
-  /**
-   * 크롬 Transient User Gesture Activation 동기 트리거를 위한 순수 동기startCapture 함수
-   */
   startCapture() {
     if (window.audioNotifier) {
       window.audioNotifier.initAudioContext();
@@ -50,7 +47,7 @@ class ScreenCaptureManager {
       return;
     }
 
-    // 🚨 핵심: 크롬 클릭 유저 제스처(User Gesture) 직후 동기 라인에서 바로 getDisplayMedia 호출!
+    // 🚨 순수 동기 getDisplayMedia 호출
     navigator.mediaDevices.getDisplayMedia({
       video: true,
       audio: false
@@ -60,7 +57,6 @@ class ScreenCaptureManager {
       this.videoEl.srcObject = stream;
       this.isStreaming = true;
 
-      // 트랙 종료 이벤트 바인딩
       const videoTrack = stream.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.onended = () => {
@@ -68,7 +64,7 @@ class ScreenCaptureManager {
         };
       }
 
-      this.videoEl.play().catch(e => console.log('비디오 재생 시작:', e));
+      this.videoEl.play().catch(e => console.log('비디오 재생:', e));
 
       const placeholder = document.getElementById('screen-placeholder');
       if (placeholder) placeholder.classList.add('hidden');
@@ -118,7 +114,7 @@ class ScreenCaptureManager {
       badge.className = isConnected ? 'status-badge live' : 'status-badge disconnected';
     }
     if (text) {
-      text.textContent = isConnected ? '게임 화면 연결됨 (감지 중)' : '연결 안 됨';
+      text.textContent = isConnected ? '실시간 창 분석 중' : '연결 안 됨';
     }
     if (startBtn) startBtn.classList.toggle('hidden', isConnected);
     if (stopBtn) stopBtn.classList.toggle('hidden', !isConnected);
@@ -189,12 +185,16 @@ class ScreenCaptureManager {
     const width = this.videoEl.videoWidth || 1280;
     const height = this.videoEl.videoHeight || 720;
 
-    this.analysisCanvas.width = width;
-    this.analysisCanvas.height = height;
+    if (this.analysisCanvas.width !== width || this.analysisCanvas.height !== height) {
+      this.analysisCanvas.width = width;
+      this.analysisCanvas.height = height;
+    }
 
     const rect = this.videoEl.getBoundingClientRect();
-    this.overlayCanvas.width = rect.width;
-    this.overlayCanvas.height = rect.height;
+    if (this.overlayCanvas.width !== rect.width || this.overlayCanvas.height !== rect.height) {
+      this.overlayCanvas.width = rect.width;
+      this.overlayCanvas.height = rect.height;
+    }
 
     this.drawOverlay();
   }
@@ -212,7 +212,6 @@ class ScreenCaptureManager {
     // 2) 버프 영역 (보라색 라인)
     this.drawRoiBox(this.janusRoi, 'rgba(155, 89, 182, 0.8)', '⚡ 버프 영역 (야누스/경쿠)');
 
-    // 드래그 중인 영역 그리드
     if (this.isDragging) {
       const x = Math.min(this.dragStart.x, this.dragCurrent.x) * w;
       const y = Math.min(this.dragStart.y, this.dragCurrent.y) * h;
@@ -250,6 +249,12 @@ class ScreenCaptureManager {
       if (!this.isStreaming) return;
 
       if (this.videoEl.readyState === this.videoEl.HAVE_ENOUGH_DATA) {
+        // 🚨 핵심: 메이플 창을 옮기거나 크기를 조절하면 해상도가 실시간으로 변경되므로 매 프레임 동적 갱신!
+        if (this.videoEl.videoWidth !== this.analysisCanvas.width ||
+            this.videoEl.videoHeight !== this.analysisCanvas.height) {
+          this.resizeCanvas();
+        }
+
         this.analysisCtx.drawImage(
           this.videoEl,
           0, 0,
@@ -263,7 +268,7 @@ class ScreenCaptureManager {
           this.analysisCanvas.height
         );
 
-        // 이미지 감지 엔진 호출
+        // 실시간 이미지 감지 엔진 분석
         if (window.imageAnalyzer) {
           window.imageAnalyzer.analyzeFrame(imageData, {
             runeRoi: this.runeRoi,
