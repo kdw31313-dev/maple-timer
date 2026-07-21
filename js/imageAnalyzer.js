@@ -205,15 +205,18 @@ class ImageAnalyzer {
         dimmingPixels++;
       }
 
-      // 3) 실물 거탐 5종 고유 색상 검사:
-      // - 금빛/주황색 거탐 글씨 (R>=200, G>=130, B<=80) [이미지 1 & 5]
+      // 3) 실물 거탐 9종 통합 고유 시각 특성 검사:
+      // - LIE DETECTOR 타이틀 및 금빛/주황색 글씨 (R>=190, G>=130, B<=80) [이미지 1, 5, 6, 8]
       // - 거탐 시안/네온 그린 카운트다운 글씨 (G>=180, R<=100) [이미지 1, 3, 4]
-      // - 붉은색 한글 박스 텍스트 (R>=180, G<=70, B<=70) [이미지 3 & 4]
-      const isGoldText = (r >= 200 && g >= 130 && b <= 80);
-      const isCyanNeon = (g >= 180 && r <= 100 && b >= 120);
-      const isRedText = (r >= 180 && g <= 70 && b <= 70);
+      // - 붉은색 한글 박스 텍스트 & 비올레타 무대 커튼 붉은색 (R>=140, G<=55, B<=60) [이미지 3, 4, 9]
+      // - 투명도형 모달 회색 UI 패널 (R>=200, G>=205, B>=210 & 차분 유의미) [이미지 7]
+      // - 무지개 폭발형 형광 아우라 (R>=210, G>=180, B<=80 & 차분 스파이크) [이미지 8]
+      const isGoldOrTitleText = (r >= 190 && g >= 130 && b <= 80);
+      const isCyanNeon = (g >= 180 && r <= 100 && b >= 110);
+      const isRedTextOrCurtain = (r >= 140 && g <= 55 && b <= 60);
+      const isGreyModalUi = (r >= 200 && g >= 205 && b >= 210 && diff > 30);
 
-      if (isGoldText || isCyanNeon || isRedText) {
+      if (isGoldOrTitleText || isCyanNeon || isRedTextOrCurtain || isGreyModalUi) {
         lieDetectorColorPixels++;
       }
     }
