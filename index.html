@@ -63,6 +63,9 @@
             <button id="btn-start-share" class="btn btn-primary" onclick="if(window.screenCaptureManager) window.screenCaptureManager.startCapture();">
               <span class="icon">▶</span> 게임 창 공유 시작
             </button>
+            <button id="btn-test-audio" class="btn btn-secondary" onclick="if(window.audioNotifier){ window.audioNotifier.notify('미니맵에 룬이 출현했습니다! 룬을 해제해 주세요!', 'rune'); }">
+              <span class="icon">🔊</span> 사운드/음성 테스트
+            </button>
             <button id="btn-stop-share" class="btn btn-danger hidden" onclick="if(window.screenCaptureManager) window.screenCaptureManager.stopCapture();">
               <span class="icon">⏹</span> 공유 중지
             </button>

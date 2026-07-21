@@ -1,19 +1,18 @@
 /**
- * ImageAnalyzer - Canvas 영상 분석기 (룬 감지 & 4종 팝업/거짓말 탐지기 감지)
+ * ImageAnalyzer - Canvas 영상 분석기 (초광범위 룬/거탐/버프 실시간 픽셀 트래커)
  */
 class ImageAnalyzer {
   constructor() {
-    // 룬 감지 관련 상태
     this.runeState = {
       baselineData: null,
       consecutiveCount: 0,
-      REQUIRED_CONSECUTIVE: 1, // 1프레임 즉시 감지
+      REQUIRED_CONSECUTIVE: 1,
       isDetected: false,
       cooldownActive: false,
-      normReturnFrames: 0
+      normReturnFrames: 0,
+      lastPixelCount: 0
     };
 
-    // 팝업 감지 관련 상태
     this.popupState = {
       baselineData: null,
       consecutiveCount: 0,
@@ -22,7 +21,6 @@ class ImageAnalyzer {
       cooldownActive: false
     };
 
-    // 솔 야누스 및 경험치 쿠폰 버프 감지 상태
     this.janusState = {
       isBuffActive: false,
       consecutiveActiveCount: 0,
@@ -41,7 +39,6 @@ class ImageAnalyzer {
       alert10Triggered: false
     };
 
-    // 이벤트 콜백
     this.onRuneStatusChange = null;
     this.onPopupStatusChange = null;
     this.onJanusStatusChange = null;
@@ -67,36 +64,59 @@ class ImageAnalyzer {
   }
 
   /**
-   * 룬 영역 분석 (미니맵 분홍/보라 다이아몬드 초광범위 정밀 색상 탐지)
+   * 룬 픽셀 카운트 함수 (보라/분홍/마젠타/딥퍼플 계열)
    */
-  processRuneFrame(imageData) {
-    if (!imageData || imageData.data.length === 0) return;
-
-    const data = imageData.data;
-    let runeColorPixels = 0;
+  countRunePixels(data) {
+    if (!data || data.length === 0) return 0;
+    let count = 0;
 
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
       const g = data[i + 1];
       const b = data[i + 2];
 
-      // 미니맵 룬 아이콘 초광범위 색상 조건 (모든 보라/분홍/딥퍼플/마젠타 룬 포착)
-      const isPurpleRune = (b >= 120 && g <= 175 && (b - g > 15) && r >= 50);
-      const isPinkRune = (r >= 120 && b >= 110 && (r - g > 20));
+      // 1) 딥퍼플 / 보라색 룬 (B가 높고 G는 상대적으로 낮음)
+      const isPurpleRune = (b >= 115 && g <= 180 && (b - g > 12) && r >= 40);
+      // 2) 분홍색 / 마젠타 룬 (R과 B가 높음)
+      const isPinkRune = (r >= 115 && b >= 105 && (r - g > 15));
 
       if (isPurpleRune || isPinkRune) {
-        runeColorPixels++;
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /**
+   * 룬 영역 분석 (기본 ROI + 상단 40% 이중 안전 폴백 스캔)
+   */
+  processRuneFrame(runeImageData, fullImageData) {
+    let runeColorPixels = this.countRunePixels(runeImageData ? runeImageData.data : null);
+
+    // 🚨 2차 안전 장치: ROI 영역에서 놓쳤을 경우, 화면 좌상단 45% x 45% 영역 이중 폴백 스캔!
+    if (runeColorPixels < 3 && fullImageData) {
+      const fallbackRoiData = this.extractSubImageData(
+        fullImageData,
+        0, 0,
+        Math.round(fullImageData.width * 0.45),
+        Math.round(fullImageData.height * 0.45)
+      );
+      const fallbackPixels = this.countRunePixels(fallbackRoiData ? fallbackRoiData.data : null);
+      if (fallbackPixels > runeColorPixels) {
+        runeColorPixels = fallbackPixels;
       }
     }
 
-    // 미니맵 영역 내 분홍/보라 룬 픽셀 3개 이상 발견 시 즉시 감지!
+    this.runeState.lastPixelCount = runeColorPixels;
     const isDetected = runeColorPixels >= 3;
+
+    const isLive = window.screenCaptureManager?.isStreaming;
 
     if (isDetected) {
       this.runeState.consecutiveCount++;
 
       if (this.runeState.consecutiveCount >= 1 && !this.runeState.isDetected && !this.runeState.cooldownActive) {
-        this.triggerRuneAlert();
+        this.triggerRuneAlert(runeColorPixels);
       }
     } else {
       this.runeState.consecutiveCount = 0;
@@ -107,29 +127,30 @@ class ImageAnalyzer {
           this.runeState.cooldownActive = false;
           this.runeState.isDetected = false;
           this.runeState.normReturnFrames = 0;
-          const isLive = window.screenCaptureManager?.isStreaming;
-          if (this.onRuneStatusChange) this.onRuneStatusChange(isLive ? '🟢 인식 중 (실시간 감지)' : '⚪ 대기 중', false);
+          if (this.onRuneStatusChange) {
+            this.onRuneStatusChange(isLive ? `🟢 인식 중 (보라픽셀 ${runeColorPixels}개)` : '⚪ 대기 중', false);
+          }
         }
-      } else if (this.runeState.isDetected) {
-        this.runeState.isDetected = false;
-        const isLive = window.screenCaptureManager?.isStreaming;
-        if (this.onRuneStatusChange) this.onRuneStatusChange(isLive ? '🟢 인식 중 (실시간 감지)' : '⚪ 대기 중', false);
+      } else if (!this.runeState.isDetected) {
+        if (this.onRuneStatusChange && isLive) {
+          this.onRuneStatusChange(`🟢 인식 중 (보라픽셀 ${runeColorPixels}개)`, false);
+        }
       }
     }
   }
 
-  triggerRuneAlert() {
+  triggerRuneAlert(pixelCount = 0) {
     this.runeState.isDetected = true;
     this.runeState.cooldownActive = true;
     this.runeState.normReturnFrames = 0;
 
     if (this.onRuneStatusChange) {
-      this.onRuneStatusChange('🚨 룬 감지됨!', true);
+      this.onRuneStatusChange(`🚨 룬 감지됨! (${pixelCount}픽셀)`, true);
     }
 
-    // 알림 발송 (음성 TTS + 룬 전용 신비로운 사운드 + 화면 깜빡임)
+    // 알림 발송 (음성 TTS + 룬 전용 사운드 + 화면 깜빡임)
     if (window.audioNotifier) {
-      window.audioNotifier.notify('미니맵에 룬이 출현했습니다! 룬을 확인해 주세요.', 'rune');
+      window.audioNotifier.notify('미니맵에 룬이 출현했습니다! 룬을 해제해 주세요!', 'rune');
     }
   }
 
@@ -186,7 +207,7 @@ class ImageAnalyzer {
   }
 
   /**
-   * 3. 솔 야누스 및 5종 경험치 쿠폰/소형재획비 버프 영역 처리
+   * 솔 야누스 및 5종 경험치 쿠폰/소형재획비 버프 영역 처리
    */
   processJanusFrame(imageData) {
     if (!imageData || imageData.data.length === 0) return;
@@ -339,15 +360,16 @@ class ImageAnalyzer {
     const height = imageData.height;
 
     // A. 룬 미니맵 영역 ROI 슬라이싱
+    let runeImageData = null;
     if (rois.runeRoi) {
       const rx = Math.round((rois.runeRoi.x / 100) * width);
       const ry = Math.round((rois.runeRoi.y / 100) * height);
       const rw = Math.round((rois.runeRoi.w / 100) * width);
       const rh = Math.round((rois.runeRoi.h / 100) * height);
 
-      const runeImageData = this.extractSubImageData(imageData, rx, ry, rw, rh);
-      this.processRuneFrame(runeImageData);
+      runeImageData = this.extractSubImageData(imageData, rx, ry, rw, rh);
     }
+    this.processRuneFrame(runeImageData, imageData);
 
     // B. 거짓말 탐지기 전체 화면 ROI
     this.processPopupFrame(imageData);
