@@ -89,6 +89,9 @@ class PipController {
             <div class="timer-label">🌌 솔 야누스 (80s)</div>
             <div class="timer-value janus-val" id="pip-janus-clock">01:20</div>
           </div>
+          <div class="timer-box" style="padding:6px 10px;">
+            <div class="timer-label">💰 재획비: <span id="pip-wealth-clock" style="color:#f6d365;">02:00:00</span> | 📢 MVP: <span id="pip-mvp-clock" style="color:#00f2fe;">30:00</span></div>
+          </div>
           <div style="display:flex; justify-between; gap:6px;">
             <span class="alert-pill" id="pip-rune-pill">룬: 대기</span>
             <span class="alert-pill" id="pip-popup-pill">팝업: 대기</span>
@@ -142,16 +145,22 @@ class PipController {
       
       const expClock = document.getElementById('exp-timer-clock')?.textContent;
       const janusClock = document.getElementById('janus-timer-clock')?.textContent;
+      const wealthClock = document.getElementById('doping-wealth-clock')?.textContent;
+      const mvpClock = document.getElementById('doping-mvp-clock')?.textContent;
       const runeText = document.getElementById('rune-status-pill')?.textContent;
       const popupText = document.getElementById('popup-status-pill')?.textContent;
 
       const pipExp = this.pipWindow.document.getElementById('pip-exp-clock');
       const pipJanus = this.pipWindow.document.getElementById('pip-janus-clock');
+      const pipWealth = this.pipWindow.document.getElementById('pip-wealth-clock');
+      const pipMvp = this.pipWindow.document.getElementById('pip-mvp-clock');
       const pipRune = this.pipWindow.document.getElementById('pip-rune-pill');
       const pipPopup = this.pipWindow.document.getElementById('pip-popup-pill');
 
       if (pipExp && expClock) pipExp.textContent = expClock;
       if (pipJanus && janusClock) pipJanus.textContent = janusClock;
+      if (pipWealth && wealthClock) pipWealth.textContent = wealthClock;
+      if (pipMvp && mvpClock) pipMvp.textContent = mvpClock;
       
       if (pipRune && runeText) {
         pipRune.textContent = `룬: ${runeText}`;

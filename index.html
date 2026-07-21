@@ -210,6 +210,59 @@
           </div>
         </div>
 
+        <!-- 사냥 필수 도핑 버프 타이머 (재획비 / MVP / 익스골드) -->
+        <div class="card timer-card doping-card">
+          <div class="card-header">
+            <h2><span class="icon">🍾</span> 사냥 필수 도핑 타이머</h2>
+          </div>
+
+          <div class="doping-grid">
+            <!-- 1) 재물 획득의 약 (재획비 - 2시간) -->
+            <div class="doping-item">
+              <div class="doping-info">
+                <span class="doping-name">💰 재획비 (2시간)</span>
+                <span class="doping-clock" id="doping-wealth-clock">02:00:00</span>
+              </div>
+              <div class="doping-controls">
+                <button id="btn-wealth-start" class="btn btn-xs btn-primary">시작</button>
+                <button id="btn-wealth-pause" class="btn btn-xs btn-warning hidden">일시정지</button>
+                <button id="btn-wealth-reset" class="btn btn-xs btn-secondary">리셋</button>
+              </div>
+            </div>
+
+            <!-- 2) MVP 뿌리기 / 기상효과 (30분) -->
+            <div class="doping-item">
+              <div class="doping-info">
+                <span class="doping-name">📢 MVP 뿌리기 (30분)</span>
+                <span class="doping-clock" id="doping-mvp-clock">30:00</span>
+              </div>
+              <div class="doping-controls">
+                <button id="btn-mvp-start" class="btn btn-xs btn-primary">시작</button>
+                <button id="btn-mvp-pause" class="btn btn-xs btn-warning hidden">일시정지</button>
+                <button id="btn-mvp-reset" class="btn btn-xs btn-secondary">리셋</button>
+              </div>
+            </div>
+
+            <!-- 3) 익스트림 골드 / 몬파 물약 (30분) -->
+            <div class="doping-item">
+              <div class="doping-info">
+                <span class="doping-name">🧪 익스 골드 (30분)</span>
+                <span class="doping-clock" id="doping-exgold-clock">30:00</span>
+              </div>
+              <div class="doping-controls">
+                <button id="btn-exgold-start" class="btn btn-xs btn-primary">시작</button>
+                <button id="btn-exgold-pause" class="btn btn-xs btn-warning hidden">일시정지</button>
+                <button id="btn-exgold-reset" class="btn btn-xs btn-secondary">리셋</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="timer-settings-inline" style="margin-top:10px;">
+            <label><input type="checkbox" id="chk-doping-5m" checked> 5분 전 알림</label>
+            <label><input type="checkbox" id="chk-doping-1m" checked> 1분 전 알림</label>
+          </div>
+        </div>
+
         <!-- 팝업 인식 학습 및 유형별 안내 파트 -->
         <div class="card popup-guide-card">
           <div class="card-header">

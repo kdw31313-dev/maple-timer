@@ -150,7 +150,48 @@ body {
   }
 }
 
-/* 카드 컴포넌트 */
+/* 도핑 버프 타이머 카드 디자인 */
+.doping-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.doping-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.doping-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.doping-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.doping-clock {
+  font-family: var(--font-clock);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+  letter-spacing: 1px;
+}
+
+.doping-controls {
+  display: flex;
+  gap: 6px;
+}
 .card {
   background: var(--bg-card);
   backdrop-filter: blur(16px);

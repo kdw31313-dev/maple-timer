@@ -15,6 +15,10 @@ document.addEventListener('DOMContentLoaded', () => {
     updateJanusUI(janusState);
   };
 
+  window.timerModule.onDopingTick = (key, itemState) => {
+    updateDopingUI(key, itemState);
+  };
+
   // 3. 이미지 분석 콜백 바인딩
   window.imageAnalyzer.onRuneStatusChange = (statusText, isDetected) => {
     const pill = document.getElementById('rune-status-pill');
@@ -172,6 +176,32 @@ function bindEvents() {
   });
 
 
+  // --- 사냥 필수 도핑 타이머 버튼 (재획비, MVP, 익스골드) ---
+  ['wealth', 'mvp', 'exgold'].forEach(key => {
+    const startBtn = document.getElementById(`btn-${key}-start`);
+    const pauseBtn = document.getElementById(`btn-${key}-pause`);
+    const resetBtn = document.getElementById(`btn-${key}-reset`);
+
+    startBtn?.addEventListener('click', () => {
+      window.audioNotifier.initAudioContext();
+      window.timerModule.startDopingTimer(key);
+      startBtn.classList.add('hidden');
+      pauseBtn?.classList.remove('hidden');
+    });
+
+    pauseBtn?.addEventListener('click', () => {
+      window.timerModule.pauseDopingTimer(key);
+      pauseBtn.classList.add('hidden');
+      startBtn?.classList.remove('hidden');
+    });
+
+    resetBtn?.addEventListener('click', () => {
+      window.timerModule.resetDopingTimer(key);
+      pauseBtn?.classList.add('hidden');
+      startBtn?.classList.remove('hidden');
+    });
+  });
+
   // --- 알림 & 사운드 설정 바인딩 ---
   const soundSelect = document.getElementById('select-sound-preset');
   const volRange = document.getElementById('range-volume');
@@ -274,16 +304,26 @@ function updateExpUI(state) {
 }
 
 /**
- * 솔 야누스 UI 업데이트
+ * 시:분:초 포맷 변환 (초 -> HH:MM:SS 또는 MM:SS)
  */
-function updateJanusUI(state) {
-  const clock = document.getElementById('janus-timer-clock');
-  const progressBar = document.getElementById('janus-progress-bar');
+function formatHMS(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
 
-  if (clock) clock.textContent = formatTime(state.remainingSeconds);
-  if (progressBar && state.cycleSeconds > 0) {
-    const pct = Math.max(0, (state.remainingSeconds / state.cycleSeconds) * 100);
-    progressBar.style.width = `${pct}%`;
+  if (h > 0) {
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+/**
+ * 도핑 버프 타이머 UI 업데이트
+ */
+function updateDopingUI(key, itemState) {
+  const clock = document.getElementById(`doping-${key}-clock`);
+  if (clock) {
+    clock.textContent = formatHMS(itemState.remSecs);
   }
 }
 

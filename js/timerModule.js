@@ -24,9 +24,17 @@ class TimerModule {
       preAlertTriggered: false
     };
 
+    // 도핑 버프 타이머 상태 (재획비 2시간, MVP 30분, 익스골드 30분)
+    this.dopingTimers = {
+      wealth: { totalSecs: 7200, remSecs: 7200, isRunning: false, intervalId: null, alert5m: false, alert1m: false, name: '재획비' },
+      mvp: { totalSecs: 1800, remSecs: 1800, isRunning: false, intervalId: null, alert5m: false, alert1m: false, name: 'MVP 뿌리기' },
+      exgold: { totalSecs: 1800, remSecs: 1800, isRunning: false, intervalId: null, alert5m: false, alert1m: false, name: '익스트림 골드' }
+    };
+
     // 이벤트 콜백
     this.onExpTick = null;
     this.onJanusTick = null;
+    this.onDopingTick = null;
   }
 
   /* ===================================================
@@ -191,17 +199,73 @@ class TimerModule {
     }
   }
 
-  handleJanusEnd() {
-    if (this.janusTimer.intervalId) {
-      clearInterval(this.janusTimer.intervalId);
-      this.janusTimer.intervalId = null;
-    }
-    this.janusTimer.isRunning = false;
-    const chkEnd = document.getElementById('chk-janus-endalert')?.checked;
+  /* ===================================================
+   * 3. 사냥 필수 도핑 버프 타이머 메서드 (재획비, MVP, 익스골드)
+   * =================================================== */
+  startDopingTimer(key) {
+    const item = this.dopingTimers[key];
+    if (!item) return;
 
-    if (chkEnd) {
-      window.audioNotifier.notify('솔 야누스 재사용!', 'chime');
+    if (item.isRunning) return;
+    if (item.remSecs <= 0) {
+      item.remSecs = item.totalSecs;
+      item.alert5m = false;
+      item.alert1m = false;
     }
+
+    item.isRunning = true;
+    if (this.onDopingTick) this.onDopingTick(key, item);
+
+    item.intervalId = setInterval(() => {
+      if (item.remSecs > 0) {
+        item.remSecs--;
+        this.checkDopingAlerts(key, item);
+      } else {
+        this.handleDopingEnd(key, item);
+      }
+      if (this.onDopingTick) this.onDopingTick(key, item);
+    }, 1000);
+  }
+
+  pauseDopingTimer(key) {
+    const item = this.dopingTimers[key];
+    if (!item) return;
+
+    item.isRunning = false;
+    if (item.intervalId) {
+      clearInterval(item.intervalId);
+      item.intervalId = null;
+    }
+  }
+
+  resetDopingTimer(key) {
+    const item = this.dopingTimers[key];
+    if (!item) return;
+
+    this.pauseDopingTimer(key);
+    item.remSecs = item.totalSecs;
+    item.alert5m = false;
+    item.alert1m = false;
+    if (this.onDopingTick) this.onDopingTick(key, item);
+  }
+
+  checkDopingAlerts(key, item) {
+    const rem = item.remSecs;
+    const chk5m = document.getElementById('chk-doping-5m')?.checked;
+    const chk1m = document.getElementById('chk-doping-1m')?.checked;
+
+    if (rem === 300 && chk5m && !item.alert5m) {
+      item.alert5m = true;
+      window.audioNotifier.notify(`${item.name} 종료 5분 전입니다`, 'chime');
+    } else if (rem === 60 && chk1m && !item.alert1m) {
+      item.alert1m = true;
+      window.audioNotifier.notify(`${item.name} 종료 1분 전입니다`, 'chime');
+    }
+  }
+
+  handleDopingEnd(key, item) {
+    this.pauseDopingTimer(key);
+    window.audioNotifier.notify(`${item.name} 버프가 종료되었습니다! 재사용을 권장합니다.`, 'siren');
   }
 }
 
