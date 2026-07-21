@@ -285,16 +285,19 @@ class ImageAnalyzer {
   }
 
   /**
-   * 버프 영역 분석 (솔 야누스 & 경험치 쿠폰/VIP 버프 아이콘 감지 및 10초 이하 점멸 알림)
+   * 버프 영역 분석 (솔 야누스, 단풍잎 2/3/4배 경쿠, R+ MVP 보라/시안, EXP+ 쿠폰, 소형 재획비 시각 탐지)
    * @param {ImageData} imageData 
    */
   processJanusFrame(imageData) {
     if (!imageData || imageData.data.length === 0) return;
 
     const data = imageData.data;
+
     let janusIconPixels = 0;
-    let expCouponPixels = 0;
-    let vipBuffPixels = 0;
+    let mapleLeafCouponPixels = 0;
+    let mvpCouponPixels = 0;
+    let expPlusPixels = 0;
+    let smallWealthPixels = 0;
     let totalBrightness = 0;
 
     for (let i = 0; i < data.length; i += 4) {
@@ -305,34 +308,42 @@ class ImageAnalyzer {
       const brightness = (r + g + b) / 3;
       totalBrightness += brightness;
 
-      // 1) 솔 야누스 보라색 원형 패턴 (R: 55~165, G: 25~120, B: 110~245)
-      const isJanusPurple = (r >= 55 && r <= 165 && g >= 25 && g <= 120 && b >= 110 && b <= 245);
-      if (isJanusPurple) {
+      // 1) 솔 야누스 (보라색 원형 패턴)
+      if (r >= 55 && r <= 165 && g >= 25 && g <= 120 && b >= 110 && b <= 245) {
         janusIconPixels++;
       }
 
-      // 2) 경험치 쿠폰 (황금색 물약병: R>=200, G>=160, B<=130 & 은색 테두리)
-      const isGoldFlask = (r >= 200 && g >= 160 && b <= 130);
-      if (isGoldFlask) {
-        expCouponPixels++;
+      // 2) 단풍잎 2배/3배/4배 경험치 쿠폰 (중앙 하얀 단풍잎 r,g,b>=220 + 시안/보라/딥블루 배경)
+      const isWhiteLeaf = (r >= 215 && g >= 215 && b >= 215);
+      const isLeafBg = (b >= 170 && (r >= 90 || g >= 90));
+      if (isWhiteLeaf || isLeafBg) {
+        mapleLeafCouponPixels++;
       }
 
-      // 3) VIP 경험치 버프 (청라임/시안 배경 R<=110, G>=170, B>=220)
-      const isVipCyan = (r <= 110 && g >= 170 && b >= 220);
-      if (isVipCyan) {
-        vipBuffPixels++;
+      // 3) R+ MVP 쿠폰 (보라색 r>=140, b>=190 또는 시안색 g>=160, b>=210 + R+ MVP 흰글씨)
+      const isMvpPurpleOrCyan = ((r >= 140 && g <= 140 && b >= 190) || (r <= 120 && g >= 160 && b >= 210));
+      if (isMvpPurpleOrCyan) {
+        mvpCouponPixels++;
+      }
+
+      // 4) EXP+ 추가 경험치 쿠폰 (연시안 배경 g>=165, b>=200 + 흰색 EXP 텍스트)
+      const isExpPlus = (r <= 140 && g >= 165 && b >= 200);
+      if (isExpPlus) {
+        expPlusPixels++;
+      }
+
+      // 5) 소형 재물 획득의 약 (30분 - 청록색 유병 g>=150, b>=170 + 황금 마개/장식 r>=190, g>=160, b<=110)
+      const isTealFlask = (r <= 140 && g >= 150 && b >= 170);
+      const isGoldCap = (r >= 190 && g >= 160 && b <= 110);
+      if (isTealFlask || isGoldCap) {
+        smallWealthPixels++;
       }
     }
 
     const avgBrightness = totalBrightness / (data.length / 4);
 
     // --- A. 솔 야누스 처리 ---
-    const hasJanusIcon = janusIconPixels >= 15;
-    const janusBrightnessDiff = Math.abs(avgBrightness - this.janusState.lastBrightness);
-    this.janusState.lastBrightness = avgBrightness;
-
-    // --- A. 솔 야누스 처리 ---
-    const hasJanusIcon = janusIconPixels >= 15;
+    const hasJanusIcon = janusIconPixels >= 14;
     const janusBrightnessDiff = Math.abs(avgBrightness - this.janusState.lastBrightness);
     this.janusState.lastBrightness = avgBrightness;
 
@@ -367,13 +378,13 @@ class ImageAnalyzer {
       }
     }
 
-    // --- B. 도핑 버프 아이콘 (경쿠, 재획비, 익스골드, VIP, MVP 5종) 시각 매칭 및 10초(0:10) 전 알림 ---
-    const activeBuffName = pixelCounts.wealthPotion >= 15 ? '재물 획득의 약' :
-                           pixelCounts.vipBuff >= 16 ? 'VIP 경험치 버프' :
-                           pixelCounts.mvpBuff >= 15 ? 'MVP 뿌리기' :
-                           pixelCounts.goldFlask >= 15 ? '경험치 쿠폰' : null;
+    // --- B. 30분 경험치 쿠폰 & 소형 재획비 5종 통합 탐지 및 10초(0:10) 전 알림 ---
+    const detectedBuffName = smallWealthPixels >= 15 ? '소형 재물 획득의 약 (30분)' :
+                             mvpCouponPixels >= 16 ? 'R+ MVP 경험치 쿠폰' :
+                             expPlusPixels >= 16 ? 'EXP+ 추가 경험치 쿠폰' :
+                             mapleLeafCouponPixels >= 18 ? '단풍잎 경험치 쿠폰 (2x/3x/4x)' : null;
 
-    const hasExpBuffIcon = activeBuffName !== null;
+    const hasExpBuffIcon = detectedBuffName !== null;
     const expBrightnessDiff = Math.abs(avgBrightness - this.expBuffState.lastBrightness);
     this.expBuffState.lastBrightness = avgBrightness;
 
@@ -384,7 +395,7 @@ class ImageAnalyzer {
       if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveActiveCount >= 2) {
         this.expBuffState.isBuffActive = true;
         this.expBuffState.alert10Triggered = false;
-        if (this.onExpBuffStatusChange) this.onExpBuffStatusChange(`${activeBuffName} 가동 중`, false);
+        if (this.onExpBuffStatusChange) this.onExpBuffStatusChange(`${detectedBuffName} 가동 중`, false);
 
         if (window.timerModule && !window.timerModule.expTimer.isRunning) {
           window.timerModule.startExpTimer();
