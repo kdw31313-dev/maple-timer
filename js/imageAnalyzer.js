@@ -40,7 +40,7 @@ class ImageAnalyzer {
   }
 
   /**
-   * 룬 영역 분석
+   * 룬 영역 분석 (미니맵 분홍/보라 다이아몬드 색상 및 차분 통합 분석)
    * @param {ImageData} imageData 
    */
   processRuneFrame(imageData) {
@@ -49,45 +49,61 @@ class ImageAnalyzer {
     const data = imageData.data;
     const pixelCount = data.length / 4;
 
-    // 1. 기준 이미지(Baseline)가 없으면 초기화
+    // 1. 미니맵 룬 특유의 분홍/보라색(Magenta/Purple: R, B는 높고 G는 상대적으로 낮은 보랏빛 RGB) 픽셀 카운트
+    let runeColorPixels = 0;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+
+      // 미니맵 룬 아이콘 색상 조건:
+      // - R과 B가 모두 높음 (R >= 160, B >= 180)
+      // - G는 R/B에 비해 낮음 (G < 140)
+      // - R과 B의 차이가 크지 않으며, 분홍~보라색 계열 (R:B 비율 우수)
+      const isMagentaPurple = (r >= 160 && b >= 180 && g <= 140 && Math.abs(r - b) < 70);
+
+      if (isMagentaPurple) {
+        runeColorPixels++;
+      }
+    }
+
+    // 미니맵 영역 내 분홍/보라 룬 아이콘 픽셀 뭉치(최소 12픽셀 이상) 발견 여부
+    const isColorMatched = runeColorPixels >= 12;
+
+    // 2. 기준 이미지(Baseline) 차분 분석
     if (!this.runeState.baselineData || this.runeState.baselineData.length !== data.length) {
       this.runeState.baselineData = new Uint8ClampedArray(data);
       return;
     }
 
-    // 2. 프레임간 차분(Diff) 계산
     let totalDiff = 0;
     const base = this.runeState.baselineData;
 
-    // 4픽셀 간격 샘플링 (연산 속도 최적화)
     for (let i = 0; i < data.length; i += 16) {
       const rDiff = Math.abs(data[i] - base[i]);
       const gDiff = Math.abs(data[i + 1] - base[i + 1]);
       const bDiff = Math.abs(data[i + 2] - base[i + 2]);
-      
-      // 색상 차이 합산
       totalDiff += (rDiff + gDiff + bDiff) / 3;
     }
 
     const avgDiff = totalDiff / (pixelCount / 4);
+    const isDiffMatched = avgDiff > 25;
 
-    // 3. 차분 임계치 검사 (30 이상 변동 시 유의미한 변화로 판단)
-    const DIFF_THRESHOLD = 32;
-
-    if (avgDiff > DIFF_THRESHOLD) {
+    // 3. 미니맵 룬 색상 일치 OR 프레임 차분 유의미 조건 만족 시
+    if (isColorMatched || isDiffMatched) {
       this.runeState.consecutiveCount++;
 
-      // 연속 3회 이상 변화 감지 시
+      // 연속 2~3회 이상 감지 시 알림
       if (this.runeState.consecutiveCount >= this.runeState.REQUIRED_CONSECUTIVE) {
         if (!this.runeState.isDetected && !this.runeState.cooldownActive) {
           this.triggerRuneAlert();
         }
       }
     } else {
-      // 변동이 일정 수준 이하로 떨어졌을 때 (복원 단계)
+      // 감지 안됨
       this.runeState.consecutiveCount = Math.max(0, this.runeState.consecutiveCount - 1);
 
-      // 룬이 감지된 상태에서 평소 화면으로 복귀 시 쿨다운 해제
       if (this.runeState.cooldownActive) {
         this.runeState.normReturnFrames++;
         if (this.runeState.normReturnFrames >= 15) { // 약 3초 유지
@@ -98,7 +114,6 @@ class ImageAnalyzer {
         }
       }
 
-      // 평소 상태이면 기준 배경 서서히 업데이트 (학습)
       if (!this.runeState.cooldownActive) {
         for (let i = 0; i < data.length; i += 16) {
           base[i] = base[i] * 0.95 + data[i] * 0.05;
