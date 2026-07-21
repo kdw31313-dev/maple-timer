@@ -19,8 +19,8 @@ class StorageManager {
       runeDetectionEnabled: true,
       popupDetectionEnabled: true,
       // 감지 영역 기본 비율 (%)
-      runeRoi: { x: 35, y: 20, w: 30, h: 40 }, // 화면 중앙 부근
-      popupRoi: { x: 25, y: 25, w: 50, h: 50 } // 화면 넓은 범위
+      runeRoi: { x: 1, y: 1, w: 22, h: 22 },  // 메이플 좌측 상단 미니맵 기본 위치
+      popupRoi: { x: 25, y: 25, w: 50, h: 50 } // 화면 넓은 중앙 범위
     };
   }
 

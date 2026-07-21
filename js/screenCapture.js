@@ -15,7 +15,7 @@ class ScreenCaptureManager {
     this.animationFrameId = null;
 
     // ROI 좌표 (% 비율 단위)
-    this.runeRoi = { x: 35, y: 20, w: 30, h: 40 };
+    this.runeRoi = { x: 1, y: 1, w: 22, h: 22 }; // 메이플 좌측 상단 미니맵 기본 위치
     this.popupRoi = { x: 25, y: 25, w: 50, h: 50 };
 
     // ROI 드래그 선택 상태
