@@ -240,8 +240,9 @@ class ImageAnalyzer {
         pinkMushroomPixels++;
       }
 
-      // 4) 🅲️ 문장 선택 고유: 진한 슬레이트 블루 배경
-      if (r >= 40 && r <= 100 && g >= 50 && g <= 110 && b >= 120 && b <= 180 && (b - r >= 50)) {
+      // 4) 🅲️ 문장 선택 고유: 진한 슬레이트 블루 팝업 패널
+      //    R:35~85, G:55~105, B:110~170 && B-R >= 60 (순수 거탐 패널 고유색)
+      if (r >= 35 && r <= 85 && g >= 55 && g <= 105 && b >= 110 && b <= 170 && (b - r >= 60)) {
         bluePanelPixels++;
       }
 
@@ -266,7 +267,7 @@ class ImageAnalyzer {
     // 감지 판정 (각 유형별 독립 정밀 매칭 - 노이즈 오탐 0% 차단)
     const isTypeA = (redLieDetectorPixels >= 6 && greenCrosshairPixels >= 12);   // 도형 찾기 (조준점+텍스트)
     const isTypeB = (redLieDetectorPixels >= 6 && pinkMushroomPixels >= 12);     // 비올레타 (버섯+텍스트)
-    const isTypeC = (bluePanelPixels >= 450 && segmentNumPixels >= 4);            // 문장 선택 (큰 파란 패널+카운트다운)
+    const isTypeC = (bluePanelPixels >= 2200 && segmentNumPixels >= 8);           // 문장 선택 (큰 팝업 패널 2200픽셀 이상 + 카운트다운)
     const isTypeD = (yellowItalicPixels >= 150 && segmentNumPixels >= 8);        // 5회/2회 클릭 거탐 (데미지스킨 100% 필터링)
     const isTypeE = (cyanCaptchaPixels >= 80 && segmentNumPixels >= 8);          // 일반 텍스트 캡차 거탐
     const isRedTextStrong = (redLieDetectorPixels >= 18);                         // 빨간 텍스트 강력 감지
