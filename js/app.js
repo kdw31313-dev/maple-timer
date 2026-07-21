@@ -340,7 +340,7 @@ function formatHMS(seconds) {
  * 도핑 버프 타이머 UI 업데이트
  */
 /**
- * 사냥 효율 계산기 UI 바인딩 & 실시간 계산
+ * 사냥 효율 계산기 UI 바인딩 & 100% 동적 실시간 연산
  */
 function initCalculatorUI() {
   const mapSelect = document.getElementById('calc-map-select');
@@ -353,7 +353,9 @@ function initCalculatorUI() {
 
   if (!mapSelect || !window.huntingCalculator) return;
 
-  // 1) 맵 목록 셀렉트 채우기 (MapleWidget 오피셜 DB 적용)
+  let isManual6MinKills = false;
+
+  // 1) 맵 목록 셀렉트 채우기 (MapleWidget & Mapleroad 오피셜 DB)
   mapSelect.innerHTML = '';
   window.huntingCalculator.mapDatabase.forEach((item, idx) => {
     const opt = document.createElement('option');
@@ -369,29 +371,34 @@ function initCalculatorUI() {
     const mapIndex = parseInt(mapSelect.value, 10) || 0;
     const killRatio = parseInt(killRatioInput.value, 10) || 100;
     const expBuffPct = parseFloat(expBuffInput.value) || 200;
-    const mesoRatePct = parseFloat(mesoRateInput.value) || 100;
+    const mesoRatePct = parseFloat(mesoRateInput.value) || 0;
     const dropRatePct = parseFloat(dropRateInput.value) || 100;
+
+    const custom6min = isManual6MinKills ? (parseInt(kills6minInput.value, 10) || null) : null;
 
     document.getElementById('val-kill-ratio').textContent = `${killRatio}%`;
 
     const res = window.huntingCalculator.calculate({
       userLevel,
       mapIndex,
+      userCustomKills6min: custom6min,
       killRatio,
       expBuffPct,
       mesoRatePct,
       dropRatePct
     });
 
-    // 6분 마릿수 자동 채움 (사용자가 수동 변경하지 않은 경우)
-    kills6minInput.value = res.actual6MinKills;
+    if (!isManual6MinKills) {
+      kills6minInput.value = res.actual6MinKills;
+    }
 
-    // 결과 렌더링 (유저 오피셜 수식 연산 모듈)
+    // --- 100% 동적 결과 카드 렌더링 ---
+    // 1) 일일 메소 제한 & 필요 재획량
     document.getElementById('res-req-kills').textContent = `${res.requiredKillsForCap.toLocaleString()} 마리`;
     document.getElementById('res-req-rehoek').textContent = `약 ${res.requiredRehoekCount} 개`;
     document.getElementById('res-cap-time-needed').textContent = `약 ${res.timeToCapFormatted}`;
 
-    // 기본 상한 및 메획 반영 상한 (d) & 주머니 평균값 (a)
+    // 2) 기본 상한 및 메획% 반영 상한선 (d) & 주머니 평균값 (a)
     const baseCapEok = (res.baseCapMeso / 100000000).toFixed(1);
     const totalCapEok = (res.totalCapMesoWithRate / 100000000).toFixed(3);
 
@@ -399,7 +406,7 @@ function initCalculatorUI() {
     document.getElementById('res-total-cap-meso').textContent = `약 ${totalCapEok} 억 메소`;
     document.getElementById('res-meso-per-bag').textContent = `약 ${res.actualMesoPerBag.toLocaleString()} 메소`;
 
-    // 30분 / 1시간 / 1재획 메소
+    // 3) 시간별 획득 메소
     const thirtyMinMan = Math.round(res.thirtyMinMeso / 10000);
     const hourlyMesoMan = Math.round(res.hourlyMesoTotal / 10000);
     const hourlyMesoEok = (res.hourlyMesoTotal / 100000000).toFixed(2);
@@ -409,7 +416,7 @@ function initCalculatorUI() {
     document.getElementById('res-hourly-meso').textContent = `약 ${hourlyMesoEok} 억 (${hourlyMesoMan.toLocaleString()} 만) 메소`;
     document.getElementById('res-2hr-meso').textContent = `약 ${twoHrMesoEok} 억 메소`;
 
-    // 마릿수 & 경험치
+    // 4) 마릿수 & 경험치/조각
     document.getElementById('res-hourly-kills').textContent = `${res.hourlyKills.toLocaleString()} 마리 / ${res.twoHourKills.toLocaleString()} 마리`;
 
     const expPctHourly = ((res.hourlyExpTotal / (userLevel * 250000000000)) * 100).toFixed(3);
@@ -418,10 +425,26 @@ function initCalculatorUI() {
     document.getElementById('res-2hr-erda').textContent = `약 ${res.solErdaPieces2Hr} 개`;
   };
 
-  // 이벤트 바인딩
-  mapSelect.addEventListener('change', updateCalculations);
+  // 맵 변경 시 6분 마릿수 자동 리셋
+  mapSelect.addEventListener('change', () => {
+    isManual6MinKills = false;
+    updateCalculations();
+  });
+
+  // 슬라이더 변경 시 6분 마릿수 자동 리셋
+  killRatioInput.addEventListener('input', () => {
+    isManual6MinKills = false;
+    updateCalculations();
+  });
+
+  // 사용자가 수동으로 6분 마릿수 입력 시
+  kills6minInput.addEventListener('input', () => {
+    isManual6MinKills = true;
+    updateCalculations();
+  });
+
+  // 실시간 동적 이벤트 바인딩
   levelInput.addEventListener('input', updateCalculations);
-  killRatioInput.addEventListener('input', updateCalculations);
   expBuffInput.addEventListener('input', updateCalculations);
   mesoRateInput.addEventListener('input', updateCalculations);
   dropRateInput.addEventListener('input', updateCalculations);
