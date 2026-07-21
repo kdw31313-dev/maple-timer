@@ -40,10 +40,10 @@ class ScreenCaptureManager {
 
   async startCapture() {
     try {
+      // getDisplayMedia 호환성 극대화를 위한 순수 비디오 옵션
       this.mediaStream = await navigator.mediaDevices.getDisplayMedia({
         video: {
-          displaySurface: 'window',
-          frameRate: { max: 15 } // 15fps로 CPU 자원 절약
+          cursor: 'never'
         },
         audio: false
       });
@@ -51,7 +51,7 @@ class ScreenCaptureManager {
       this.videoEl.srcObject = this.mediaStream;
       this.isStreaming = true;
 
-      // 스트림 종결 감지
+      // 스트림 종결 감지 (사용자가 공유 중지 누름)
       this.mediaStream.getVideoTracks()[0].onended = () => {
         this.stopCapture();
       };
@@ -69,6 +69,10 @@ class ScreenCaptureManager {
       return true;
     } catch (err) {
       console.error('화면 공유 실패/취소:', err);
+      // 사용자가 취소하지 않고 브라우저 권한 문제일 경우 안내
+      if (err.name !== 'NotAllowedError') {
+        alert('게임 창 공유를 시작할 수 없습니다. 브라우저의 화면 공유 권한을 허용해 주세요.');
+      }
       return false;
     }
   }
