@@ -6,7 +6,7 @@ class AudioNotifier {
     this.audioCtx = null;
     this.volume = 1.0; // 기본 100% 볼륨
     this.preset = 'chime';
-    this.useTTS = true;
+    this.useTTS = false; // 🔇 TTS 음성 읽기는 기본 비활성화 (기능은 유지)
     this.useFlash = true;
   }
 
