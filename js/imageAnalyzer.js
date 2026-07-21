@@ -329,27 +329,79 @@ class ImageAnalyzer {
     if (!imageData || !imageData.data || imageData.data.length === 0) return;
 
     const data = imageData.data;
+    const width = imageData.width;
+    const height = imageData.height;
+
     let janusOrbPixels = 0;
-    let yellowDigitPixels = 0;
+    let orbMinX = width, orbMaxX = 0, orbMinY = height, orbMaxY = 0;
 
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
+    // ===== 1단계: 보랏빛 바이올렛 야누스 구체 아이콘 위치 포착 =====
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
 
-      // 1) 솔 야누스 중앙 보랏빛 바이올렛 구체 바탕
-      if (r >= 70 && r <= 140 && g >= 60 && g <= 120 && b >= 130 && b <= 210 && (b - g >= 35)) {
-        janusOrbPixels++;
-      }
-
-      // 2) 지속시간 라임/노란색 디지털 숫자 ("1:20", "42", "9" 등)
-      if (r >= 150 && g >= 150 && b <= 90) {
-        yellowDigitPixels++;
+        // 야누스 보라색 구체
+        if (r >= 70 && r <= 140 && g >= 60 && g <= 120 && b >= 130 && b <= 210 && (b - g >= 35)) {
+          janusOrbPixels++;
+          if (x < orbMinX) orbMinX = x;
+          if (x > orbMaxX) orbMaxX = x;
+          if (y < orbMinY) orbMinY = y;
+          if (y > orbMaxY) orbMaxY = y;
+        }
       }
     }
 
-    // ===== 2. Matcher: 야누스 아이콘 매칭 =====
-    const hasJanusIcon = (janusOrbPixels >= 6) || (janusOrbPixels >= 3 && yellowDigitPixels >= 3);
+    // ===== 2단계: 야누스 아이콘 바운딩 박스 근처의 진짜 노란 숫자 픽셀만 정밀 스캔 =====
+    let yellowDigitPixels = 0;
+
+    // 아이콘이 포착되면 아이콘 주위 ±12픽셀 이내 영역만 정밀 스캔 (배경 노란색 2100개 완전 제거!)
+    const scanMinX = janusOrbPixels >= 3 ? Math.max(0, orbMinX - 10) : 0;
+    const scanMaxX = janusOrbPixels >= 3 ? Math.min(width - 1, orbMaxX + 10) : width - 1;
+    const scanMinY = janusOrbPixels >= 3 ? Math.max(0, orbMinY - 10) : 0;
+    const scanMaxY = janusOrbPixels >= 3 ? Math.min(height - 1, orbMaxY + 10) : height - 1;
+
+    for (let y = scanMinY; y <= scanMaxY; y++) {
+      for (let x = scanMinX; x <= scanMaxX; x++) {
+        const idx = (y * width + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+
+        // 선명한 옐로우/라임 폰트 (R>=190, G>=190, B<=80)
+        if (r >= 190 && g >= 190 && b <= 80) {
+          // 주변 1픽셀에 검은색 아웃라인 테두리가 있는지 확인 (진짜 폰트 검증)
+          let hasBlackBorder = false;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = x + dx;
+              const ny = y + dy;
+              if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                const nIdx = (ny * width + nx) * 4;
+                const nr = data[nIdx];
+                const ng = data[nIdx + 1];
+                const nb = data[nIdx + 2];
+                if (nr <= 70 && ng <= 70 && nb <= 70) {
+                  hasBlackBorder = true;
+                  break;
+                }
+              }
+            }
+            if (hasBlackBorder) break;
+          }
+
+          if (hasBlackBorder) {
+            yellowDigitPixels++;
+          }
+        }
+      }
+    }
+
+    // ===== 3단계: Matcher & Number Recognizer =====
+    const hasJanusIcon = (janusOrbPixels >= 3);
 
     if (hasJanusIcon) {
       this.janusState.consecutiveActiveCount++;
