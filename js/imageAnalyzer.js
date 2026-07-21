@@ -331,6 +331,11 @@ class ImageAnalyzer {
     const janusBrightnessDiff = Math.abs(avgBrightness - this.janusState.lastBrightness);
     this.janusState.lastBrightness = avgBrightness;
 
+    // --- A. 솔 야누스 처리 ---
+    const hasJanusIcon = janusIconPixels >= 15;
+    const janusBrightnessDiff = Math.abs(avgBrightness - this.janusState.lastBrightness);
+    this.janusState.lastBrightness = avgBrightness;
+
     if (hasJanusIcon) {
       this.janusState.consecutiveActiveCount++;
       this.janusState.consecutiveInactiveCount = 0;
@@ -345,9 +350,11 @@ class ImageAnalyzer {
         }
       }
 
-      if (this.janusState.isBuffActive && janusBrightnessDiff > 12) {
+      // 버프 아이콘 숫자 0:10 감지 (점멸 또는 내부 자동 동기화 타이머 10초 시점)
+      const isJanus10sTimer = window.timerModule && window.timerModule.janusTimer.isRunning && window.timerModule.janusTimer.remainingSeconds <= 10;
+      if (this.janusState.isBuffActive && (janusBrightnessDiff > 8 || isJanus10sTimer)) {
         this.janusState.flashCount++;
-        if (this.janusState.flashCount >= 3 && !this.janusState.alert10Triggered) {
+        if (this.janusState.flashCount >= 2 && !this.janusState.alert10Triggered) {
           this.triggerJanus10sAlert();
         }
       }
@@ -360,7 +367,7 @@ class ImageAnalyzer {
       }
     }
 
-    // --- B. 도핑 버프 아이콘 (경쿠, 재획비, 익스골드, VIP 등) 자동 감지 및 10초 전 알림 ---
+    // --- B. 도핑 버프 아이콘 (경쿠, 재획비, 익스골드, VIP 등) 자동 감지 및 10초(0:10) 전 알림 ---
     const hasExpBuffIcon = (expCouponPixels >= 16 || vipBuffPixels >= 18);
     const expBrightnessDiff = Math.abs(avgBrightness - this.expBuffState.lastBrightness);
     this.expBuffState.lastBrightness = avgBrightness;
@@ -380,10 +387,11 @@ class ImageAnalyzer {
         }
       }
 
-      // 버프창 아이콘 10초 전 점멸(밝기 진동) 포착 시
-      if (this.expBuffState.isBuffActive && expBrightnessDiff > 10) {
+      // 버프창 아이콘 숫자가 0:10 이하로 떨어지는 초단위 텍스트 변화 포착 또는 자동 타이머 10초 시점
+      const isExp10sTimer = window.timerModule && window.timerModule.expTimer.isRunning && window.timerModule.expTimer.remainingSeconds <= 10;
+      if (this.expBuffState.isBuffActive && (expBrightnessDiff > 7 || isExp10sTimer)) {
         this.expBuffState.flashCount++;
-        if (this.expBuffState.flashCount >= 3 && !this.expBuffState.alert10Triggered) {
+        if (this.expBuffState.flashCount >= 2 && !this.expBuffState.alert10Triggered) {
           this.triggerExpBuff10sAlert();
         }
       }
