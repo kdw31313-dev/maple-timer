@@ -128,13 +128,13 @@
             </div>
           </div>
 
-          <!-- ⚡ 솔 야누스 & 6대 사냥 버프 100% 자동 1사분면 파서 -->
+          <!-- ⚡ 6차 솔 야누스 스킬 독립 감지 (60초 소멸 즉시 알림) -->
           <div class="roi-tool-item">
             <div class="tool-title">
               <span class="color-badge janus-badge"></span>
               <div>
-                <strong>⚡ 솔 야누스 & 6대 사냥 버프 (1사분면 100% 자동 파서 & 클러스터링)</strong>
-                <div style="font-size:0.75rem; color:var(--text-muted);">야누스, 유니온의힘/부, 비약, 경쿠 등 6대 버프를 우상단에서 영역 지정 없이 자동 추적합니다.</div>
+                <strong>⚡ 6차 솔 야누스 스킬 감지 (1사분면 100% 자동 파서)</strong>
+                <div style="font-size:0.75rem; color:var(--text-muted);">60초 설치 스킬 소멸/꺼짐 감지 시 0.1초 즉시 재설치 알림 (클러스터링 제외)</div>
               </div>
             </div>
             <div class="tool-actions">
@@ -143,8 +143,26 @@
                 <span class="slider"></span>
               </label>
               <button id="btn-select-janus-roi" class="btn btn-small btn-outline">영역 지정 (옵션)</button>
-              <button id="btn-capture-buff-snapshot" class="btn btn-small btn-secondary" onclick="if(window.screenCaptureManager) window.screenCaptureManager.captureBuffSnapshot();">📸 버프 캡처 학습</button>
               <span class="status-pill" id="janus-status-pill">대기 중</span>
+            </div>
+          </div>
+
+          <!-- 🍁 30분 사냥 도핑 버프 클러스터링 감지 (동시 종료 묶음 알림) -->
+          <div class="roi-tool-item">
+            <div class="tool-title">
+              <span class="color-badge exp-badge" style="background:var(--accent-gold); width:12px; height:12px; border-radius:50%; display:inline-block;"></span>
+              <div>
+                <strong>🍁 30분 사냥 도핑 버프 (유니온힘/부, 비약, 경쿠 동시종료 클러스터링)</strong>
+                <div style="font-size:0.75rem; color:var(--text-muted);">비슷한 시기 종료되는 4종 도핑을 1회로 묶어서 알림 (도배 100% 방지)</div>
+              </div>
+            </div>
+            <div class="tool-actions">
+              <label class="switch">
+                <input type="checkbox" id="toggle-exp-detection" checked>
+                <span class="slider"></span>
+              </label>
+              <button id="btn-capture-buff-snapshot" class="btn btn-small btn-secondary" onclick="if(window.screenCaptureManager) window.screenCaptureManager.captureBuffSnapshot();">📸 버프 캡처 학습</button>
+              <span class="status-pill" id="exp-status-pill">대기 중</span>
             </div>
           </div>
         </div>
