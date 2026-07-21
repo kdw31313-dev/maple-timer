@@ -20,7 +20,7 @@ class ScreenCaptureManager {
     this.janusRoi = { x: 75, y: 1, w: 24, h: 15 }; // 우측 상단 버프 영역 기본 위치
 
     // ROI 드래그 선택 상태
-    this.selectingTarget = null; // 'rune' | 'popup' | null
+    this.selectingTarget = null;
     this.isDragging = false;
     this.dragStart = { x: 0, y: 0 };
     this.dragCurrent = { x: 0, y: 0 };
@@ -31,55 +31,45 @@ class ScreenCaptureManager {
   initEvents() {
     if (!this.overlayCanvas) return;
 
-    // 드래그 영역 선택 이벤트
     this.overlayCanvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
     this.overlayCanvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
     this.overlayCanvas.addEventListener('mouseup', () => this.handleMouseUp());
     window.addEventListener('resize', () => this.resizeCanvas());
   }
 
-  async startCapture() {
-    // 1) 브라우저 WebRTC 화면 공유 API 지원 여부 체크
-    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
-      alert('⚠️ 현재 사용 중인 브라우저/환경에서는 화면 공유(getDisplayMedia) API를 지원하지 않거나 보안 연결(HTTPS)이 아닙니다.\n\n크롬(Chrome), 엣지(Edge), 또는 웨일(Whale) 브라우저 최신 버전으로 접속해 주세요.');
-      return false;
+  /**
+   * 크롬 Transient User Gesture Activation 동기 트리거를 위한 순수 동기startCapture 함수
+   */
+  startCapture() {
+    if (window.audioNotifier) {
+      window.audioNotifier.initAudioContext();
     }
 
-    try {
-      // 2) 브라우저 화면 공유 요청 (동기 트리거)
-      const capturePromise = navigator.mediaDevices.getDisplayMedia({
-        video: {
-          displaySurface: 'window'
-        },
-        audio: false
-      }).catch(err => {
-        // 호환성 에러 발생 시 비디오 옵션 없이 재시도
-        console.warn('displaySurface 옵션 거부됨, 기본 옵션 재시도:', err);
-        return navigator.mediaDevices.getDisplayMedia({
-          video: true,
-          audio: false
-        });
-      });
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
+      alert('현재 브라우저 환경에서 화면 공유(WebRTC)를 지원하지 않거나 보안 연결이 아닙니다.');
+      return;
+    }
 
-      this.mediaStream = await capturePromise;
-
-      if (!this.mediaStream) {
-        return false;
-      }
-
-      this.videoEl.srcObject = this.mediaStream;
+    // 🚨 핵심: 크롬 클릭 유저 제스처(User Gesture) 직후 동기 라인에서 바로 getDisplayMedia 호출!
+    navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: false
+    })
+    .then((stream) => {
+      this.mediaStream = stream;
+      this.videoEl.srcObject = stream;
       this.isStreaming = true;
 
-      // 스트림 종결 감지 (사용자가 공유 중지 누름)
-      const videoTrack = this.mediaStream.getVideoTracks()[0];
+      // 트랙 종료 이벤트 바인딩
+      const videoTrack = stream.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.onended = () => {
           this.stopCapture();
         };
       }
 
-      await this.videoEl.play();
-      
+      this.videoEl.play().catch(e => console.log('비디오 재생 시작:', e));
+
       const placeholder = document.getElementById('screen-placeholder');
       if (placeholder) placeholder.classList.add('hidden');
       if (this.videoEl) this.videoEl.classList.remove('hidden');
@@ -88,19 +78,13 @@ class ScreenCaptureManager {
       this.updateStatusBadge(true);
       this.resizeCanvas();
       this.startLoop();
-
-      return true;
-    } catch (err) {
-      console.error('화면 공유 실패/취소 상세 원인:', err);
-
-      if (err.name === 'NotAllowedError' || err.message?.includes('Permission denied')) {
-        // 사용자가 취소 버튼을 누르거나 권한을 거부함
-        console.log('사용자가 화면 공유 선택을 취소했거나 권한을 거부함');
-      } else {
-        alert(`⚠️ 화면 공유 팝업 실패 원인: [${err.name || '오류'}]\n${err.message || ''}\n\n은행/게임 보안 프로그램(nProtect, AhnLab Safe Transaction 등)이 화면 캡처를 차단하고 있거나, 크롬 확장 프로그램과의 충돌일 수 있습니다.`);
+    })
+    .catch((err) => {
+      console.error('화면 공유 실패/취소:', err);
+      if (err.name !== 'NotAllowedError' && !err.message?.includes('Permission denied')) {
+        alert('화면 공유 팝업 창 호출 중 오류가 발생했습니다: ' + err.message);
       }
-      return false;
-    }
+    });
   }
 
   stopCapture() {

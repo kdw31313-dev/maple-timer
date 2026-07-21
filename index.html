@@ -60,10 +60,10 @@
         <div class="card-header">
           <h2><span class="icon">🖥️</span> 메이플 게임 화면 분석</h2>
           <div class="screen-controls">
-            <button id="btn-start-share" class="btn btn-primary">
+            <button id="btn-start-share" class="btn btn-primary" onclick="if(window.screenCaptureManager) window.screenCaptureManager.startCapture();">
               <span class="icon">▶</span> 게임 창 공유 시작
             </button>
-            <button id="btn-stop-share" class="btn btn-danger hidden">
+            <button id="btn-stop-share" class="btn btn-danger hidden" onclick="if(window.screenCaptureManager) window.screenCaptureManager.stopCapture();">
               <span class="icon">⏹</span> 공유 중지
             </button>
           </div>

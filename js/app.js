@@ -88,24 +88,19 @@ function bindEvents() {
   const stopBtn = document.getElementById('btn-stop-share');
 
   if (startBtn) {
-    startBtn.addEventListener('click', async () => {
-      try {
-        if (window.audioNotifier) window.audioNotifier.initAudioContext();
-        if (window.screenCaptureManager) {
-          await window.screenCaptureManager.startCapture();
-        } else {
-          alert('화면 캡처 모듈이 초기화되지 않았습니다. 페이지를 새로고침 해주세요.');
-        }
-      } catch (err) {
-        alert('게임 창 공유 실행 중 오류가 발생했습니다: ' + err.message);
+    startBtn.onclick = () => {
+      if (window.screenCaptureManager) {
+        window.screenCaptureManager.startCapture();
       }
-    });
+    };
   }
 
   if (stopBtn) {
-    stopBtn.addEventListener('click', () => {
-      window.screenCaptureManager.stopCapture();
-    });
+    stopBtn.onclick = () => {
+      if (window.screenCaptureManager) {
+        window.screenCaptureManager.stopCapture();
+      }
+    };
   }
 
   // --- ROI 드래그 영역 지정 버튼 ---
