@@ -490,6 +490,12 @@ body {
   color: var(--text-muted);
 }
 
+.status-pill.active {
+  background: rgba(0, 242, 254, 0.15);
+  color: #00f2fe;
+  border: 1px solid rgba(0, 242, 254, 0.4);
+}
+
 .status-pill.detected {
   background: var(--danger);
   color: #fff;

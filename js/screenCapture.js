@@ -317,12 +317,36 @@ class ScreenCaptureManager {
     const startBtn = document.getElementById('btn-start-share');
     const stopBtn = document.getElementById('btn-stop-share');
 
+    const runePill = document.getElementById('rune-status-pill');
+    const popupPill = document.getElementById('popup-status-pill');
+    const janusPill = document.getElementById('janus-status-pill');
+
     if (badge) {
       badge.className = isConnected ? 'status-badge live' : 'status-badge disconnected';
     }
     if (text) {
       text.textContent = isConnected ? '🟢 실시간 화면 무한 연속 감지 중 (10 FPS)' : '연결 안 됨';
     }
+
+    if (isConnected) {
+      if (runePill && !window.imageAnalyzer?.runeState.isDetected) {
+        runePill.textContent = '🟢 인식 중 (실시간 감지)';
+        runePill.className = 'status-pill active';
+      }
+      if (popupPill && !window.imageAnalyzer?.popupState.isDetected) {
+        popupPill.textContent = '🟢 인식 중 (100% 자동분석)';
+        popupPill.className = 'status-pill active';
+      }
+      if (janusPill && !window.imageAnalyzer?.janusState.isBuffActive) {
+        janusPill.textContent = '🟢 인식 중 (실시간 감지)';
+        janusPill.className = 'status-pill active';
+      }
+    } else {
+      if (runePill) { runePill.textContent = '⚪ 대기 중'; runePill.className = 'status-pill'; }
+      if (popupPill) { popupPill.textContent = '⚪ 대기 중'; popupPill.className = 'status-pill'; }
+      if (janusPill) { janusPill.textContent = '⚪ 대기 중'; janusPill.className = 'status-pill'; }
+    }
+
     if (startBtn) startBtn.classList.toggle('hidden', isConnected);
     if (stopBtn) stopBtn.classList.toggle('hidden', !isConnected);
   }

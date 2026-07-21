@@ -42,11 +42,13 @@ document.addEventListener('DOMContentLoaded', () => {
   window.imageAnalyzer.onRuneStatusChange = (statusText, isDetected) => {
     const pill = document.getElementById('rune-status-pill');
     if (pill) {
-      pill.textContent = statusText;
       if (isDetected) {
+        pill.textContent = statusText;
         pill.className = 'status-pill detected';
       } else {
-        pill.className = 'status-pill';
+        const isLive = window.screenCaptureManager?.isStreaming;
+        pill.textContent = isLive ? '🟢 인식 중 (실시간 감지)' : statusText;
+        pill.className = isLive ? 'status-pill active' : 'status-pill';
       }
     }
   };
@@ -54,11 +56,13 @@ document.addEventListener('DOMContentLoaded', () => {
   window.imageAnalyzer.onPopupStatusChange = (statusText, isDetected) => {
     const pill = document.getElementById('popup-status-pill');
     if (pill) {
-      pill.textContent = statusText;
       if (isDetected) {
+        pill.textContent = statusText;
         pill.className = 'status-pill detected';
       } else {
-        pill.className = 'status-pill';
+        const isLive = window.screenCaptureManager?.isStreaming;
+        pill.textContent = isLive ? '🟢 인식 중 (100% 자동분석)' : statusText;
+        pill.className = isLive ? 'status-pill active' : 'status-pill';
       }
     }
   };
@@ -66,11 +70,13 @@ document.addEventListener('DOMContentLoaded', () => {
   window.imageAnalyzer.onJanusStatusChange = (statusText, isDetected) => {
     const pill = document.getElementById('janus-status-pill');
     if (pill) {
-      pill.textContent = statusText;
       if (isDetected) {
+        pill.textContent = statusText;
         pill.className = 'status-pill detected';
       } else {
-        pill.className = 'status-pill';
+        const isLive = window.screenCaptureManager?.isStreaming;
+        pill.textContent = isLive ? '🟢 인식 중 (실시간 감지)' : statusText;
+        pill.className = isLive ? 'status-pill active' : 'status-pill';
       }
     }
   };
