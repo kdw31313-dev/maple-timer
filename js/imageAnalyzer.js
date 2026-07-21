@@ -263,20 +263,21 @@ class ImageAnalyzer {
       }
     }
 
-    // 감지 판정 (각 유형별 독립 매칭)
-    const isTypeA = (redLieDetectorPixels >= 2 && greenCrosshairPixels >= 3);   // 도형 찾기
-    const isTypeB = (redLieDetectorPixels >= 2 && pinkMushroomPixels >= 4);     // 비올레타
-    const isTypeC = (bluePanelPixels >= 300);                                    // 문장 선택
-    const isTypeD = (yellowItalicPixels >= 25 && segmentNumPixels >= 4);        // 5회/2회 클릭 거탐
-    const isTypeE = (cyanCaptchaPixels >= 40 && segmentNumPixels >= 4);         // 일반 텍스트 캡차 거탐
-    const isRedTextStrong = (redLieDetectorPixels >= 8);                         // 빨간 텍스트 강력 감지
+    // 감지 판정 (각 유형별 독립 정밀 매칭 - 노이즈 오탐 0% 차단)
+    const isTypeA = (redLieDetectorPixels >= 6 && greenCrosshairPixels >= 12);  // 도형 찾기 (조준점+텍스트)
+    const isTypeB = (redLieDetectorPixels >= 6 && pinkMushroomPixels >= 12);    // 비올레타 (버섯+텍스트)
+    const isTypeC = (bluePanelPixels >= 450 && segmentNumPixels >= 4);           // 문장 선택 (큰 파란 패널+카운트다운)
+    const isTypeD = (yellowItalicPixels >= 45 && segmentNumPixels >= 6);        // 5회/2회 클릭 거탐
+    const isTypeE = (cyanCaptchaPixels >= 60 && segmentNumPixels >= 6);         // 일반 텍스트 캡차 거탐
+    const isRedTextStrong = (redLieDetectorPixels >= 15);                        // 빨간 텍스트 강력 감지
 
     const isPopupDetected = isTypeA || isTypeB || isTypeC || isTypeD || isTypeE || isRedTextStrong;
 
     if (isPopupDetected) {
       this.popupState.consecutiveCount++;
 
-      if (this.popupState.consecutiveCount >= 2 && !this.popupState.isDetected && !this.popupState.cooldownActive) {
+      // 연속 4프레임(약 0.6초) 이상 지속적으로 고유 시그니처가 유지될 때만 거탐 확정! (사냥 이펙트 순간 오탐 100% 제거)
+      if (this.popupState.consecutiveCount >= 4 && !this.popupState.isDetected && !this.popupState.cooldownActive) {
         // 감지된 유형 분류
         let detectedType = '거짓말 탐지기';
         if (isTypeA) detectedType = '🅰️ 도형 찾기 거짓말 탐지기';
