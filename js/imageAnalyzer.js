@@ -274,11 +274,8 @@ class ImageAnalyzer {
       }
 
       const isJanus10sTimer = window.timerModule && window.timerModule.janusTimer.isRunning && window.timerModule.janusTimer.remainingSeconds <= 10;
-      if (this.janusState.isBuffActive && (janusBrightnessDiff > 6 || isJanus10sTimer)) {
-        this.janusState.flashCount++;
-        if (this.janusState.flashCount >= 1 && !this.janusState.alert10Triggered) {
-          this.triggerJanus10sAlert();
-        }
+      if (this.janusState.isBuffActive && isJanus10sTimer && !this.janusState.alert10Triggered) {
+        this.triggerJanus10sAlert();
       }
     } else {
       // 🚨 5석펫 사냥 최적화: 우상단 버프창에서 야누스 아이콘이 꺼지는(소멸) 순간 0.1초 즉시 재사용 알림!
