@@ -1,5 +1,5 @@
 /**
- * ImageAnalyzer - 메이플스토리 오피셜 규격 룬(보라 마름모/소용돌이) & 거탐 & 버프 실시간 알고리즘
+ * ImageAnalyzer - 메이플스토리 오피셜 룬 & 거탐 & 📸 버프 AI 캡처 학습 감지 엔진
  */
 class ImageAnalyzer {
   constructor() {
@@ -39,6 +39,14 @@ class ImageAnalyzer {
       alert10Triggered: false
     };
 
+    // 📸 버프 스크린샷 AI 학습 상태
+    this.learnedBuffState = {
+      isLearned: false,
+      baselinePixels: 0,
+      baselineBrightness: 0,
+      learnedData: null
+    };
+
     this.onRuneStatusChange = null;
     this.onPopupStatusChange = null;
     this.onJanusStatusChange = null;
@@ -61,12 +69,53 @@ class ImageAnalyzer {
 
     this.expBuffState.isBuffActive = false;
     this.expBuffState.alert10Triggered = false;
+
+    this.learnedBuffState.isLearned = false;
+  }
+
+  /**
+   * 📸 내 버프 아이콘 캡처 AI 색상 및 픽셀 발자국 실시간 학습
+   */
+  learnBuffSnapshot(imageData) {
+    if (!imageData || !imageData.data) return { activePixels: 0, avgBrightness: 0 };
+    const data = imageData.data;
+    let totalBrightness = 0;
+    let activePixels = 0;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const br = (r + g + b) / 3;
+      totalBrightness += br;
+
+      if (br > 50) activePixels++;
+    }
+
+    const avgBrightness = Math.round(totalBrightness / (data.length / 4));
+
+    this.learnedBuffState = {
+      isLearned: true,
+      baselinePixels: activePixels,
+      baselineBrightness: avgBrightness,
+      learnedData: new Uint8ClampedArray(data)
+    };
+
+    this.expBuffState.isBuffActive = true;
+    this.expBuffState.consecutiveInactiveCount = 0;
+
+    if (this.onExpBuffStatusChange) {
+      this.onExpBuffStatusChange('🟢 학습된 버프 감시 중 (해제 시 알림)', false);
+    }
+
+    return {
+      activePixels,
+      avgBrightness
+    };
   }
 
   /**
    * 🍁 메이플스토리 공식 규격 룬(Rune) 미니맵 픽셀 알고리즘
-   * - 룬 모양: 미니맵 상에 보라색 마름모(Diamond) 또는 소용돌이(Swirl) 모양 아이콘으로 단일 규격 고정
-   * - 맵 테마(배경)에 따른 착시 대비: 테마 착시와 관계없이 보라색(R: 60~220, G: 0~160, B: 110~255) 픽셀 뭉치 포착
    */
   countRunePixels(data) {
     if (!data || data.length === 0) return 0;
@@ -77,9 +126,7 @@ class ImageAnalyzer {
       const g = data[i + 1];
       const b = data[i + 2];
 
-      // 1) 표준 보라색/마젠타 룬 아이콘 (B가 R/G보다 우세한 메이플 고유 룬 컬러)
       const isStandardPurpleRune = (b >= 110 && b - g >= 15 && r >= 50 && r <= 220 && g <= 165);
-      // 2) 네온/딥 바이올렛 룬 아이콘
       const isNeonPurpleRune = (r >= 100 && b >= 140 && g <= 130);
 
       if (isStandardPurpleRune || isNeonPurpleRune) {
@@ -89,9 +136,6 @@ class ImageAnalyzer {
     return count;
   }
 
-  /**
-   * 룬 영역 분석 (기본 ROI + 상단 45% 이중 안전 폴백 스캔)
-   */
   processRuneFrame(runeImageData, fullImageData) {
     let runeColorPixels = this.countRunePixels(runeImageData ? runeImageData.data : null);
 
@@ -154,9 +198,6 @@ class ImageAnalyzer {
     }
   }
 
-  /**
-   * 팝업 영역 분석 (5종 실물 거짓말 탐지기 고유 시각 패턴 정밀 탐지)
-   */
   processPopupFrame(imageData) {
     if (!imageData || imageData.data.length === 0) return;
 
@@ -207,7 +248,7 @@ class ImageAnalyzer {
   }
 
   /**
-   * 솔 야누스 및 5종 경험치 쿠폰/소형재획비 버프 영역 처리
+   * 솔 야누스 및 5종 경험치 쿠폰/소형재획비 버프 영역 처리 (+ 📸 AI 스크린샷 학습 감지 포함)
    */
   processJanusFrame(imageData) {
     if (!imageData || imageData.data.length === 0) return;
@@ -257,7 +298,26 @@ class ImageAnalyzer {
 
     const avgBrightness = totalBrightness / (data.length / 4);
 
-    // A. 솔 야누스
+    // 📸 A. 학습된 버프 소멸/종료 실시간 트래커
+    if (this.learnedBuffState.isLearned) {
+      let currentActivePixels = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const br = (data[i] + data[i + 1] + data[i + 2]) / 3;
+        if (br > 50) currentActivePixels++;
+      }
+
+      // 유효 버프 픽셀이 기준치 대비 45% 미만으로 하강 시 (버프 꺼짐!)
+      if (currentActivePixels < this.learnedBuffState.baselinePixels * 0.45) {
+        this.expBuffState.consecutiveInactiveCount++;
+        if (this.expBuffState.consecutiveInactiveCount >= 2) {
+          this.triggerExpBuffExpiredAlert();
+        }
+      } else {
+        this.expBuffState.consecutiveInactiveCount = 0;
+      }
+    }
+
+    // B. 솔 야누스
     const hasJanusIcon = janusIconPixels >= 6;
     const janusBrightnessDiff = Math.abs(avgBrightness - this.janusState.lastBrightness);
     this.janusState.lastBrightness = avgBrightness;
@@ -293,45 +353,60 @@ class ImageAnalyzer {
       }
     }
 
-    // B. 도핑 버프
-    const detectedBuffName = smallWealthPixels >= 6 ? '소형 재물 획득의 약 (30분)' :
-                             mvpCouponPixels >= 6 ? 'R+ MVP 경험치 쿠폰' :
-                             expPlusPixels >= 6 ? 'EXP+ 추가 경험치 쿠폰' :
-                             mapleLeafCouponPixels >= 6 ? '단풍잎 경험치 쿠폰 (2x/3x/4x)' : null;
+    // C. 도핑 버프
+    if (!this.learnedBuffState.isLearned) {
+      const detectedBuffName = smallWealthPixels >= 6 ? '소형 재물 획득의 약 (30분)' :
+                               mvpCouponPixels >= 6 ? 'R+ MVP 경험치 쿠폰' :
+                               expPlusPixels >= 6 ? 'EXP+ 추가 경험치 쿠폰' :
+                               mapleLeafCouponPixels >= 6 ? '단풍잎 경험치 쿠폰 (2x/3x/4x)' : null;
 
-    const hasExpBuffIcon = detectedBuffName !== null;
-    const expBrightnessDiff = Math.abs(avgBrightness - this.expBuffState.lastBrightness);
-    this.expBuffState.lastBrightness = avgBrightness;
+      const hasExpBuffIcon = detectedBuffName !== null;
+      const expBrightnessDiff = Math.abs(avgBrightness - this.expBuffState.lastBrightness);
+      this.expBuffState.lastBrightness = avgBrightness;
 
-    if (hasExpBuffIcon) {
-      this.expBuffState.consecutiveActiveCount++;
-      this.expBuffState.consecutiveInactiveCount = 0;
+      if (hasExpBuffIcon) {
+        this.expBuffState.consecutiveActiveCount++;
+        this.expBuffState.consecutiveInactiveCount = 0;
 
-      if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveActiveCount >= 1) {
-        this.expBuffState.isBuffActive = true;
-        this.expBuffState.alert10Triggered = false;
-        if (this.onExpBuffStatusChange) this.onExpBuffStatusChange(`${detectedBuffName} 가동 중`, false);
+        if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveActiveCount >= 1) {
+          this.expBuffState.isBuffActive = true;
+          this.expBuffState.alert10Triggered = false;
+          if (this.onExpBuffStatusChange) this.onExpBuffStatusChange(`${detectedBuffName} 가동 중`, false);
 
-        if (window.timerModule && !window.timerModule.expTimer.isRunning) {
-          window.timerModule.startExpTimer();
+          if (window.timerModule && !window.timerModule.expTimer.isRunning) {
+            window.timerModule.startExpTimer();
+          }
+        }
+
+        const isExp10sTimer = window.timerModule && window.timerModule.expTimer.isRunning && window.timerModule.expTimer.remainingSeconds <= 10;
+        if (this.expBuffState.isBuffActive && (expBrightnessDiff > 5 || isExp10sTimer)) {
+          this.expBuffState.flashCount++;
+          if (this.expBuffState.flashCount >= 1 && !this.expBuffState.alert10Triggered) {
+            this.triggerExpBuff10sAlert(detectedBuffName || '도핑 버프');
+          }
+        }
+      } else {
+        this.expBuffState.consecutiveInactiveCount++;
+        if (this.expBuffState.isBuffActive && this.expBuffState.consecutiveInactiveCount >= 5) {
+          this.expBuffState.isBuffActive = false;
+          this.expBuffState.flashCount = 0;
+          const isLive = window.screenCaptureManager?.isStreaming;
+          if (this.onExpBuffStatusChange) this.onExpBuffStatusChange(isLive ? '🟢 인식 중 (실시간 감지)' : '⚪ 대기 중', false);
         }
       }
+    }
+  }
 
-      const isExp10sTimer = window.timerModule && window.timerModule.expTimer.isRunning && window.timerModule.expTimer.remainingSeconds <= 10;
-      if (this.expBuffState.isBuffActive && (expBrightnessDiff > 5 || isExp10sTimer)) {
-        this.expBuffState.flashCount++;
-        if (this.expBuffState.flashCount >= 1 && !this.expBuffState.alert10Triggered) {
-          this.triggerExpBuff10sAlert(detectedBuffName || '도핑 버프');
-        }
-      }
-    } else {
-      this.expBuffState.consecutiveInactiveCount++;
-      if (this.expBuffState.isBuffActive && this.expBuffState.consecutiveInactiveCount >= 5) {
-        this.expBuffState.isBuffActive = false;
-        this.expBuffState.flashCount = 0;
-        const isLive = window.screenCaptureManager?.isStreaming;
-        if (this.onExpBuffStatusChange) this.onExpBuffStatusChange(isLive ? '🟢 인식 중 (실시간 감지)' : '⚪ 대기 중', false);
-      }
+  triggerExpBuffExpiredAlert() {
+    this.learnedBuffState.isLearned = false;
+    this.expBuffState.isBuffActive = false;
+
+    if (this.onExpBuffStatusChange) {
+      this.onExpBuffStatusChange('🚨 경험치/도핑 버프 종료됨!', true);
+    }
+
+    if (window.audioNotifier) {
+      window.audioNotifier.notify('경험치 도핑 버프가 종료되었습니다! 도핑 아이템을 재사용하세요!', 'chime');
     }
   }
 

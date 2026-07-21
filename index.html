@@ -132,8 +132,8 @@
             <div class="tool-title">
               <span class="color-badge janus-badge"></span>
               <div>
-                <strong>솔 야누스 버프 감지 영역 (우측 상단 버프 ROI)</strong>
-                <div style="font-size:0.75rem; color:var(--text-muted);">야누스 아이콘/깜빡임 감지 (10초 이하 자동 알림)</div>
+                <strong>솔 야누스 & 도핑 버프 감지 영역 (우측 상단 버프 ROI)</strong>
+                <div style="font-size:0.75rem; color:var(--text-muted);">야누스/경쿠/소형재획비 버프 아이콘 및 종료 감지</div>
               </div>
             </div>
             <div class="tool-actions">
@@ -142,8 +142,21 @@
                 <span class="slider"></span>
               </label>
               <button id="btn-select-janus-roi" class="btn btn-small btn-outline">영역 드래그 지정</button>
+              <button id="btn-capture-buff-snapshot" class="btn btn-small btn-secondary" onclick="if(window.screenCaptureManager) window.screenCaptureManager.captureBuffSnapshot();">📸 버프 캡처 학습</button>
               <span class="status-pill" id="janus-status-pill">대기 중</span>
             </div>
+          </div>
+        </div>
+
+        <!-- 📸 버프 스크린샷 AI 학습 미리보기 창 -->
+        <div id="buff-snapshot-panel" class="info-alert hidden" style="margin-top:12px; background:rgba(155, 89, 182, 0.15); border-color:rgba(155, 89, 182, 0.4);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <strong>📸 현재 캡처된 내 버프 아이콘 분석 결과:</strong>
+            <button class="btn btn-small btn-outline" onclick="document.getElementById('buff-snapshot-panel').classList.add('hidden');">닫기</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:16px;">
+            <canvas id="buff-snapshot-canvas" style="border:1px solid #9b59b6; border-radius:4px; background:#000; height:48px; object-fit:contain;"></canvas>
+            <div id="buff-snapshot-info" style="font-size:0.85rem; color:#e0e0e0;">버프 캡처 버튼을 누르시면 내 버프 아이콘의 색상이 실시간 학습됩니다.</div>
           </div>
         </div>
       </section>

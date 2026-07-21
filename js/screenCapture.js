@@ -402,6 +402,48 @@ class ScreenCaptureManager {
   }
 
   /**
+   * 📸 내 버프 아이콘 스크린샷 캡처 & AI 실시간 색상 학습
+   */
+  captureBuffSnapshot() {
+    if (!this.isStreaming || !this.videoEl) {
+      alert('먼저 상단의 [▶ 게임 창 공유 시작] 버튼을 눌러 메이플 화면을 연결해 주세요!');
+      return;
+    }
+
+    const vWidth = this.videoEl.videoWidth || 1280;
+    const vHeight = this.videoEl.videoHeight || 720;
+
+    const jx = Math.max(0, Math.round((this.janusRoi.x / 100) * vWidth));
+    const jy = Math.max(0, Math.round((this.janusRoi.y / 100) * vHeight));
+    const jw = Math.max(10, Math.round((this.janusRoi.w / 100) * vWidth));
+    const jh = Math.max(10, Math.round((this.janusRoi.h / 100) * vHeight));
+
+    const snapCanvas = document.getElementById('buff-snapshot-canvas');
+    const snapInfo = document.getElementById('buff-snapshot-info');
+    const snapPanel = document.getElementById('buff-snapshot-panel');
+
+    if (snapCanvas) {
+      snapCanvas.width = jw;
+      snapCanvas.height = jh;
+      const ctx = snapCanvas.getContext('2d');
+      ctx.drawImage(this.videoEl, jx, jy, jw, jh, 0, 0, jw, jh);
+
+      const imageData = ctx.getImageData(0, 0, jw, jh);
+
+      if (window.imageAnalyzer) {
+        const result = window.imageAnalyzer.learnBuffSnapshot(imageData);
+        if (snapInfo) {
+          snapInfo.innerHTML = `✅ <strong>내 버프 아이콘 학습 완료!</strong><br>유효 픽셀: <strong>${result.activePixels}개</strong> | 평균 밝기: <strong>${result.avgBrightness}</strong><br>이제 사냥 중 이 버프 아이콘이 꺼지거나 해제되면 0.1초 즉시 알림이 발생합니다!`;
+        }
+      }
+    }
+
+    if (snapPanel) {
+      snapPanel.classList.remove('hidden');
+    }
+  }
+
+  /**
    * ⚡ 0% 렉 풀 스크린 분석:
    * 1) 룬 & 버프: 200x200 소형 마이크로 캔버스
    * 2) 거탐(4종 팝업): 240x135 초경량 다운샘플링 캔버스로 전체 화면을 100% 스캔하되 렉 0% 달성!
