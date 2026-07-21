@@ -123,8 +123,15 @@ class ScreenCaptureManager {
     const txtZoom = document.getElementById('txt-modal-zoom');
     if (txtZoom) txtZoom.textContent = `${Math.round(this.modalZoom * 100)}%`;
 
-    if (this.modalWrapper) {
-      this.modalWrapper.style.transform = `scale(${this.modalZoom})`;
+    if (this.modalCanvas && this.videoEl) {
+      const vWidth = this.videoEl.videoWidth || 1280;
+      const vHeight = this.videoEl.videoHeight || 720;
+      
+      const scaledWidth = Math.round(vWidth * this.modalZoom);
+      const scaledHeight = Math.round(vHeight * this.modalZoom);
+
+      this.modalCanvas.style.width = `${scaledWidth}px`;
+      this.modalCanvas.style.height = `${scaledHeight}px`;
     }
   }
 

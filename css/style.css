@@ -869,25 +869,26 @@ input:checked + .slider:before {
   flex: 1;
   overflow: auto;
   position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display: block;
+  text-align: center;
   background: #080b10;
   cursor: crosshair;
-  padding: 20px;
+  padding: 40px;
+  box-sizing: border-box;
 }
 
 .roi-canvas-wrapper {
   position: relative;
   display: inline-block;
-  box-shadow: 0 0 30px rgba(0, 242, 254, 0.2);
+  margin: 0 auto;
+  box-shadow: 0 0 30px rgba(0, 242, 254, 0.25);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  transform-origin: center center;
 }
 
 #roi-modal-canvas {
   display: block;
   max-width: none;
+  max-height: none;
   cursor: crosshair;
 }
 
