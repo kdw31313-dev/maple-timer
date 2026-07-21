@@ -384,13 +384,19 @@
 
             <div class="form-row">
               <div class="form-group">
-                <label for="calc-meso-rate">💰 총 메획 % (장비+재획비 등)</label>
-                <input type="number" id="calc-meso-rate" class="input-field" value="100" step="5">
+                <label for="calc-meso-rate">💰 합산 메획 % (장비+어빌+유니온)</label>
+                <input type="number" id="calc-meso-rate" class="input-field" value="137" step="1">
               </div>
               <div class="form-group">
                 <label for="calc-drop-rate">💎 총 아획 % (장비+재획비 등)</label>
-                <input type="number" id="calc-drop-rate" class="input-field" value="100" step="5">
+                <input type="number" id="calc-drop-rate" class="input-field" value="98" step="1">
               </div>
+            </div>
+
+            <div class="form-group" style="margin-top:6px;">
+              <label style="color:var(--accent-gold); cursor:pointer;">
+                <input type="checkbox" id="chk-calc-use-wealth" checked> 🧪 재물 획득의 약 (재획비 / 소형재획비 1.2배 곱연산 적용)
+              </label>
             </div>
           </div>
 

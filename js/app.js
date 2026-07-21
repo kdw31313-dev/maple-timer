@@ -340,7 +340,7 @@ function formatHMS(seconds) {
  * 도핑 버프 타이머 UI 업데이트
  */
 /**
- * 사냥 효율 계산기 UI 바인딩 & 100% 동적 실시간 연산
+ * 사냥 효율 계산기 UI 바인딩 & 100% 동적 실시간 연산 (재획비 1.2배 곱연산 엔진)
  */
 function initCalculatorUI() {
   const mapSelect = document.getElementById('calc-map-select');
@@ -350,6 +350,7 @@ function initCalculatorUI() {
   const expBuffInput = document.getElementById('calc-exp-buff');
   const mesoRateInput = document.getElementById('calc-meso-rate');
   const dropRateInput = document.getElementById('calc-drop-rate');
+  const useWealthChk = document.getElementById('chk-calc-use-wealth');
 
   if (!mapSelect || !window.huntingCalculator) return;
 
@@ -373,6 +374,7 @@ function initCalculatorUI() {
     const expBuffPct = parseFloat(expBuffInput.value) || 200;
     const mesoRatePct = parseFloat(mesoRateInput.value) || 0;
     const dropRatePct = parseFloat(dropRateInput.value) || 100;
+    const useWealthPotion = useWealthChk ? useWealthChk.checked : true;
 
     const custom6min = isManual6MinKills ? (parseInt(kills6minInput.value, 10) || null) : null;
 
@@ -385,7 +387,8 @@ function initCalculatorUI() {
       killRatio,
       expBuffPct,
       mesoRatePct,
-      dropRatePct
+      dropRatePct,
+      useWealthPotion
     });
 
     if (!isManual6MinKills) {
@@ -403,7 +406,7 @@ function initCalculatorUI() {
     const totalCapEok = (res.totalCapMesoWithRate / 100000000).toFixed(3);
 
     document.getElementById('res-base-cap').textContent = `${baseCapEok} 억 메소`;
-    document.getElementById('res-total-cap-meso').textContent = `약 ${totalCapEok} 억 메소`;
+    document.getElementById('res-total-cap-meso').textContent = `약 ${totalCapEok} 억 메소 (최종메획 ${res.displayFinalMesoPct}%)`;
     document.getElementById('res-meso-per-bag').textContent = `약 ${res.actualMesoPerBag.toLocaleString()} 메소`;
 
     // 3) 시간별 획득 메소
@@ -425,29 +428,16 @@ function initCalculatorUI() {
     document.getElementById('res-2hr-erda').textContent = `약 ${res.solErdaPieces2Hr} 개`;
   };
 
-  // 맵 변경 시 6분 마릿수 자동 리셋
-  mapSelect.addEventListener('change', () => {
-    isManual6MinKills = false;
-    updateCalculations();
-  });
+  // 이벤트 바인딩
+  mapSelect.addEventListener('change', () => { isManual6MinKills = false; updateCalculations(); });
+  killRatioInput.addEventListener('input', () => { isManual6MinKills = false; updateCalculations(); });
+  kills6minInput.addEventListener('input', () => { isManual6MinKills = true; updateCalculations(); });
 
-  // 슬라이더 변경 시 6분 마릿수 자동 리셋
-  killRatioInput.addEventListener('input', () => {
-    isManual6MinKills = false;
-    updateCalculations();
-  });
-
-  // 사용자가 수동으로 6분 마릿수 입력 시
-  kills6minInput.addEventListener('input', () => {
-    isManual6MinKills = true;
-    updateCalculations();
-  });
-
-  // 실시간 동적 이벤트 바인딩
   levelInput.addEventListener('input', updateCalculations);
   expBuffInput.addEventListener('input', updateCalculations);
   mesoRateInput.addEventListener('input', updateCalculations);
   dropRateInput.addEventListener('input', updateCalculations);
+  if (useWealthChk) useWealthChk.addEventListener('change', updateCalculations);
 
   updateCalculations();
 }
