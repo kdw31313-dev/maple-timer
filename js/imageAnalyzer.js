@@ -190,50 +190,103 @@ class ImageAnalyzer {
     }
   }
 
+  /**
+   * 🚨 유저 첨부 실제 스크린샷 15장 기반: 3종 거짓말 탐지기 정밀 매처
+   *
+   * 🅰️ 도형 찾기: 연회색 팝업 + 빨간 "LIE DETECTOR" + 초록 조준점 + 황금 별
+   * 🅱️ 비올레타 찾기: 검은 팝업 + 빨간 "LIE DETECTOR" + 핑크 버섯 + 파란 카운트다운
+   * 🅲️ 문장 선택: 진한 파란 배경 + 황금 카운트다운 + 5개 텍스트 보기 상자
+   *
+   * ⚠️ 팝업 크기는 화면의 약 25~35%로 작음 (우측에 치우침)
+   * ⚠️ 안내 단계에서 잡아내야 함 (게임 진행 전)
+   * ⚠️ 한 시간에 1번 뜰까 말까 → 오탐 0% + 100% 포착 필수!
+   */
   processPopupFrame(imageData) {
     if (!imageData || !imageData.data || imageData.data.length === 0) return;
 
     const data = imageData.data;
-    let orangeHeaderPixels = 0;
-    let cyanHeaderPixels = 0;
+
+    // 3종 거탐 고유 시그니처 픽셀 카운터
+    let redLieDetectorPixels = 0;   // 빨간 "LIE DETECTOR" 텍스트
+    let greenCrosshairPixels = 0;   // 🅰️ 초록 조준점 아이콘
+    let pinkMushroomPixels = 0;     // 🅱️ 핑크 비올레타 버섯 캡
+    let bluePanelPixels = 0;        // 🅲️ 진한 파란 문장 선택 배경
 
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
       const g = data[i + 1];
       const b = data[i + 2];
 
-      if (r >= 235 && g >= 120 && g <= 170 && b <= 50) {
-        orangeHeaderPixels++;
+      // 1) 빨간 "LIE DETECTOR" 텍스트 (사냥 중 절대 안 나오는 순수 빨강)
+      //    스크린샷 분석: 짙은 빨강/크림슨 (R >= 160, G <= 55, B <= 55)
+      if (r >= 160 && g <= 55 && b <= 55) {
+        redLieDetectorPixels++;
       }
 
-      if (r <= 30 && g >= 190 && b >= 210) {
-        cyanHeaderPixels++;
+      // 2) 🅰️ 도형 찾기 고유: 초록 조준점 아이콘 (밝은 초록색 원)
+      //    스크린샷 분석: 황금 별 위 녹색 십자선 (G >= 130, R <= 90, B <= 90)
+      if (g >= 130 && r <= 90 && b <= 90 && (g - r >= 35) && (g - b >= 35)) {
+        greenCrosshairPixels++;
+      }
+
+      // 3) 🅱️ 비올레타 고유: 핑크 버섯 캡 (핫핑크/마젠타)
+      //    스크린샷 분석: 핑크 도트무늬 버섯 (R >= 180, B >= 130, G <= 150, R-G >= 40)
+      if (r >= 180 && b >= 130 && g <= 150 && (r - g >= 40) && (b - g >= 10)) {
+        pinkMushroomPixels++;
+      }
+
+      // 4) 🅲️ 문장 선택 고유: 진한 슬레이트 블루 배경 (특정 채도의 파랑)
+      //    스크린샷 분석: R:40~100, G:50~110, B:120~180, (B-R >= 50)
+      if (r >= 40 && r <= 100 && g >= 50 && g <= 110 && b >= 120 && b <= 180 && (b - r >= 50)) {
+        bluePanelPixels++;
       }
     }
 
-    const isPopupDetected = (orangeHeaderPixels >= 10 && cyanHeaderPixels >= 10);
+    // 감지 판정 (각 유형별 독립 매칭)
+    const isTypeA = (redLieDetectorPixels >= 2 && greenCrosshairPixels >= 3);  // 도형 찾기
+    const isTypeB = (redLieDetectorPixels >= 2 && pinkMushroomPixels >= 4);    // 비올레타
+    const isTypeC = (bluePanelPixels >= 300);                                   // 문장 선택 (큰 파란 패널)
+    const isRedTextStrong = (redLieDetectorPixels >= 8);                        // 빨간 텍스트만으로도 강력 감지
+
+    const isPopupDetected = isTypeA || isTypeB || isTypeC || isRedTextStrong;
 
     if (isPopupDetected) {
       this.popupState.consecutiveCount++;
 
-      if (this.popupState.consecutiveCount >= this.popupState.REQUIRED_CONSECUTIVE && !this.popupState.isDetected && !this.popupState.cooldownActive) {
-        this.triggerPopupAlert();
+      if (this.popupState.consecutiveCount >= 3 && !this.popupState.isDetected && !this.popupState.cooldownActive) {
+        // 감지된 유형 분류
+        let detectedType = '거짓말 탐지기';
+        if (isTypeA) detectedType = '🅰️ 도형 찾기 거짓말 탐지기';
+        else if (isTypeB) detectedType = '🅱️ 비올레타 거짓말 탐지기';
+        else if (isTypeC) detectedType = '🅲️ 문장 선택 거짓말 탐지기';
+
+        this.triggerPopupAlert(detectedType);
       }
     } else {
       this.popupState.consecutiveCount = 0;
+
+      // 쿨다운 복귀 (거탐 팝업 사라진 후 정상 상태로 돌아감)
+      if (this.popupState.cooldownActive) {
+        this.popupState.cooldownActive = false;
+        this.popupState.isDetected = false;
+        const isLive = window.screenCaptureManager?.isStreaming;
+        if (this.onPopupStatusChange && isLive) {
+          this.onPopupStatusChange('🟢 거탐 감시 중 (3종 매칭 대기)', false);
+        }
+      }
     }
   }
 
-  triggerPopupAlert() {
+  triggerPopupAlert(detectedType = '거짓말 탐지기') {
     this.popupState.isDetected = true;
     this.popupState.cooldownActive = true;
 
     if (this.onPopupStatusChange) {
-      this.onPopupStatusChange('🚨 거짓말 탐지기 감지됨!', true);
+      this.onPopupStatusChange(`🚨 ${detectedType} 감지됨!`, true);
     }
 
     if (window.audioNotifier) {
-      window.audioNotifier.notify('비상! 거짓말 탐지기 팝업이 감지되었습니다! 화면을 확인하세요!', 'siren');
+      window.audioNotifier.notify(`비상! ${detectedType}가 감지되었습니다! 즉시 화면을 확인하세요!`, 'siren');
     }
   }
 
