@@ -22,8 +22,17 @@ class ImageAnalyzer {
       cooldownActive: false
     };
 
-    // 솔 야누스 버프 감지 상태
+    // 솔 야누스 및 경험치 쿠폰 버프 감지 상태
     this.janusState = {
+      isBuffActive: false,
+      consecutiveActiveCount: 0,
+      consecutiveInactiveCount: 0,
+      flashCount: 0,
+      lastBrightness: 0,
+      alert10Triggered: false
+    };
+
+    this.expBuffState = {
       isBuffActive: false,
       consecutiveActiveCount: 0,
       consecutiveInactiveCount: 0,
@@ -36,6 +45,7 @@ class ImageAnalyzer {
     this.onRuneStatusChange = null;
     this.onPopupStatusChange = null;
     this.onJanusStatusChange = null;
+    this.onExpBuffStatusChange = null;
   }
 
   reset() {
@@ -51,6 +61,9 @@ class ImageAnalyzer {
 
     this.janusState.isBuffActive = false;
     this.janusState.alert10Triggered = false;
+
+    this.expBuffState.isBuffActive = false;
+    this.expBuffState.alert10Triggered = false;
   }
 
   /**
@@ -272,7 +285,7 @@ class ImageAnalyzer {
   }
 
   /**
-   * 솔 야누스 버프 영역 분석 (아이콘 감지, 자동 타이머 싱크 & 10초 이하 감지)
+   * 버프 영역 분석 (솔 야누스 & 경험치 쿠폰/VIP 버프 아이콘 감지 및 10초 이하 점멸 알림)
    * @param {ImageData} imageData 
    */
   processJanusFrame(imageData) {
@@ -280,6 +293,8 @@ class ImageAnalyzer {
 
     const data = imageData.data;
     let janusIconPixels = 0;
+    let expCouponPixels = 0;
+    let vipBuffPixels = 0;
     let totalBrightness = 0;
 
     for (let i = 0; i < data.length; i += 4) {
@@ -290,39 +305,47 @@ class ImageAnalyzer {
       const brightness = (r + g + b) / 3;
       totalBrightness += brightness;
 
-      // 솔 야누스 특유의 보라색 기하학 원형 패턴 (R: 60~150, G: 30~110, B: 120~230)
+      // 1) 솔 야누스 보라색 원형 패턴 (R: 55~165, G: 25~120, B: 110~245)
       const isJanusPurple = (r >= 55 && r <= 165 && g >= 25 && g <= 120 && b >= 110 && b <= 245);
       if (isJanusPurple) {
         janusIconPixels++;
       }
+
+      // 2) 경험치 쿠폰 (황금색 물약병: R>=200, G>=160, B<=130 & 은색 테두리)
+      const isGoldFlask = (r >= 200 && g >= 160 && b <= 130);
+      if (isGoldFlask) {
+        expCouponPixels++;
+      }
+
+      // 3) VIP 경험치 버프 (청라임/시안 배경 R<=110, G>=170, B>=220)
+      const isVipCyan = (r <= 110 && g >= 170 && b >= 220);
+      if (isVipCyan) {
+        vipBuffPixels++;
+      }
     }
 
     const avgBrightness = totalBrightness / (data.length / 4);
-    const hasIcon = janusIconPixels >= 15;
 
-    // 아이콘 깜빡임(10초 이하) 진동 감지
-    const brightnessDiff = Math.abs(avgBrightness - this.janusState.lastBrightness);
+    // --- A. 솔 야누스 처리 ---
+    const hasJanusIcon = janusIconPixels >= 15;
+    const janusBrightnessDiff = Math.abs(avgBrightness - this.janusState.lastBrightness);
     this.janusState.lastBrightness = avgBrightness;
 
-    if (hasIcon) {
+    if (hasJanusIcon) {
       this.janusState.consecutiveActiveCount++;
       this.janusState.consecutiveInactiveCount = 0;
 
-      // 야누스 버프 활성화 포착 (타이머 자동 시동)
       if (!this.janusState.isBuffActive && this.janusState.consecutiveActiveCount >= 2) {
         this.janusState.isBuffActive = true;
         this.janusState.alert10Triggered = false;
-        
         if (this.onJanusStatusChange) this.onJanusStatusChange('야누스 가동 중', false);
 
-        // 타이머 자동 시작
         if (window.timerModule && !window.timerModule.janusTimer.isRunning) {
           window.timerModule.startJanusTimer();
         }
       }
 
-      // 버프 아이콘이 깜빡거리거나(밝기 변동 > 12) 잔여 10초 이하 시점
-      if (this.janusState.isBuffActive && brightnessDiff > 12) {
+      if (this.janusState.isBuffActive && janusBrightnessDiff > 12) {
         this.janusState.flashCount++;
         if (this.janusState.flashCount >= 3 && !this.janusState.alert10Triggered) {
           this.triggerJanus10sAlert();
@@ -331,10 +354,40 @@ class ImageAnalyzer {
     } else {
       this.janusState.consecutiveInactiveCount++;
       if (this.janusState.isBuffActive && this.janusState.consecutiveInactiveCount >= 5) {
-        // 야누스 버프 종료
         this.janusState.isBuffActive = false;
         this.janusState.flashCount = 0;
         if (this.onJanusStatusChange) this.onJanusStatusChange('대기 중', false);
+      }
+    }
+
+    // --- B. 경험치 쿠폰 (골드 물약 & VIP 버프) 처리 ---
+    const hasExpBuffIcon = (expCouponPixels >= 18 || vipBuffPixels >= 20);
+    const expBrightnessDiff = Math.abs(avgBrightness - this.expBuffState.lastBrightness);
+    this.expBuffState.lastBrightness = avgBrightness;
+
+    if (hasExpBuffIcon) {
+      this.expBuffState.consecutiveActiveCount++;
+      this.expBuffState.consecutiveInactiveCount = 0;
+
+      if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveActiveCount >= 2) {
+        this.expBuffState.isBuffActive = true;
+        this.expBuffState.alert10Triggered = false;
+        if (this.onExpBuffStatusChange) this.onExpBuffStatusChange('경쿠 버프 가동 중', false);
+      }
+
+      // 경험치 쿠폰 버프 아이콘 10초 이하 점멸/깜빡임 감지
+      if (this.expBuffState.isBuffActive && expBrightnessDiff > 10) {
+        this.expBuffState.flashCount++;
+        if (this.expBuffState.flashCount >= 3 && !this.expBuffState.alert10Triggered) {
+          this.triggerExpBuff10sAlert();
+        }
+      }
+    } else {
+      this.expBuffState.consecutiveInactiveCount++;
+      if (this.expBuffState.isBuffActive && this.expBuffState.consecutiveInactiveCount >= 5) {
+        this.expBuffState.isBuffActive = false;
+        this.expBuffState.flashCount = 0;
+        if (this.onExpBuffStatusChange) this.onExpBuffStatusChange('대기 중', false);
       }
     }
   }
@@ -344,6 +397,13 @@ class ImageAnalyzer {
     if (this.onJanusStatusChange) this.onJanusStatusChange('10초 이하! 재사용 준비', true);
 
     window.audioNotifier.notify('솔 야누스 10초 남았습니다. 재사용을 준비하세요!', 'beep');
+  }
+
+  triggerExpBuff10sAlert() {
+    this.expBuffState.alert10Triggered = true;
+    if (this.onExpBuffStatusChange) this.onExpBuffStatusChange('경쿠 10초 남음!', true);
+
+    window.audioNotifier.notify('경험치 쿠폰 종료 10초 전입니다. 재사용을 준비하세요!', 'chime');
   }
 }
 
