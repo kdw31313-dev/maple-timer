@@ -16,7 +16,7 @@ class ScreenCaptureManager {
 
     // ROI 좌표 (% 비율 단위)
     this.runeRoi = { x: 1, y: 1, w: 22, h: 22 }; // 메이플 좌측 상단 미니맵 기본 위치
-    this.popupRoi = { x: 25, y: 25, w: 50, h: 50 };
+    this.popupRoi = { x: 0, y: 0, w: 100, h: 100 }; // 메이플 전체 사냥 화면 범위
     this.janusRoi = { x: 75, y: 1, w: 24, h: 15 }; // 우측 상단 버프 영역 기본 위치
 
     // ROI 드래그 선택 상태
