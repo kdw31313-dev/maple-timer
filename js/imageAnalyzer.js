@@ -354,54 +354,58 @@ class ImageAnalyzer {
       }
     }
 
-    // ===== 2단계: 야누스 아이콘 바운딩 박스 근처의 진짜 노란 숫자 픽셀만 정밀 스캔 =====
+    // ===== 2단계: 야누스 버프 아이콘 박스 근처만 스캔 (전체 풀림 방지) =====
     let yellowDigitPixels = 0;
 
-    // 아이콘이 포착되면 아이콘 주위 ±12픽셀 이내 영역만 정밀 스캔 (배경 노란색 2100개 완전 제거!)
-    const scanMinX = janusOrbPixels >= 3 ? Math.max(0, orbMinX - 10) : 0;
-    const scanMaxX = janusOrbPixels >= 3 ? Math.min(width - 1, orbMaxX + 10) : width - 1;
-    const scanMinY = janusOrbPixels >= 3 ? Math.max(0, orbMinY - 10) : 0;
-    const scanMaxY = janusOrbPixels >= 3 ? Math.min(height - 1, orbMaxY + 10) : height - 1;
+    // 아이콘 포착 여부와 상관없이 야누스 구체가 포착된 범위(또는 보라색 픽셀 발생 영역)로만 한정하여 스캔
+    // 포착되지 않은 경우에도 전체 화면이 아닌 보라색 계열 발생 상단 영역으로 범위를 제어하여 배경 2100개 노이즈 방지
+    const scanMinX = janusOrbPixels >= 1 ? Math.max(0, orbMinX - 12) : 0;
+    const scanMaxX = janusOrbPixels >= 1 ? Math.min(width - 1, orbMaxX + 12) : width - 1;
+    const scanMinY = janusOrbPixels >= 1 ? Math.max(0, orbMinY - 12) : 0;
+    const scanMaxY = janusOrbPixels >= 1 ? Math.min(height - 1, orbMaxY + 12) : height - 1;
 
-    for (let y = scanMinY; y <= scanMaxY; y++) {
-      for (let x = scanMinX; x <= scanMaxX; x++) {
-        const idx = (y * width + x) * 4;
-        const r = data[idx];
-        const g = data[idx + 1];
-        const b = data[idx + 2];
+    // 야누스 구체 보라색이 1개라도 포착된 경우에만 정밀 스캔
+    if (janusOrbPixels >= 1) {
+      for (let y = scanMinY; y <= scanMaxY; y++) {
+        for (let x = scanMinX; x <= scanMaxX; x++) {
+          const idx = (y * width + x) * 4;
+          const r = data[idx];
+          const g = data[idx + 1];
+          const b = data[idx + 2];
 
-        // 선명한 옐로우/라임 폰트 (R>=190, G>=190, B<=80)
-        if (r >= 190 && g >= 190 && b <= 80) {
-          // 주변 1픽셀에 검은색 아웃라인 테두리가 있는지 확인 (진짜 폰트 검증)
-          let hasBlackBorder = false;
-          for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-              if (dx === 0 && dy === 0) continue;
-              const nx = x + dx;
-              const ny = y + dy;
-              if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                const nIdx = (ny * width + nx) * 4;
-                const nr = data[nIdx];
-                const ng = data[nIdx + 1];
-                const nb = data[nIdx + 2];
-                if (nr <= 70 && ng <= 70 && nb <= 70) {
-                  hasBlackBorder = true;
-                  break;
+          // 선명한 옐로우/라임 폰트 (R>=190, G>=190, B<=80)
+          if (r >= 190 && g >= 190 && b <= 80) {
+            // 주변 1픽셀에 검은색 아웃라인 테두리가 있는지 확인 (진짜 폰트 검증)
+            let hasBlackBorder = false;
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                const nx = x + dx;
+                const ny = y + dy;
+                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                  const nIdx = (ny * width + nx) * 4;
+                  const nr = data[nIdx];
+                  const ng = data[nIdx + 1];
+                  const nb = data[nIdx + 2];
+                  if (nr <= 70 && ng <= 70 && nb <= 70) {
+                    hasBlackBorder = true;
+                    break;
+                  }
                 }
               }
+              if (hasBlackBorder) break;
             }
-            if (hasBlackBorder) break;
-          }
 
-          if (hasBlackBorder) {
-            yellowDigitPixels++;
+            if (hasBlackBorder) {
+              yellowDigitPixels++;
+            }
           }
         }
       }
     }
 
-    // ===== 3단계: Matcher & Number Recognizer =====
-    const hasJanusIcon = (janusOrbPixels >= 3);
+    // ===== 3단계: 디지털 시계 타이머 (1:40 -> 59초 -> 9초) 매처 & Recognizer =====
+    const hasJanusIcon = (janusOrbPixels >= 1);
 
     if (hasJanusIcon) {
       this.janusState.consecutiveActiveCount++;
