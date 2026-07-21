@@ -37,9 +37,13 @@ class ImageAnalyzer {
       isBuffActive: false,
       consecutiveActiveCount: 0,
       consecutiveInactiveCount: 0,
-      flashCount: 0,
-      lastBrightness: 0,
-      alert10Triggered: false
+      alert10Triggered: false,
+      alertExpiredTriggered: false,
+      // Number Recognizer 카운트다운 추적 (야누스와 동일 방식)
+      lastDigitPixelCount: 0,
+      peakDigitPixelCount: 0,   // 최초 감지 시 숫자 픽셀 최대치 ("13" = 2자리 = 많음)
+      lowDigitFrames: 0,        // 숫자 급감 연속 프레임 수 (1자리 감지용)
+      detectedBuffNames: []     // 감지된 버프 이름 목록
     };
 
     // 📸 버프 스크린샷 AI 학습 상태
@@ -393,48 +397,35 @@ class ImageAnalyzer {
   }
 
   /**
-   * 🍁 4대 도핑 버프 매처 & 클러스터링(Clustering) 엔진
-   * 1. 최상단 1줄 (VIP/PC방 아이콘) 자동 제외
-   * 2. Matcher: 4대 분류 (유니온의 힘, 유니온의 부, 비약, 경험치 쿠폰) - 야누스 제외
-   * 3. Clustering: 10초 이내 동시 종료 버프 묶어서 1회 알림!
+   * 🍁 4대 도핑 버프 매처 & Number Recognizer 카운트다운 추적 엔진
+   *
+   * 유저 첨부 스크린샷 기반 30분 도핑 버프 숫자 변화 패턴:
+   *   30분 ~ 10분: "13", "12" (2자리) → 숫자 픽셀 많음
+   *   10분 미만:   "9:24"      (1자리+콜론+2자리) → 비슷하거나 약간 적음
+   *   1분 미만:    "8"         (1자리) → 극소 → 🚨 종료 임박!
+   *
+   * 야누스 Number Recognizer와 100% 동일한 로직 적용:
+   *   피크 기록 → 변화 추적 → 급감 감지(30% 이하) → 종료 임박 알림!
+   *
+   * 4대 분류: 유니온의 힘, 유니온의 부, 비약, 경험치 쿠폰
+   * Clustering: 10초 이내 동시 종료 버프 묶어서 1회 알림!
    */
   processExpFrame(imageData) {
     if (!imageData || imageData.data.length === 0) return;
 
     const data = imageData.data;
 
-    // 📸 1. AI 스크린샷 자가 학습된 버프 소멸 트래커
-    if (this.learnedBuffState.isLearned) {
-      let currentActivePixels = 0;
-      for (let i = 0; i < data.length; i += 4) {
-        const br = (data[i] + data[i + 1] + data[i + 2]) / 3;
-        if (br > 50) currentActivePixels++;
-      }
-
-      if (currentActivePixels < this.learnedBuffState.baselinePixels * 0.45) {
-        this.expBuffState.consecutiveInactiveCount++;
-        if (this.expBuffState.consecutiveInactiveCount >= 2) {
-          this.triggerExpBuffExpiredAlert();
-        }
-      } else {
-        this.expBuffState.consecutiveInactiveCount = 0;
-      }
-      return;
-    }
-
-    // 2. 5대 매처 (Matcher) 픽셀 분류
-    let unionPowerPixels = 0;  // 1) 유니온의 힘 (보라/골드 뱃지)
-    let unionWealthPixels = 0; // 2) 유니온의 부 (황금 동전 뱃지)
-    let elixirPixels = 0;      // 3) 비약 (재획비 / 소형 재획비)
-    let expCouponPixels = 0;   // 4) 경험치 쿠폰 (MVP / 2x/3x / EXP+)
-
-    let totalBrightness = 0;
+    // ===== 1. 4대 Matcher + Number Recognizer 동시 스캔 =====
+    let unionPowerPixels = 0;  // 유니온의 힘 (레드-골드 뱃지)
+    let unionWealthPixels = 0; // 유니온의 부 (황금 동전 뱃지)
+    let elixirPixels = 0;      // 비약 (재획비 / 소형 재획비)
+    let expCouponPixels = 0;   // 경험치 쿠폰 (MVP / EXP+)
+    let digitPixels = 0;       // 🔢 숫자 픽셀 (흰색/밝은 숫자 = 남은 시간 표시)
 
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
       const g = data[i + 1];
       const b = data[i + 2];
-      totalBrightness += (r + g + b) / 3;
 
       // 1) 유니온의 힘 (레드-골드)
       if (r >= 190 && g >= 140 && b <= 90) unionPowerPixels++;
@@ -445,52 +436,109 @@ class ImageAnalyzer {
       // 3) 비약 (재획비/소형재획비 청록 병 + 황금 캡)
       if ((r <= 160 && g >= 130 && b >= 150) || (r >= 170 && g >= 140 && b <= 130)) elixirPixels++;
 
-      // 4) 경험치 쿠폰 (단풍잎/MVP/EXP+ 시안)
-      if ((r >= 200 && g >= 200 && b >= 200) || (b >= 150 && (r >= 70 || g >= 70))) expCouponPixels++;
+      // 4) 경험치 쿠폰 (단풍잎/MVP/EXP+)
+      if (r >= 200 && g >= 200 && b >= 200) expCouponPixels++;
+
+      // 🔢 Number Recognizer: 버프 아이콘 위 흰색/밝은 숫자 픽셀 ("13", "9:24", "8" 등)
+      //    밝은 흰색/연회색 숫자: R >= 180, G >= 180, B >= 180
+      if (r >= 180 && g >= 180 && b >= 180) {
+        digitPixels++;
+      }
     }
 
+    // ===== 2. Matcher: 4대 버프 분류 =====
     const currentDetectedSet = new Set();
     if (unionPowerPixels >= 6) currentDetectedSet.add('유니온의 힘');
     if (unionWealthPixels >= 6) currentDetectedSet.add('유니온의 부');
     if (elixirPixels >= 6) currentDetectedSet.add('재물 획득의 약(비약)');
     if (expCouponPixels >= 6) currentDetectedSet.add('경험치 쿠폰');
 
-    const avgBrightness = totalBrightness / (data.length / 4);
+    // 아이콘 자체가 존재하는지 판단 (밝기 기반)
+    let totalBright = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const br = (data[i] + data[i + 1] + data[i + 2]) / 3;
+      if (br > 40) totalBright++;
+    }
+    const hasBuffIcons = (totalBright >= 15) || (currentDetectedSet.size > 0);
 
-    if (currentDetectedSet.size > 0) {
-      this.clusterState.activeBuffs = currentDetectedSet;
+    if (hasBuffIcons) {
       this.expBuffState.consecutiveActiveCount++;
       this.expBuffState.consecutiveInactiveCount = 0;
 
-      const buffNames = Array.from(currentDetectedSet).join(', ');
-
-      if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveActiveCount >= 1) {
+      // 최초 감지: 도핑 버프 가동 시작
+      if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveActiveCount >= 2) {
         this.expBuffState.isBuffActive = true;
         this.expBuffState.alert10Triggered = false;
-        if (this.onExpBuffStatusChange) this.onExpBuffStatusChange(`[${buffNames}] 가동 중`, false);
+        this.expBuffState.alertExpiredTriggered = false;
+        this.expBuffState.peakDigitPixelCount = digitPixels;
+        this.expBuffState.lowDigitFrames = 0;
+        this.expBuffState.detectedBuffNames = Array.from(currentDetectedSet);
 
-        if (window.timerModule && !window.timerModule.expTimer.isRunning) {
-          window.timerModule.startExpTimer();
+        const buffNames = currentDetectedSet.size > 0
+          ? Array.from(currentDetectedSet).join(', ')
+          : '도핑 버프';
+        if (this.onExpBuffStatusChange) {
+          this.onExpBuffStatusChange(`🍁 [${buffNames}] 가동 중`, false);
         }
       }
 
-      const isExp10sTimer = window.timerModule && window.timerModule.expTimer.isRunning && window.timerModule.expTimer.remainingSeconds <= 10;
-      if (this.expBuffState.isBuffActive && isExp10sTimer && !this.expBuffState.alert10Triggered) {
-        this.triggerClusterAlert(Array.from(currentDetectedSet));
+      // ===== 3. Number Recognizer: 숫자 카운트다운 추적 =====
+      if (this.expBuffState.isBuffActive) {
+        // 감지된 버프 이름 업데이트
+        if (currentDetectedSet.size > 0) {
+          this.expBuffState.detectedBuffNames = Array.from(currentDetectedSet);
+          this.clusterState.activeBuffs = currentDetectedSet;
+        }
+
+        // 피크 업데이트 ("13" 2자리 표시 때 숫자 픽셀 최대)
+        if (digitPixels > this.expBuffState.peakDigitPixelCount) {
+          this.expBuffState.peakDigitPixelCount = digitPixels;
+        }
+
+        // 숫자가 피크 대비 30% 이하로 급감 = 1자리(1분 미만) 진입!
+        // 예: "13"(피크) → "9:24" → "8"(급감) → 종료 임박 판정
+        const peak = this.expBuffState.peakDigitPixelCount;
+        const isLowDigit = (peak > 0 && digitPixels <= peak * 0.30 && digitPixels >= 1);
+
+        if (isLowDigit) {
+          this.expBuffState.lowDigitFrames++;
+        } else {
+          this.expBuffState.lowDigitFrames = 0;
+        }
+
+        // 연속 3프레임 이상 급감 → 종료 임박 알림! (Clustering 적용)
+        if (this.expBuffState.lowDigitFrames >= 3 && !this.expBuffState.alert10Triggered) {
+          this.triggerClusterAlert(this.expBuffState.detectedBuffNames);
+        }
+
+        // UI 상태 표시
+        const buffNames = this.expBuffState.detectedBuffNames.length > 0
+          ? this.expBuffState.detectedBuffNames.join(', ')
+          : '도핑 버프';
+        if (this.onExpBuffStatusChange && !this.expBuffState.alert10Triggered) {
+          this.onExpBuffStatusChange(`🍁 [${buffNames}] 가동 중 (숫자: ${digitPixels})`, false);
+        }
       }
+
+      this.expBuffState.lastDigitPixelCount = digitPixels;
     } else {
+      // ===== 4. 소멸 추적: 버프 아이콘이 1사분면에서 완전히 사라짐 =====
       this.expBuffState.consecutiveInactiveCount++;
       if (this.expBuffState.isBuffActive && this.expBuffState.consecutiveInactiveCount >= 5) {
         this.expBuffState.isBuffActive = false;
-        this.expBuffState.flashCount = 0;
-        const isLive = window.screenCaptureManager?.isStreaming;
-        if (this.onExpBuffStatusChange) this.onExpBuffStatusChange(isLive ? '🟢 도핑 버프 스캔 중' : '⚪ 대기 중', false);
+        this.expBuffState.lowDigitFrames = 0;
+        this.expBuffState.peakDigitPixelCount = 0;
+        if (!this.expBuffState.alertExpiredTriggered) {
+          this.triggerExpBuffExpiredAlert();
+        }
       }
     }
   }
 
   /**
    * 4. Clustering (동시 종료 버프 클러스터링 통합 알림)
+   *    10초 이내 비슷한 시기에 끝나는 버프들을 묶어서 1회만 알림!
+   *    ⚠️ 야누스는 30분짜리가 아니므로 클러스터링에서 제외!
    */
   triggerClusterAlert(buffList) {
     this.expBuffState.alert10Triggered = true;
@@ -503,24 +551,28 @@ class ImageAnalyzer {
     const buffText = buffList.length > 0 ? buffList.join(', ') : '사냥 도핑 버프';
 
     if (this.onExpBuffStatusChange) {
-      this.onExpBuffStatusChange(`🚨 [${buffText}] 10초 남음!`, true);
+      this.onExpBuffStatusChange(`🚨 [${buffText}] 종료 임박!`, true);
     }
 
     if (window.audioNotifier) {
-      window.audioNotifier.notify(`${buffText} 버프가 곧 동시 종료됩니다! 도핑 재사용을 준비하세요!`, 'chime');
+      window.audioNotifier.notify(`${buffText} 버프가 곧 종료됩니다! 도핑 재사용을 준비하세요!`, 'chime');
     }
   }
 
   triggerExpBuffExpiredAlert() {
-    this.learnedBuffState.isLearned = false;
+    this.expBuffState.alertExpiredTriggered = true;
     this.expBuffState.isBuffActive = false;
 
+    const buffText = this.expBuffState.detectedBuffNames.length > 0
+      ? this.expBuffState.detectedBuffNames.join(', ')
+      : '도핑 버프';
+
     if (this.onExpBuffStatusChange) {
-      this.onExpBuffStatusChange('🚨 경험치/도핑 버프 종료됨!', true);
+      this.onExpBuffStatusChange(`🚨 [${buffText}] 종료됨! 재사용하세요!`, true);
     }
 
     if (window.audioNotifier) {
-      window.audioNotifier.notify('경험치 도핑 버프가 종료되었습니다! 도핑 아이템을 재사용하세요!', 'chime');
+      window.audioNotifier.notify(`${buffText} 버프가 종료되었습니다! 도핑 아이템을 재사용하세요!`, 'chime');
     }
   }
 
