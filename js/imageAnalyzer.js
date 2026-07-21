@@ -152,7 +152,12 @@ class ImageAnalyzer {
   }
 
   /**
-   * 팝업 영역 분석 (일반 팝업, 정답 선택형, 비올레타, 투명 도형형)
+   * 팝업 영역 분석 (5종 거짓말 탐지기 통합 시각 패밀리 감지)
+   * 1. 클릭형 거탐 (반투명 레이어 창)
+   * 2. 비올레타 미니게임 (화면 중앙 대형 팝업)
+   * 3. 투명 도형형 (배경 방해/투명 객체)
+   * 4. 텍스트 문자 입력형 (고대비 텍스트 박스)
+   * 5. 정답 문장 선택형 (지시문 및 선택 버튼 창)
    * @param {ImageData} imageData 
    */
   processPopupFrame(imageData) {
@@ -167,29 +172,51 @@ class ImageAnalyzer {
     }
 
     let highContrastPixels = 0;
+    let dimmingPixels = 0;
     let totalDiff = 0;
     const base = this.popupState.baselineData;
 
-    // 픽셀 밝기 및 차분 + 엣지 검사
+    // 픽셀 휘도, 엣지 차분, 디밍(배경 어두워짐) 종합 체크
     for (let i = 0; i < data.length; i += 16) {
-      const rDiff = Math.abs(data[i] - base[i]);
-      const gDiff = Math.abs(data[i + 1] - base[i + 1]);
-      const bDiff = Math.abs(data[i + 2] - base[i + 2]);
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+
+      const rBase = base[i];
+      const gBase = base[i + 1];
+      const bBase = base[i + 2];
+
+      const rDiff = Math.abs(r - rBase);
+      const gDiff = Math.abs(g - gBase);
+      const bDiff = Math.abs(b - bBase);
       const diff = (rDiff + gDiff + bDiff) / 3;
 
       totalDiff += diff;
 
-      // 팝업 창 고대비 텍스트/테두리 특성 픽셀
-      if (diff > 50) {
+      // 1) 거탐 특유의 고대비 텍스트/테두리/버튼 픽셀
+      if (diff > 45) {
         highContrastPixels++;
+      }
+
+      // 2) 거탐 등장 시 화면 디밍(배경 어두워짐/반투명 박스) 현상 픽셀
+      const curLuma = (r + g + b) / 3;
+      const baseLuma = (rBase + gBase + bBase) / 3;
+      if (baseLuma - curLuma > 30) {
+        dimmingPixels++;
       }
     }
 
     const avgDiff = totalDiff / (pixelCount / 4);
     const contrastRatio = highContrastPixels / (pixelCount / 4);
+    const dimmingRatio = dimmingPixels / (pixelCount / 4);
 
-    // 팝업 출현 임계치
-    if (avgDiff > 28 || contrastRatio > 0.15) {
+    // 5종 거탐 공통 임계치 조건:
+    // - 평균 프레임 차분 > 26
+    // - 고대비 픽셀 비율 > 12% (텍스트/버튼/비올레타 레이어)
+    // - 디밍 픽셀 비율 > 18% (반투명 팝업 또는 중앙 화면 어두워짐)
+    const isPopupTriggered = (avgDiff > 26 || contrastRatio > 0.12 || dimmingRatio > 0.18);
+
+    if (isPopupTriggered) {
       this.popupState.consecutiveCount++;
 
       if (this.popupState.consecutiveCount >= this.popupState.REQUIRED_CONSECUTIVE) {
@@ -207,7 +234,7 @@ class ImageAnalyzer {
         if (this.onPopupStatusChange) this.onPopupStatusChange('대기 중', false);
       }
 
-      // 점진적 배경 업데이트
+      // 점진적 배경 학습 업데이트
       if (!this.popupState.cooldownActive) {
         for (let i = 0; i < data.length; i += 16) {
           base[i] = base[i] * 0.9 + data[i] * 0.1;
