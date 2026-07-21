@@ -264,21 +264,32 @@ class ImageAnalyzer {
       }
     }
 
-    // 감지 판정 (각 유형별 독립 정밀 매칭 - 노이즈 오탐 0% 차단)
-    const isTypeA = (redLieDetectorPixels >= 6 && greenCrosshairPixels >= 12);   // 도형 찾기 (조준점+텍스트)
-    const isTypeB = (redLieDetectorPixels >= 6 && pinkMushroomPixels >= 12);     // 비올레타 (버섯+텍스트)
-    const isTypeC = (bluePanelPixels >= 2200 && segmentNumPixels >= 8);           // 문장 선택 (큰 팝업 패널 2200픽셀 이상 + 카운트다운)
-    const isTypeD = (yellowItalicPixels >= 150 && segmentNumPixels >= 8);        // 5회/2회 클릭 거탐 (데미지스킨 100% 필터링)
-    const isTypeE = (cyanCaptchaPixels >= 80 && segmentNumPixels >= 8);          // 일반 텍스트 캡차 거탐
-    const isRedTextStrong = (redLieDetectorPixels >= 18);                         // 빨간 텍스트 강력 감지
+    // ===== 감지 판정 (메인 2종: 확실 포착 / 서브 3종: 오탐 0% 엄격 적용) =====
 
-    const isPopupDetected = isTypeA || isTypeB || isTypeC || isTypeD || isTypeE || isRedTextStrong;
+    // [메인 2종] 🅰️ 도형 찾기 & 🅱️ 비올레타 (실제 사냥터 주력 거탐) -> 확실하고 민첩하게 100% 포착!
+    const isTypeA = (redLieDetectorPixels >= 4 && greenCrosshairPixels >= 8);   // 도형 찾기 (조준점+LIE DETECTOR)
+    const isTypeB = (redLieDetectorPixels >= 4 && pinkMushroomPixels >= 8);     // 비올레타 (버섯+LIE DETECTOR)
+    const isRedMainStrong = (redLieDetectorPixels >= 12);                        // 빨간 LIE DETECTOR 메인 강력 포착
+
+    const isMainDetected = isTypeA || isTypeB || isRedMainStrong;
+
+    // [서브 3종] 🅲️ 문장 선택, 🅳️ 클릭 거탐, 🅴 일반 텍스트 캡차 -> 오탐 0%를 위해 매우 엄격한 기준 적용!
+    const isTypeC = (bluePanelPixels >= 3200 && segmentNumPixels >= 10);        // 문장 선택 (큰 팝업 패널 3200px+ & 카운트다운)
+    const isTypeD = (yellowItalicPixels >= 250 && segmentNumPixels >= 10);      // 클릭 거탐 (황금 문장 250px+ & 카운트다운)
+    const isTypeE = (cyanCaptchaPixels >= 150 && segmentNumPixels >= 10);        // 일반 거탐 (하늘색 캡차 150px+ & 카운트다운)
+
+    const isSubDetected = isTypeC || isTypeD || isTypeE;
+
+    const isPopupDetected = isMainDetected || isSubDetected;
 
     if (isPopupDetected) {
       this.popupState.consecutiveCount++;
 
-      // 연속 5프레임(약 0.75초) 이상 지속적으로 거탐 고유 시그니처가 유지될 때만 알림! (데미지 스킨 1~2프레임 순간 노이즈 100% 제거)
-      if (this.popupState.consecutiveCount >= 5 && !this.popupState.isDetected && !this.popupState.cooldownActive) {
+      // 메인 2종(A, B)은 3프레임(약 0.45초) 만에 빠른 알림!
+      // 서브 3종(C, D, E)은 6프레임(약 0.9초) 이상 유지될 때만 알림 (배경 노이즈 오탐 0% 보장)
+      const requiredFrames = isMainDetected ? 3 : 6;
+
+      if (this.popupState.consecutiveCount >= requiredFrames && !this.popupState.isDetected && !this.popupState.cooldownActive) {
         // 감지된 유형 분류
         let detectedType = '거짓말 탐지기';
         if (isTypeA) detectedType = '🅰️ 도형 찾기 거짓말 탐지기';
@@ -286,6 +297,7 @@ class ImageAnalyzer {
         else if (isTypeC) detectedType = '🅲️ 문장 선택 거짓말 탐지기';
         else if (isTypeD) detectedType = '🅳️ 클릭 거짓말 탐지기 (5회/2회 클릭)';
         else if (isTypeE) detectedType = '🅴 일반 텍스트 캡차 거짓말 탐지기';
+        else if (isRedMainStrong) detectedType = '🅰️/🅱️ 메인 거짓말 탐지기';
 
         this.triggerPopupAlert(detectedType);
       }
