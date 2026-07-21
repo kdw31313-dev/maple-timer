@@ -39,28 +39,51 @@ class ScreenCaptureManager {
   }
 
   async startCapture() {
+    // 1) 브라우저 WebRTC 화면 공유 API 지원 여부 체크
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
+      alert('⚠️ 현재 사용 중인 브라우저/환경에서는 화면 공유(getDisplayMedia) API를 지원하지 않거나 보안 연결(HTTPS)이 아닙니다.\n\n크롬(Chrome), 엣지(Edge), 또는 웨일(Whale) 브라우저 최신 버전으로 접속해 주세요.');
+      return false;
+    }
+
     try {
-      // ⚠️ 크롬 보안 정책: 버튼 클릭 유저 제스처(User Gesture) 유효 시간 내에 getDisplayMedia를 즉시 호출해야 합니다.
+      // 2) 브라우저 화면 공유 요청 (동기 트리거)
       const capturePromise = navigator.mediaDevices.getDisplayMedia({
-        video: true,
+        video: {
+          displaySurface: 'window'
+        },
         audio: false
+      }).catch(err => {
+        // 호환성 에러 발생 시 비디오 옵션 없이 재시도
+        console.warn('displaySurface 옵션 거부됨, 기본 옵션 재시도:', err);
+        return navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: false
+        });
       });
 
       this.mediaStream = await capturePromise;
+
+      if (!this.mediaStream) {
+        return false;
+      }
 
       this.videoEl.srcObject = this.mediaStream;
       this.isStreaming = true;
 
       // 스트림 종결 감지 (사용자가 공유 중지 누름)
-      this.mediaStream.getVideoTracks()[0].onended = () => {
-        this.stopCapture();
-      };
+      const videoTrack = this.mediaStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.onended = () => {
+          this.stopCapture();
+        };
+      }
 
       await this.videoEl.play();
       
-      document.getElementById('screen-placeholder').classList.add('hidden');
-      this.videoEl.classList.remove('hidden');
-      this.analysisCanvas.classList.remove('hidden');
+      const placeholder = document.getElementById('screen-placeholder');
+      if (placeholder) placeholder.classList.add('hidden');
+      if (this.videoEl) this.videoEl.classList.remove('hidden');
+      if (this.analysisCanvas) this.analysisCanvas.classList.remove('hidden');
 
       this.updateStatusBadge(true);
       this.resizeCanvas();
@@ -68,9 +91,13 @@ class ScreenCaptureManager {
 
       return true;
     } catch (err) {
-      console.error('화면 공유 실패/취소:', err);
-      if (err.name !== 'NotAllowedError') {
-        alert('게임 창 공유를 시작할 수 없습니다. 크롬 주소창을 재접속하신 후 다시 클릭해 주세요.');
+      console.error('화면 공유 실패/취소 상세 원인:', err);
+
+      if (err.name === 'NotAllowedError' || err.message?.includes('Permission denied')) {
+        // 사용자가 취소 버튼을 누르거나 권한을 거부함
+        console.log('사용자가 화면 공유 선택을 취소했거나 권한을 거부함');
+      } else {
+        alert(`⚠️ 화면 공유 팝업 실패 원인: [${err.name || '오류'}]\n${err.message || ''}\n\n은행/게임 보안 프로그램(nProtect, AhnLab Safe Transaction 등)이 화면 캡처를 차단하고 있거나, 크롬 확장 프로그램과의 충돌일 수 있습니다.`);
       }
       return false;
     }
@@ -88,12 +115,13 @@ class ScreenCaptureManager {
       this.animationFrameId = null;
     }
 
-    this.videoEl.classList.add('hidden');
-    this.analysisCanvas.classList.add('hidden');
-    document.getElementById('screen-placeholder').classList.remove('hidden');
+    if (this.videoEl) this.videoEl.classList.add('hidden');
+    if (this.analysisCanvas) this.analysisCanvas.classList.add('hidden');
+    const placeholder = document.getElementById('screen-placeholder');
+    if (placeholder) placeholder.classList.remove('hidden');
 
     this.updateStatusBadge(false);
-    window.imageAnalyzer.reset();
+    if (window.imageAnalyzer) window.imageAnalyzer.reset();
   }
 
   updateStatusBadge(isConnected) {
@@ -102,256 +130,169 @@ class ScreenCaptureManager {
     const startBtn = document.getElementById('btn-start-share');
     const stopBtn = document.getElementById('btn-stop-share');
 
-    if (isConnected) {
-      badge.className = 'status-badge connected';
-      text.textContent = '메이플 창 분석 중';
-      startBtn.classList.add('hidden');
-      stopBtn.classList.remove('hidden');
-    } else {
-      badge.className = 'status-badge disconnected';
-      text.textContent = '화면 공유 대기 중';
-      startBtn.classList.remove('hidden');
-      stopBtn.classList.add('hidden');
+    if (badge) {
+      badge.className = isConnected ? 'status-badge live' : 'status-badge disconnected';
     }
+    if (text) {
+      text.textContent = isConnected ? '게임 화면 연결됨 (감지 중)' : '연결 안 됨';
+    }
+    if (startBtn) startBtn.classList.toggle('hidden', isConnected);
+    if (stopBtn) stopBtn.classList.toggle('hidden', !isConnected);
   }
 
-  resizeCanvas() {
-    const container = document.getElementById('video-container');
-    if (!container) return;
-
-    const rect = container.getBoundingClientRect();
-    this.overlayCanvas.width = rect.width;
-    this.overlayCanvas.height = rect.height;
-
-    if (this.videoEl.videoWidth) {
-      this.analysisCanvas.width = this.videoEl.videoWidth;
-      this.analysisCanvas.height = this.videoEl.videoHeight;
-    }
-  }
-
-  startLoop() {
-    let lastAnalyzeTime = 0;
-
-    const loop = (timestamp) => {
-      if (!this.isStreaming) return;
-
-      if (this.videoEl.readyState >= 2) {
-        // 비디오 프레임을 캔버스에 그리기
-        this.analysisCtx.drawImage(this.videoEl, 0, 0, this.analysisCanvas.width, this.analysisCanvas.height);
-
-        // 초당 약 4~5회 화면 분석 실행 (CPU 부담 최소화)
-        if (timestamp - lastAnalyzeTime > 220) {
-          lastAnalyzeTime = timestamp;
-          this.runAnalysis();
-        }
-      }
-
-      // ROI 박스 오버레이 그리기
-      this.drawRoiOverlay();
-
-      this.animationFrameId = requestAnimationFrame(loop);
-    };
-
-    this.animationFrameId = requestAnimationFrame(loop);
-  }
-
-  runAnalysis() {
-    const vWidth = this.analysisCanvas.width;
-    const vHeight = this.analysisCanvas.height;
-    if (!vWidth || !vHeight) return;
-
-    // 1. 룬 ROI 처리
-    if (document.getElementById('toggle-rune-detection')?.checked) {
-      const rx = Math.floor((this.runeRoi.x / 100) * vWidth);
-      const ry = Math.floor((this.runeRoi.y / 100) * vHeight);
-      const rw = Math.floor((this.runeRoi.w / 100) * vWidth);
-      const rh = Math.floor((this.runeRoi.h / 100) * vHeight);
-
-      if (rw > 10 && rh > 10) {
-        const runeData = this.analysisCtx.getImageData(rx, ry, rw, rh);
-        window.imageAnalyzer.processRuneFrame(runeData);
-      }
-    }
-
-    // 2. 팝업 ROI 처리
-    if (document.getElementById('toggle-popup-detection')?.checked) {
-      const px = Math.floor((this.popupRoi.x / 100) * vWidth);
-      const py = Math.floor((this.popupRoi.y / 100) * vHeight);
-      const pw = Math.floor((this.popupRoi.w / 100) * vWidth);
-      const ph = Math.floor((this.popupRoi.h / 100) * vHeight);
-
-      if (pw > 10 && ph > 10) {
-        const popupData = this.analysisCtx.getImageData(px, py, pw, ph);
-        window.imageAnalyzer.processPopupFrame(popupData);
-      }
-    }
-  }
-
-    // 3. 솔 야누스 버프 ROI 처리
-    if (document.getElementById('toggle-janus-detection')?.checked) {
-      const jx = Math.floor((this.janusRoi.x / 100) * vWidth);
-      const jy = Math.floor((this.janusRoi.y / 100) * vHeight);
-      const jw = Math.floor((this.janusRoi.w / 100) * vWidth);
-      const jh = Math.floor((this.janusRoi.h / 100) * vHeight);
-
-      if (jw > 10 && jh > 10) {
-        const janusData = this.analysisCtx.getImageData(jx, jy, jw, jh);
-        window.imageAnalyzer.processJanusFrame(janusData);
-      }
-    }
-  }
-
-  /* ===================================================
-   * ROI 드래그 및 박스 그리기
-   * =================================================== */
-  setSelectionMode(target) {
+  setSelectingTarget(target) {
     this.selectingTarget = target;
-    this.overlayCanvas.style.cursor = 'crosshair';
+    const overlay = this.overlayCanvas;
+    if (overlay) {
+      overlay.style.cursor = target ? 'crosshair' : 'default';
+    }
   }
 
   handleMouseDown(e) {
-    if (!this.selectingTarget) return;
-
+    if (!this.selectingTarget || !this.isStreaming) return;
     const rect = this.overlayCanvas.getBoundingClientRect();
     this.isDragging = true;
     this.dragStart = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      x: (e.clientX - rect.left) / rect.width,
+      y: (e.clientY - rect.top) / rect.height
     };
     this.dragCurrent = { ...this.dragStart };
   }
 
   handleMouseMove(e) {
-    if (!this.isDragging) return;
-
+    if (!this.isDragging || !this.selectingTarget) return;
     const rect = this.overlayCanvas.getBoundingClientRect();
     this.dragCurrent = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      x: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
+      y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
     };
+    this.drawOverlay();
   }
 
   handleMouseUp() {
     if (!this.isDragging || !this.selectingTarget) return;
-
     this.isDragging = false;
-    const cWidth = this.overlayCanvas.width;
-    const cHeight = this.overlayCanvas.height;
 
     const x1 = Math.min(this.dragStart.x, this.dragCurrent.x);
     const y1 = Math.min(this.dragStart.y, this.dragCurrent.y);
     const w = Math.abs(this.dragCurrent.x - this.dragStart.x);
     const h = Math.abs(this.dragCurrent.y - this.dragStart.y);
 
-    if (w > 15 && h > 15) {
-      const roiPercent = {
-        x: Math.round((x1 / cWidth) * 100),
-        y: Math.round((y1 / cHeight) * 100),
-        w: Math.round((w / cWidth) * 100),
-        h: Math.round((h / cHeight) * 100)
+    if (w > 0.02 && h > 0.02) {
+      const roiObj = {
+        x: Math.round(x1 * 100),
+        y: Math.round(y1 * 100),
+        w: Math.round(w * 100),
+        h: Math.round(h * 100)
       };
 
       if (this.selectingTarget === 'rune') {
-        this.runeRoi = roiPercent;
+        this.runeRoi = roiObj;
       } else if (this.selectingTarget === 'popup') {
-        this.popupRoi = roiPercent;
+        this.popupRoi = roiObj;
       } else if (this.selectingTarget === 'janus') {
-        this.janusRoi = roiPercent;
+        this.janusRoi = roiObj;
       }
-
-      // 설정 저장
-      const cfg = window.storageManager.loadConfig();
-      cfg.runeRoi = this.runeRoi;
-      cfg.popupRoi = this.popupRoi;
-      cfg.janusRoi = this.janusRoi;
-      window.storageManager.saveConfig(cfg);
-
-      window.imageAnalyzer.reset();
     }
 
     this.selectingTarget = null;
     this.overlayCanvas.style.cursor = 'default';
+    this.drawOverlay();
   }
 
-  drawRoiOverlay() {
-    const ctx = this.overlayCtx;
-    const cWidth = this.overlayCanvas.width;
-    const cHeight = this.overlayCanvas.height;
+  resizeCanvas() {
+    if (!this.videoEl || !this.analysisCanvas || !this.overlayCanvas) return;
+    const width = this.videoEl.videoWidth || 1280;
+    const height = this.videoEl.videoHeight || 720;
 
-    ctx.clearRect(0, 0, cWidth, cHeight);
+    this.analysisCanvas.width = width;
+    this.analysisCanvas.height = height;
 
-    // 1. 룬 ROI 박스
-    if (document.getElementById('toggle-rune-detection')?.checked) {
-      const rx = (this.runeRoi.x / 100) * cWidth;
-      const ry = (this.runeRoi.y / 100) * cHeight;
-      const rw = (this.runeRoi.w / 100) * cWidth;
-      const rh = (this.runeRoi.h / 100) * cHeight;
+    const rect = this.videoEl.getBoundingClientRect();
+    this.overlayCanvas.width = rect.width;
+    this.overlayCanvas.height = rect.height;
 
-      ctx.strokeStyle = '#a855f7';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 4]);
-      ctx.strokeRect(rx, ry, rw, rh);
+    this.drawOverlay();
+  }
 
-      ctx.fillStyle = 'rgba(168, 85, 247, 0.2)';
-      ctx.fillRect(rx, ry, rw, rh);
+  drawOverlay() {
+    if (!this.overlayCtx) return;
+    const w = this.overlayCanvas.width;
+    const h = this.overlayCanvas.height;
+    this.overlayCtx.clearRect(0, 0, w, h);
 
-      ctx.fillStyle = '#a855f7';
-      ctx.font = 'bold 12px Pretendard';
-      ctx.fillText('룬 감지 영역 (미니맵)', rx + 6, ry + 16);
-    }
+    if (!this.isStreaming) return;
 
-    // 2. 팝업 ROI 박스
-    if (document.getElementById('toggle-popup-detection')?.checked) {
-      const px = (this.popupRoi.x / 100) * cWidth;
-      const py = (this.popupRoi.y / 100) * cHeight;
-      const pw = (this.popupRoi.w / 100) * cWidth;
-      const ph = (this.popupRoi.h / 100) * cHeight;
+    // 1) 룬 영역 (분홍색 라인)
+    this.drawRoiBox(this.runeRoi, 'rgba(255, 0, 128, 0.8)', '📍 미니맵 (룬/거탐)');
+    // 2) 버프 영역 (보라색 라인)
+    this.drawRoiBox(this.janusRoi, 'rgba(155, 89, 182, 0.8)', '⚡ 버프 영역 (야누스/경쿠)');
 
-      ctx.strokeStyle = '#ffa502';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([4, 4]);
-      ctx.strokeRect(px, py, pw, ph);
-
-      ctx.fillStyle = 'rgba(255, 165, 2, 0.15)';
-      ctx.fillRect(px, py, pw, ph);
-
-      ctx.fillStyle = '#ffa502';
-      ctx.font = 'bold 12px Pretendard';
-      ctx.fillText('팝업/거탐 영역', px + 6, py + 16);
-    }
-
-    // 3. 솔 야누스 버프 ROI 박스
-    if (document.getElementById('toggle-janus-detection')?.checked) {
-      const jx = (this.janusRoi.x / 100) * cWidth;
-      const jy = (this.janusRoi.y / 100) * cHeight;
-      const jw = (this.janusRoi.w / 100) * cWidth;
-      const jh = (this.janusRoi.h / 100) * cHeight;
-
-      ctx.strokeStyle = '#00f2fe';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([3, 3]);
-      ctx.strokeRect(jx, jy, jw, jh);
-
-      ctx.fillStyle = 'rgba(0, 242, 254, 0.15)';
-      ctx.fillRect(jx, jy, jw, jh);
-
-      ctx.fillStyle = '#00f2fe';
-      ctx.font = 'bold 12px Pretendard';
-      ctx.fillText('야누스 버프 영역', jx + 6, jy + 16);
-    }
-
-    // 3. 현재 드래그 중인 임시 박스
+    // 드래그 중인 영역 그리드
     if (this.isDragging) {
-      const x1 = Math.min(this.dragStart.x, this.dragCurrent.x);
-      const y1 = Math.min(this.dragStart.y, this.dragCurrent.y);
-      const w = Math.abs(this.dragCurrent.x - this.dragStart.x);
-      const h = Math.abs(this.dragCurrent.y - this.dragStart.y);
+      const x = Math.min(this.dragStart.x, this.dragCurrent.x) * w;
+      const y = Math.min(this.dragStart.y, this.dragCurrent.y) * h;
+      const rw = Math.abs(this.dragCurrent.x - this.dragStart.x) * w;
+      const rh = Math.abs(this.dragCurrent.y - this.dragStart.y) * h;
 
-      ctx.strokeStyle = '#00f2fe';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([]);
-      ctx.strokeRect(x1, y1, w, h);
+      this.overlayCtx.strokeStyle = '#00f2fe';
+      this.overlayCtx.lineWidth = 2;
+      this.overlayCtx.setLineDash([4, 4]);
+      this.overlayCtx.strokeRect(x, y, rw, rh);
+      this.overlayCtx.setLineDash([]);
     }
+  }
+
+  drawRoiBox(roi, color, label) {
+    const w = this.overlayCanvas.width;
+    const h = this.overlayCanvas.height;
+
+    const rx = (roi.x / 100) * w;
+    const ry = (roi.y / 100) * h;
+    const rw = (roi.w / 100) * w;
+    const rh = (roi.h / 100) * h;
+
+    this.overlayCtx.strokeStyle = color;
+    this.overlayCtx.lineWidth = 2;
+    this.overlayCtx.strokeRect(rx, ry, rw, rh);
+
+    this.overlayCtx.fillStyle = color;
+    this.overlayCtx.font = '12px sans-serif';
+    this.overlayCtx.fillText(label, rx + 4, ry > 16 ? ry - 4 : ry + 14);
+  }
+
+  startLoop() {
+    const loop = () => {
+      if (!this.isStreaming) return;
+
+      if (this.videoEl.readyState === this.videoEl.HAVE_ENOUGH_DATA) {
+        this.analysisCtx.drawImage(
+          this.videoEl,
+          0, 0,
+          this.analysisCanvas.width,
+          this.analysisCanvas.height
+        );
+
+        const imageData = this.analysisCtx.getImageData(
+          0, 0,
+          this.analysisCanvas.width,
+          this.analysisCanvas.height
+        );
+
+        // 이미지 감지 엔진 호출
+        if (window.imageAnalyzer) {
+          window.imageAnalyzer.analyzeFrame(imageData, {
+            runeRoi: this.runeRoi,
+            popupRoi: this.popupRoi,
+            janusRoi: this.janusRoi
+          });
+        }
+      }
+
+      this.animationFrameId = requestAnimationFrame(loop);
+    };
+
+    this.animationFrameId = requestAnimationFrame(loop);
   }
 }
 

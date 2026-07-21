@@ -88,9 +88,17 @@ function bindEvents() {
   const stopBtn = document.getElementById('btn-stop-share');
 
   if (startBtn) {
-    startBtn.addEventListener('click', () => {
-      window.audioNotifier.initAudioContext(); // 사운드 컨텍스트 동기 초기화
-      window.screenCaptureManager.startCapture(); // 유저 제스처 활성 상태 유지하며 즉시 화면 공유 창 팝업!
+    startBtn.addEventListener('click', async () => {
+      try {
+        if (window.audioNotifier) window.audioNotifier.initAudioContext();
+        if (window.screenCaptureManager) {
+          await window.screenCaptureManager.startCapture();
+        } else {
+          alert('화면 캡처 모듈이 초기화되지 않았습니다. 페이지를 새로고침 해주세요.');
+        }
+      } catch (err) {
+        alert('게임 창 공유 실행 중 오류가 발생했습니다: ' + err.message);
+      }
     });
   }
 
