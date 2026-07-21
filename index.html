@@ -28,19 +28,34 @@
         <button id="btn-pip-toggle" class="btn btn-secondary" title="게임 위에 플로팅 타이머 노출">
           <span class="icon">📺</span> PIP 플로팅 창
         </button>
-        <button id="btn-export-settings" class="btn btn-outline" title="설정 백업 (JSON)">
-          <span class="icon">💾</span> 백업
+        <button id="btn-export-settings" class="btn btn-secondary btn-sm" title="설정 1클릭 백업">
+          <span class="icon">💾</span> 설정 백업
         </button>
-        <button id="btn-import-settings" class="btn btn-outline" title="설정 불러오기 (JSON)">
-          <span class="icon">📂</span> 복원
+        <button id="btn-import-settings" class="btn btn-secondary btn-sm" title="다른 PC에서 설정 복원">
+          <span class="icon">📂</span> 설정 복원
         </button>
-        <input type="file" id="file-import-settings" accept=".json" class="hidden">
+        <input type="file" id="file-import-input" accept=".json" style="display:none;">
         <button id="btn-reset-settings" class="btn btn-outline" title="설정 초기화">
           <span class="icon">⚙️</span> 초기화
         </button>
       </div>
     </header>
 
+    <!-- 🌟 상단 메인 탭 네비게이션 -->
+    <nav class="main-tabs-nav">
+      <button class="tab-btn active" data-tab="tab-timer">
+        <span class="icon">⏱️</span> 사냥 타이머 HUD
+      </button>
+      <button class="tab-btn" data-tab="tab-calculator">
+        <span class="icon">📊</span> 사냥 효율 계산기
+      </button>
+      <button class="tab-btn" data-tab="tab-portal">
+        <span class="icon">🌀</span> 그란디스 포탈 가이드
+      </button>
+    </nav>
+
+    <!-- 📌 Tab 1: 기존 사냥 타이머 HUD -->
+    <div id="tab-timer" class="tab-content active">
     <!-- 메인 컨텐츠 레이아웃 -->
     <main class="main-content">
       <!-- 좌측: 화면 공유 및 ROI (화면 감지 영역) 지정 -->
@@ -330,6 +345,120 @@
       </section>
     </main>
 
+    </div> <!-- /#tab-timer -->
+
+    <!-- 📌 Tab 2: 사냥 효율 계산기 (Mapleroad 스타일) -->
+    <div id="tab-calculator" class="tab-content">
+      <div class="calculator-container card">
+        <div class="card-header">
+          <h2><span class="icon">📊</span> 맵별 사냥 마릿수 & 경험치/메소 계산기</h2>
+          <span class="badge badge-info">Mapleroad Style Engine</span>
+        </div>
+
+        <div class="calc-grid">
+          <!-- 좌측: 입력 폼 -->
+          <div class="calc-form-panel">
+            <div class="form-group">
+              <label for="calc-user-level">👤 내 캐릭터 레벨</label>
+              <input type="number" id="calc-user-level" class="input-field" value="280" min="200" max="300">
+            </div>
+
+            <div class="form-group">
+              <label for="calc-map-select">🗺️ 사냥터 선택 (자동 마릿수 입력)</label>
+              <select id="calc-map-select" class="select-field">
+                <!-- calculator.js에서 자동 동적 채움 -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="calc-kill-ratio">🎯 젠컷 비율: <span id="val-kill-ratio" style="color:var(--accent-gold); font-weight:bold;">100%</span> (자동 마릿수 계산)</label>
+              <input type="range" id="calc-kill-ratio" class="range-slider" min="80" max="100" value="100" step="1">
+            </div>
+
+            <div class="form-group">
+              <label for="calc-6min-kills">⚔️ 6분 전투분석 마릿수 (자동계산 / 수동수정 가능)</label>
+              <input type="number" id="calc-6min-kills" class="input-field" value="1200">
+            </div>
+
+            <div class="form-group">
+              <label for="calc-exp-buff">✨ 경험치 버프 총합 (%) (기본100 + 경쿠100 + 익스골드 등)</label>
+              <input type="number" id="calc-exp-buff" class="input-field" value="200" step="10">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="calc-meso-rate">💰 총 메획 % (장비+재획비 등)</label>
+                <input type="number" id="calc-meso-rate" class="input-field" value="100" step="5">
+              </div>
+              <div class="form-group">
+                <label for="calc-drop-rate">💎 총 아획 % (장비+재획비 등)</label>
+                <input type="number" id="calc-drop-rate" class="input-field" value="100" step="5">
+              </div>
+            </div>
+          </div>
+
+          <!-- 우측: 실시간 연산 결과 카드 -->
+          <div class="calc-result-panel">
+            <div class="result-card-box highlight">
+              <h3><span class="icon">⚔️</span> 예상 마릿수</h3>
+              <div class="result-row">
+                <span>시간당 마릿수:</span>
+                <strong id="res-hourly-kills" class="text-accent">12,000 마리</strong>
+              </div>
+              <div class="result-row">
+                <span>1재획(2시간) 마릿수:</span>
+                <strong id="res-2hr-kills" class="text-gold">24,000 마리</strong>
+              </div>
+            </div>
+
+            <div class="result-card-box">
+              <h3><span class="icon">📈</span> 레벨 보너스 & 경험치 획득량</h3>
+              <div class="result-row">
+                <span>레벨 차이 비율:</span>
+                <span id="res-level-ratio" class="badge badge-success">±0~1 레벨 (+20% 보너스!)</span>
+              </div>
+              <div class="result-row">
+                <span>시간당 경험치:</span>
+                <strong id="res-hourly-exp" class="text-accent">0.00%</strong>
+              </div>
+              <div class="result-row">
+                <span>1재획(2시간) 총 경험치:</span>
+                <strong id="res-2hr-exp" class="text-gold">0.00%</strong>
+              </div>
+            </div>
+
+            <div class="result-card-box">
+              <h3><span class="icon">💰</span> 메소 & 재화 기댓값</h3>
+              <div class="result-row">
+                <span>시간당 메소:</span>
+                <strong id="res-hourly-meso">약 0 만 메소</strong>
+              </div>
+              <div class="result-row">
+                <span>1재획(2시간) 메소:</span>
+                <strong id="res-2hr-meso" class="text-gold">약 0 억 메소</strong>
+              </div>
+              <div class="result-row">
+                <span>솔 에르다 조각 (1재획):</span>
+                <strong id="res-2hr-erda" style="color:#00f2fe;">약 0 개</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 📌 Tab 3: 그란디스 포탈 가이드 -->
+    <div id="tab-portal" class="tab-content">
+      <div class="portal-container card">
+        <div class="card-header">
+          <h2><span class="icon">🌀</span> 280~290 그란디스 사냥터 히든 포탈 & 이동 동선 가이드</h2>
+        </div>
+        <div id="portal-guide-list" class="portal-grid">
+          <!-- portalGuide.js에서 자동 동적 렌더링 -->
+        </div>
+      </div>
+    </div>
+
     <!-- 시각 알림용 오버레이 플래시 -->
     <div id="flash-overlay" class="flash-overlay hidden"></div>
   </div>
@@ -341,6 +470,8 @@
   <script src="js/imageAnalyzer.js"></script>
   <script src="js/screenCapture.js"></script>
   <script src="js/pipController.js"></script>
+  <script src="js/calculator.js"></script>
+  <script src="js/portalGuide.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

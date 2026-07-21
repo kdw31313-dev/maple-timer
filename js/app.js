@@ -2,11 +2,33 @@
  * App.js - 메인 애플리케이션 진입점 및 이벤트 바인딩
  */
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. 설정 불러오기 및 적용
+  // 1. 상단 탭 (Tab) 네비게이션 전환 이벤트
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-tab');
+      tabBtns.forEach(b => b.classList.remove('active'));
+      tabContents.forEach(c => c.classList.remove('active'));
+
+      btn.classList.add('active');
+      const targetContent = document.getElementById(targetId);
+      if (targetContent) targetContent.classList.add('active');
+    });
+  });
+
+  // 2. 사냥 효율 계산기 (Mapleroad Style) 초기화
+  initCalculatorUI();
+
+  // 3. 그란디스 사냥터 포탈 가이드 초기화
+  initPortalGuideUI();
+
+  // 4. 설정 불러오기 및 적용
   const config = window.storageManager.loadConfig();
   applyConfigToUI(config);
 
-  // 2. 타이머 콜백 바인딩
+  // 5. 타이머 콜백 바인딩
   window.timerModule.onExpTick = (expState) => {
     updateExpUI(expState);
   };
@@ -320,11 +342,119 @@ function formatHMS(seconds) {
 /**
  * 도핑 버프 타이머 UI 업데이트
  */
-function updateDopingUI(key, itemState) {
-  const clock = document.getElementById(`doping-${key}-clock`);
-  if (clock) {
-    clock.textContent = formatHMS(itemState.remSecs);
-  }
+/**
+ * 사냥 효율 계산기 UI 바인딩 & 실시간 계산
+ */
+function initCalculatorUI() {
+  const mapSelect = document.getElementById('calc-map-select');
+  const levelInput = document.getElementById('calc-user-level');
+  const killRatioInput = document.getElementById('calc-kill-ratio');
+  const kills6minInput = document.getElementById('calc-6min-kills');
+  const expBuffInput = document.getElementById('calc-exp-buff');
+  const mesoRateInput = document.getElementById('calc-meso-rate');
+  const dropRateInput = document.getElementById('calc-drop-rate');
+
+  if (!mapSelect || !window.huntingCalculator) return;
+
+  // 1) 맵 목록 셀렉트 채우기
+  mapSelect.innerHTML = '';
+  window.huntingCalculator.mapDatabase.forEach((item, idx) => {
+    const opt = document.createElement('option');
+    opt.value = idx;
+    opt.textContent = `[${item.region}] ${item.name} (Lv.${item.mobLevel} / 젠당 ${item.spawnPerWave}마리)`;
+    if (item.name.includes('최하층 통로 2')) opt.selected = true;
+    mapSelect.appendChild(opt);
+  });
+
+  const updateCalculations = () => {
+    const userLevel = parseInt(levelInput.value, 10) || 280;
+    const mapIndex = parseInt(mapSelect.value, 10) || 0;
+    const killRatio = parseInt(killRatioInput.value, 10) || 100;
+    const expBuffPct = parseFloat(expBuffInput.value) || 200;
+    const mesoRatePct = parseFloat(mesoRateInput.value) || 100;
+    const dropRatePct = parseFloat(dropRateInput.value) || 100;
+
+    document.getElementById('val-kill-ratio').textContent = `${killRatio}%`;
+
+    const res = window.huntingCalculator.calculate({
+      userLevel,
+      mapIndex,
+      killRatio,
+      expBuffPct,
+      mesoRatePct,
+      dropRatePct
+    });
+
+    // 6분 마릿수 자동 채움 (사용자가 수동 변경하지 않은 경우)
+    kills6minInput.value = res.actual6MinKills;
+
+    // 결과 렌더링
+    document.getElementById('res-hourly-kills').textContent = `${res.hourlyKills.toLocaleString()} 마리`;
+    document.getElementById('res-2hr-kills').textContent = `${res.twoHourKills.toLocaleString()} 마리`;
+
+    const ratioLabel = res.expLevelMult === 1.2 ? '±0~1 레벨 (+20% 보너스!)' :
+                       res.expLevelMult === 1.1 ? '±2 레벨 (+10% 보너스)' :
+                       res.expLevelMult === 1.05 ? '±3~4 레벨 (+5% 보너스)' : '100% 정상 경험치';
+    document.getElementById('res-level-ratio').textContent = ratioLabel;
+
+    // 예상 경험치 (가상 퍼센트 산출)
+    const expPctHourly = ((res.hourlyExpTotal / (userLevel * 250000000000)) * 100).toFixed(3);
+    const expPct2Hr = (expPctHourly * 2).toFixed(3);
+
+    document.getElementById('res-hourly-exp').textContent = `약 +${expPctHourly}%`;
+    document.getElementById('res-2hr-exp').textContent = `약 +${expPct2Hr}%`;
+
+    const hourlyMesoMan = Math.round(res.hourlyMesoTotal / 10000);
+    const twoHrMesoEok = (res.twoHourMesoTotal / 100000000).toFixed(2);
+
+    document.getElementById('res-hourly-meso').textContent = `약 ${hourlyMesoMan.toLocaleString()} 만 메소`;
+    document.getElementById('res-2hr-meso').textContent = `약 ${twoHrMesoEok} 억 메소`;
+    document.getElementById('res-2hr-erda').textContent = `약 ${res.solErdaPieces2Hr} 개`;
+  };
+
+  // 이벤트 바인딩
+  mapSelect.addEventListener('change', updateCalculations);
+  levelInput.addEventListener('input', updateCalculations);
+  killRatioInput.addEventListener('input', updateCalculations);
+  expBuffInput.addEventListener('input', updateCalculations);
+  mesoRateInput.addEventListener('input', updateCalculations);
+  dropRateInput.addEventListener('input', updateCalculations);
+
+  updateCalculations();
+}
+
+/**
+ * 그란디스 사냥터 포탈 가이드 동적 렌더링
+ */
+function initPortalGuideUI() {
+  const container = document.getElementById('portal-guide-list');
+  if (!container || !window.portalGuide) return;
+
+  container.innerHTML = '';
+  window.portalGuide.guideData.forEach(regionGroup => {
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'portal-region-group';
+    groupDiv.innerHTML = `<h3>🏛️ ${regionGroup.region}</h3>`;
+
+    regionGroup.maps.forEach(mapInfo => {
+      const card = document.createElement('div');
+      card.className = 'portal-map-card';
+      
+      let portalItemsHtml = '';
+      mapInfo.portals.forEach(p => {
+        portalItemsHtml += `<div class="portal-item">📍 <strong>${p.pos}</strong> ➔ ${p.destination} (<em>${p.usage}</em>)</div>`;
+      });
+
+      card.innerHTML = `
+        <h4>📍 ${mapInfo.name}</h4>
+        ${portalItemsHtml}
+        <div style="font-size:0.85rem; color:var(--accent-gold); margin-top:6px;">💡 <strong>동선 꿀팁:</strong> ${mapInfo.tip}</div>
+      `;
+      groupDiv.appendChild(card);
+    });
+
+    container.appendChild(groupDiv);
+  });
 }
 
 /**
