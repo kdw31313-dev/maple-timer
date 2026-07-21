@@ -1,5 +1,5 @@
 /**
- * ScreenCaptureManager - WebRTC Screen Capture & 백그라운드 실시간 멈춤 방지 연속 스캔 모듈
+ * ScreenCaptureManager - WebRTC Screen Capture & 200% 정밀 확대 ROI 모달 선택 모듈
  */
 class ScreenCaptureManager {
   constructor() {
@@ -19,22 +19,212 @@ class ScreenCaptureManager {
     this.popupRoi = { x: 0, y: 0, w: 100, h: 100 }; // 메이플 전체 사냥 화면 범위
     this.janusRoi = { x: 70, y: 0, w: 30, h: 20 }; // 우측 상단 버프 영역 기본 위치
 
-    // ROI 드래그 선택 상태
-    this.selectingTarget = null;
-    this.isDragging = false;
-    this.dragStart = { x: 0, y: 0 };
-    this.dragCurrent = { x: 0, y: 0 };
+    // 200% 정밀 모달 관련 상태
+    this.modalEl = document.getElementById('roi-modal');
+    this.modalCanvas = document.getElementById('roi-modal-canvas');
+    this.modalCtx = this.modalCanvas ? this.modalCanvas.getContext('2d') : null;
+    this.modalWrapper = document.getElementById('roi-canvas-wrapper');
+    this.modalViewport = document.getElementById('roi-modal-viewport');
+
+    this.modalTarget = null; // 'rune' | 'janus'
+    this.modalZoom = 2.0; // 기본 200% 확대
+    this.modalTempRoi = { x: 0, y: 0, w: 0, h: 0 };
+    this.isModalDragging = false;
+    this.modalDragStart = { x: 0, y: 0 };
+    this.modalDragCurrent = { x: 0, y: 0 };
 
     this.initEvents();
   }
 
   initEvents() {
-    if (!this.overlayCanvas) return;
-
-    this.overlayCanvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-    this.overlayCanvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-    this.overlayCanvas.addEventListener('mouseup', () => this.handleMouseUp());
+    if (this.overlayCanvas) {
+      this.overlayCanvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+      this.overlayCanvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+      this.overlayCanvas.addEventListener('mouseup', () => this.handleMouseUp());
+    }
     window.addEventListener('resize', () => this.resizeCanvas());
+
+    this.initModalEvents();
+  }
+
+  initModalEvents() {
+    if (!this.modalCanvas) return;
+
+    // 모달 내 드래그 영역 선택
+    this.modalCanvas.addEventListener('mousedown', (e) => {
+      if (!this.modalTarget) return;
+      const rect = this.modalCanvas.getBoundingClientRect();
+      this.isModalDragging = true;
+      this.modalDragStart = {
+        x: (e.clientX - rect.left) / rect.width,
+        y: (e.clientY - rect.top) / rect.height
+      };
+      this.modalDragCurrent = { ...this.modalDragStart };
+    });
+
+    this.modalCanvas.addEventListener('mousemove', (e) => {
+      if (!this.isModalDragging) return;
+      const rect = this.modalCanvas.getBoundingClientRect();
+      this.modalDragCurrent = {
+        x: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
+        y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
+      };
+      this.drawModalCanvas();
+    });
+
+    this.modalCanvas.addEventListener('mouseup', () => {
+      if (!this.isModalDragging) return;
+      this.isModalDragging = false;
+
+      const x1 = Math.min(this.modalDragStart.x, this.modalDragCurrent.x);
+      const y1 = Math.min(this.modalDragStart.y, this.modalDragCurrent.y);
+      const w = Math.abs(this.modalDragCurrent.x - this.modalDragStart.x);
+      const h = Math.abs(this.modalDragCurrent.y - this.modalDragStart.y);
+
+      if (w > 0.01 && h > 0.01) {
+        this.modalTempRoi = {
+          x: Math.round(x1 * 100),
+          y: Math.round(y1 * 100),
+          w: Math.round(w * 100),
+          h: Math.round(h * 100)
+        };
+      }
+      this.drawModalCanvas();
+    });
+
+    // 휠 스크롤 줌
+    if (this.modalViewport) {
+      this.modalViewport.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        if (e.deltaY < 0) {
+          this.setModalZoom(this.modalZoom + 0.25);
+        } else {
+          this.setModalZoom(this.modalZoom - 0.25);
+        }
+      }, { passive: false });
+    }
+
+    // 모달 버튼들
+    const btnZoomOut = document.getElementById('btn-modal-zoom-out');
+    const btnZoomIn = document.getElementById('btn-modal-zoom-in');
+    const btnZoomReset = document.getElementById('btn-modal-zoom-reset');
+    const btnClose = document.getElementById('btn-modal-close');
+    const btnApply = document.getElementById('btn-modal-apply');
+
+    if (btnZoomOut) btnZoomOut.onclick = () => this.setModalZoom(this.modalZoom - 0.5);
+    if (btnZoomIn) btnZoomIn.onclick = () => this.setModalZoom(this.modalZoom + 0.5);
+    if (btnZoomReset) btnZoomReset.onclick = () => this.setModalZoom(1.0);
+    if (btnClose) btnClose.onclick = () => this.closeRoiModal();
+    if (btnApply) btnApply.onclick = () => this.applyRoiModal();
+  }
+
+  setModalZoom(zoomVal) {
+    this.modalZoom = Math.max(1.0, Math.min(4.0, zoomVal));
+    const txtZoom = document.getElementById('txt-modal-zoom');
+    if (txtZoom) txtZoom.textContent = `${Math.round(this.modalZoom * 100)}%`;
+
+    if (this.modalWrapper) {
+      this.modalWrapper.style.transform = `scale(${this.modalZoom})`;
+    }
+  }
+
+  /**
+   * 🔍 200% 정밀 확대 모달 오픈
+   */
+  openRoiModal(targetType) {
+    if (!this.isStreaming || !this.videoEl) {
+      alert('먼저 상단의 [▶ 게임 창 공유 시작] 버튼을 눌러 메이플 화면을 연결해 주세요!');
+      return;
+    }
+
+    this.modalTarget = targetType;
+    this.modalTempRoi = targetType === 'rune' ? { ...this.runeRoi } : { ...this.janusRoi };
+
+    const titleEl = document.getElementById('roi-modal-title');
+    const subTitleEl = document.getElementById('roi-modal-subtitle');
+
+    if (targetType === 'rune') {
+      if (titleEl) titleEl.textContent = '📍 미니맵 영역 지정 (200% 정밀 확대)';
+      if (subTitleEl) subTitleEl.textContent = '미니맵의 내부 지도 영역만 마우스 드래그로 직사각형으로 지정하세요.';
+    } else {
+      if (titleEl) titleEl.textContent = '⚡ 버프 영역 지정 (200% 정밀 확대)';
+      if (subTitleEl) subTitleEl.textContent = '야누스, 경쿠, 소형재획비 버프 아이콘이 표시되는 우측 상단 영역을 드래그하세요.';
+    }
+
+    const vWidth = this.videoEl.videoWidth || 1280;
+    const vHeight = this.videoEl.videoHeight || 720;
+
+    this.modalCanvas.width = vWidth;
+    this.modalCanvas.height = vHeight;
+
+    // 현재 화면 프레임 캡처
+    this.modalCtx.drawImage(this.videoEl, 0, 0, vWidth, vHeight);
+
+    this.setModalZoom(2.0); // 200% 기본 확대
+    if (this.modalEl) this.modalEl.classList.remove('hidden');
+
+    this.drawModalCanvas();
+  }
+
+  drawModalCanvas() {
+    if (!this.modalCtx || !this.videoEl) return;
+
+    const w = this.modalCanvas.width;
+    const h = this.modalCanvas.height;
+
+    // 비디오 프레임 그리기
+    this.modalCtx.drawImage(this.videoEl, 0, 0, w, h);
+
+    // 반투명 어두운 오버레이
+    this.modalCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    this.modalCtx.fillRect(0, 0, w, h);
+
+    // 드래그 중이거나 선택된 영역
+    let roi = this.modalTempRoi;
+    if (this.isModalDragging) {
+      const x1 = Math.min(this.modalDragStart.x, this.modalDragCurrent.x);
+      const y1 = Math.min(this.modalDragStart.y, this.modalDragCurrent.y);
+      const mw = Math.abs(this.modalDragCurrent.x - this.modalDragStart.x);
+      const mh = Math.abs(this.modalDragCurrent.y - this.modalDragStart.y);
+      roi = { x: x1 * 100, y: y1 * 100, w: mw * 100, h: mh * 100 };
+    }
+
+    const rx = (roi.x / 100) * w;
+    const ry = (roi.y / 100) * h;
+    const rw = (roi.w / 100) * w;
+    const rh = (roi.h / 100) * h;
+
+    // 선택 영역 명확히 잘라내서 원본 출력
+    this.modalCtx.drawImage(this.videoEl, rx, ry, rw, rh, rx, ry, rw, rh);
+
+    const color = this.modalTarget === 'rune' ? '#ff0080' : '#9b59b6';
+    const label = this.modalTarget === 'rune' ? '📍 미니맵 지도 선택 영역' : '⚡ 버프 감지 선택 영역';
+
+    this.modalCtx.strokeStyle = color;
+    this.modalCtx.lineWidth = 3;
+    this.modalCtx.strokeRect(rx, ry, rw, rh);
+
+    this.modalCtx.fillStyle = color;
+    this.modalCtx.font = 'bold 16px sans-serif';
+    this.modalCtx.fillText(label, rx + 6, ry > 22 ? ry - 8 : ry + 20);
+  }
+
+  closeRoiModal() {
+    if (this.modalEl) this.modalEl.classList.add('hidden');
+    this.modalTarget = null;
+  }
+
+  applyRoiModal() {
+    if (!this.modalTarget || this.modalTempRoi.w <= 0) return;
+
+    if (this.modalTarget === 'rune') {
+      this.runeRoi = { ...this.modalTempRoi };
+    } else if (this.modalTarget === 'janus') {
+      this.janusRoi = { ...this.modalTempRoi };
+    }
+
+    this.drawOverlay();
+    this.closeRoiModal();
   }
 
   startCapture() {
@@ -119,66 +309,6 @@ class ScreenCaptureManager {
     if (stopBtn) stopBtn.classList.toggle('hidden', !isConnected);
   }
 
-  setSelectingTarget(target) {
-    this.selectingTarget = target;
-    const overlay = this.overlayCanvas;
-    if (overlay) {
-      overlay.style.cursor = target ? 'crosshair' : 'default';
-    }
-  }
-
-  handleMouseDown(e) {
-    if (!this.selectingTarget || !this.isStreaming) return;
-    const rect = this.overlayCanvas.getBoundingClientRect();
-    this.isDragging = true;
-    this.dragStart = {
-      x: (e.clientX - rect.left) / rect.width,
-      y: (e.clientY - rect.top) / rect.height
-    };
-    this.dragCurrent = { ...this.dragStart };
-  }
-
-  handleMouseMove(e) {
-    if (!this.isDragging || !this.selectingTarget) return;
-    const rect = this.overlayCanvas.getBoundingClientRect();
-    this.dragCurrent = {
-      x: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
-      y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
-    };
-    this.drawOverlay();
-  }
-
-  handleMouseUp() {
-    if (!this.isDragging || !this.selectingTarget) return;
-    this.isDragging = false;
-
-    const x1 = Math.min(this.dragStart.x, this.dragCurrent.x);
-    const y1 = Math.min(this.dragStart.y, this.dragCurrent.y);
-    const w = Math.abs(this.dragCurrent.x - this.dragStart.x);
-    const h = Math.abs(this.dragCurrent.y - this.dragStart.y);
-
-    if (w > 0.02 && h > 0.02) {
-      const roiObj = {
-        x: Math.round(x1 * 100),
-        y: Math.round(y1 * 100),
-        w: Math.round(w * 100),
-        h: Math.round(h * 100)
-      };
-
-      if (this.selectingTarget === 'rune') {
-        this.runeRoi = roiObj;
-      } else if (this.selectingTarget === 'popup') {
-        this.popupRoi = roiObj;
-      } else if (this.selectingTarget === 'janus') {
-        this.janusRoi = roiObj;
-      }
-    }
-
-    this.selectingTarget = null;
-    this.overlayCanvas.style.cursor = 'default';
-    this.drawOverlay();
-  }
-
   resizeCanvas() {
     if (!this.videoEl || !this.analysisCanvas || !this.overlayCanvas) return;
     const width = this.videoEl.videoWidth || 1280;
@@ -206,23 +336,8 @@ class ScreenCaptureManager {
 
     if (!this.isStreaming) return;
 
-    // 1) 룬 영역 (분홍색 라인)
     this.drawRoiBox(this.runeRoi, 'rgba(255, 0, 128, 0.8)', '📍 미니맵 (룬/거탐)');
-    // 2) 버프 영역 (보라색 라인)
     this.drawRoiBox(this.janusRoi, 'rgba(155, 89, 182, 0.8)', '⚡ 버프 영역 (야누스/경쿠)');
-
-    if (this.isDragging) {
-      const x = Math.min(this.dragStart.x, this.dragCurrent.x) * w;
-      const y = Math.min(this.dragStart.y, this.dragCurrent.y) * h;
-      const rw = Math.abs(this.dragCurrent.x - this.dragStart.x) * w;
-      const rh = Math.abs(this.dragCurrent.y - this.dragStart.y) * h;
-
-      this.overlayCtx.strokeStyle = '#00f2fe';
-      this.overlayCtx.lineWidth = 2;
-      this.overlayCtx.setLineDash([4, 4]);
-      this.overlayCtx.strokeRect(x, y, rw, rh);
-      this.overlayCtx.setLineDash([]);
-    }
   }
 
   drawRoiBox(roi, color, label) {
@@ -243,9 +358,6 @@ class ScreenCaptureManager {
     this.overlayCtx.fillText(label, rx + 4, ry > 16 ? ry - 4 : ry + 14);
   }
 
-  /**
-   * 🚨 핵심: 크롬 백그라운드 탭 멈춤 방지를 위한 setInterval (100ms = 초당 10회 무한 실시간 분석)
-   */
   startLoop() {
     if (this.loopIntervalId) {
       clearInterval(this.loopIntervalId);
@@ -260,7 +372,6 @@ class ScreenCaptureManager {
           this.resizeCanvas();
         }
 
-        // 비디오 프레임을 캔버스에 계속 갱신하여 그리기!
         this.analysisCtx.drawImage(
           this.videoEl,
           0, 0,
@@ -274,7 +385,6 @@ class ScreenCaptureManager {
           this.analysisCanvas.height
         );
 
-        // 실시간 이미지 감지 엔진 호출
         if (window.imageAnalyzer) {
           window.imageAnalyzer.analyzeFrame(imageData, {
             runeRoi: this.runeRoi,
@@ -283,7 +393,7 @@ class ScreenCaptureManager {
           });
         }
       }
-    }, 100); // 100ms마다 초당 10번 무한 실시간 분석!
+    }, 100);
   }
 }
 

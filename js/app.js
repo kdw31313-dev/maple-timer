@@ -103,17 +103,17 @@ function bindEvents() {
     };
   }
 
-  // --- ROI 드래그 영역 지정 버튼 ---
+  // --- 200% 정밀 확대 ROI 영역 지정 모달 오픈 ---
   document.getElementById('btn-select-rune-roi')?.addEventListener('click', () => {
-    window.screenCaptureManager.setSelectionMode('rune');
+    window.screenCaptureManager.openRoiModal('rune');
   });
 
   document.getElementById('btn-select-popup-roi')?.addEventListener('click', () => {
-    window.screenCaptureManager.setSelectionMode('popup');
+    window.screenCaptureManager.openRoiModal('rune');
   });
 
   document.getElementById('btn-select-janus-roi')?.addEventListener('click', () => {
-    window.screenCaptureManager.setSelectionMode('janus');
+    window.screenCaptureManager.openRoiModal('janus');
   });
 
   // --- 경험치 쿠폰 타이머 버튼 ---

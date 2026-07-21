@@ -478,6 +478,42 @@
     <div id="flash-overlay" class="flash-overlay hidden"></div>
   </div>
 
+  <!-- 🔍 200% 정밀 확대 ROI 영역 선택 모달 (유저 캡처 화면 100% 반영) -->
+  <div id="roi-modal" class="roi-modal hidden">
+    <header class="roi-modal-header">
+      <div class="header-left">
+        <h2 id="roi-modal-title">📍 미니맵 영역 선택 (200% 정밀 확대)</h2>
+        <p id="roi-modal-subtitle">미니맵의 내부 지도 영역을 마우스 드래그로 직사각형으로 선택하세요.</p>
+      </div>
+
+      <div class="header-tools">
+        <div class="btn-group">
+          <button id="btn-modal-zoom-out" class="btn btn-sm btn-secondary">🔍 -</button>
+          <span id="txt-modal-zoom" class="zoom-indicator">200%</span>
+          <button id="btn-modal-zoom-in" class="btn btn-sm btn-secondary">🔍 +</button>
+          <button id="btn-modal-zoom-reset" class="btn btn-sm btn-secondary">↗️ 맞춤</button>
+        </div>
+
+        <div class="modal-actions">
+          <button id="btn-modal-close" class="btn btn-secondary">✕ 취소</button>
+          <button id="btn-modal-apply" class="btn btn-primary">✓ 적용 완료</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="roi-modal-viewport" id="roi-modal-viewport">
+      <div class="roi-canvas-wrapper" id="roi-canvas-wrapper">
+        <canvas id="roi-modal-canvas"></canvas>
+      </div>
+    </div>
+
+    <footer class="roi-modal-footer">
+      <div class="footer-tip-box">
+        💡 <strong>선택 예시:</strong> 미니맵/버프의 헤더 및 외곽선은 빼고 <strong>아이콘이 표시되는 내부 영역만 드래그</strong>하시면 탐지 오탐이 0%로 완벽해집니다! (마우스 휠 스크롤로 확대/축소 가능)
+      </div>
+    </footer>
+  </div>
+
   <!-- 스크립트 불러오기 모듈 -->
   <script src="js/storage.js"></script>
   <script src="js/audioNotifier.js"></script>
