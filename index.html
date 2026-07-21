@@ -91,7 +91,7 @@
           </div>
         </div>
 
-        <!-- 감지 영역(ROI) 설정 도구 -->
+        <!-- 감지 영역(ROI) 설정 도구 및 개별 사운드 지정 -->
         <div class="roi-tools-panel">
           <div class="roi-tool-item">
             <div class="tool-title">
@@ -101,7 +101,18 @@
                 <div style="font-size:0.75rem; color:var(--text-muted);">미니맵의 룬 다이아몬드(분홍/보라) 위치 지정 권장</div>
               </div>
             </div>
-            <div class="tool-actions">
+            <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <div class="sound-select-box" style="display:inline-flex; align-items:center; gap:4px;">
+                <select id="select-sound-rune" class="select-sound-preset" style="padding:3px 6px; font-size:0.75rem; border-radius:4px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border-color);">
+                  <option value="rune">🎶 아르페지오 (룬 기본)</option>
+                  <option value="siren">🚨 비상 사이렌</option>
+                  <option value="beep">⚡ 전자 삐삐음</option>
+                  <option value="chime">🔔 맑은 벨소리</option>
+                  <option value="bell">🔔 딩동 듀얼벨</option>
+                  <option value="harp">🎵 하프 아르페지오</option>
+                </select>
+                <button class="btn btn-tiny btn-outline btn-test-sound" data-sound-cat="rune" style="padding:3px 6px; font-size:0.75rem;">🔊 테스트</button>
+              </div>
               <label class="switch">
                 <input type="checkbox" id="toggle-rune-detection" checked>
                 <span class="slider"></span>
@@ -116,10 +127,21 @@
               <span class="color-badge popup-badge"></span>
               <div>
                 <strong>🚨 거짓말 탐지기 팝업 감지 (화면 전체 100% 자동 분석)</strong>
-                <div style="font-size:0.75rem; color:var(--text-muted);">4종 거탐 팝업은 메이플 창 전체 범위에서 자동으로 포착됩니다.</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">3종 거탐(도형/비올레타/문장) 팝업은 메이플 창 전체에서 자동 포착됩니다.</div>
               </div>
             </div>
-            <div class="tool-actions">
+            <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <div class="sound-select-box" style="display:inline-flex; align-items:center; gap:4px;">
+                <select id="select-sound-popup" class="select-sound-preset" style="padding:3px 6px; font-size:0.75rem; border-radius:4px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border-color);">
+                  <option value="siren">🚨 비상 사이렌 (거탐 기본)</option>
+                  <option value="rune">🎶 아르페지오</option>
+                  <option value="beep">⚡ 전자 삐삐음</option>
+                  <option value="chime">🔔 맑은 벨소리</option>
+                  <option value="bell">🔔 딩동 듀얼벨</option>
+                  <option value="harp">🎵 하프 아르페지오</option>
+                </select>
+                <button class="btn btn-tiny btn-outline btn-test-sound" data-sound-cat="popup" style="padding:3px 6px; font-size:0.75rem;">🔊 테스트</button>
+              </div>
               <label class="switch">
                 <input type="checkbox" id="toggle-popup-detection" checked>
                 <span class="slider"></span>
@@ -137,7 +159,18 @@
                 <div style="font-size:0.75rem; color:var(--text-muted);">60초 설치 스킬 소멸/꺼짐 감지 시 0.1초 즉시 재설치 알림 (클러스터링 제외)</div>
               </div>
             </div>
-            <div class="tool-actions">
+            <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <div class="sound-select-box" style="display:inline-flex; align-items:center; gap:4px;">
+                <select id="select-sound-janus" class="select-sound-preset" style="padding:3px 6px; font-size:0.75rem; border-radius:4px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border-color);">
+                  <option value="beep">⚡ 전자 삐삐음 (야누스 기본)</option>
+                  <option value="rune">🎶 아르페지오</option>
+                  <option value="siren">🚨 비상 사이렌</option>
+                  <option value="chime">🔔 맑은 벨소리</option>
+                  <option value="bell">🔔 딩동 듀얼벨</option>
+                  <option value="harp">🎵 하프 아르페지오</option>
+                </select>
+                <button class="btn btn-tiny btn-outline btn-test-sound" data-sound-cat="janus" style="padding:3px 6px; font-size:0.75rem;">🔊 테스트</button>
+              </div>
               <label class="switch">
                 <input type="checkbox" id="toggle-janus-detection" checked>
                 <span class="slider"></span>
@@ -156,7 +189,18 @@
                 <div style="font-size:0.75rem; color:var(--text-muted);">비슷한 시기 종료되는 4종 도핑을 1회로 묶어서 알림 (도배 100% 방지)</div>
               </div>
             </div>
-            <div class="tool-actions">
+            <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <div class="sound-select-box" style="display:inline-flex; align-items:center; gap:4px;">
+                <select id="select-sound-exp" class="select-sound-preset" style="padding:3px 6px; font-size:0.75rem; border-radius:4px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border-color);">
+                  <option value="chime">🔔 맑은 벨소리 (도핑 기본)</option>
+                  <option value="bell">🔔 딩동 듀얼벨</option>
+                  <option value="harp">🎵 하프 아르페지오</option>
+                  <option value="rune">🎶 아르페지오</option>
+                  <option value="beep">⚡ 전자 삐삐음</option>
+                  <option value="siren">🚨 비상 사이렌</option>
+                </select>
+                <button class="btn btn-tiny btn-outline btn-test-sound" data-sound-cat="exp" style="padding:3px 6px; font-size:0.75rem;">🔊 테스트</button>
+              </div>
               <label class="switch">
                 <input type="checkbox" id="toggle-exp-detection" checked>
                 <span class="slider"></span>

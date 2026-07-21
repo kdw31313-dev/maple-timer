@@ -19,6 +19,13 @@ class StorageManager {
       runeDetectionEnabled: true,
       popupDetectionEnabled: true,
       janusAutoDetectionEnabled: true,
+      // 항목별 커스텀 효과음
+      customSounds: {
+        rune: 'rune',
+        popup: 'siren',
+        janus: 'beep',
+        exp: 'chime'
+      },
       // 감지 영역 기본 비율 (%)
       runeRoi: { x: 1, y: 1, w: 22, h: 22 },   // 메이플 좌측 상단 미니맵 기본 위치
       popupRoi: { x: 0, y: 0, w: 100, h: 100 }, // 메이플 전체 사냥 화면 범위 (거탐 무작위 위치 포착)

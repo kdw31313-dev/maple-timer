@@ -464,6 +464,35 @@ function initCalculatorUI() {
 }
 
 
+  // 항목별 커스텀 사운드 설정 및 미리듣기 버튼 이벤트 바인딩
+  ['rune', 'popup', 'janus', 'exp'].forEach(cat => {
+    const selectEl = document.getElementById(`select-sound-${cat}`);
+    if (selectEl) {
+      selectEl.addEventListener('change', (e) => {
+        const val = e.target.value;
+        if (window.audioNotifier) {
+          window.audioNotifier.setCustomSound(cat, val);
+          window.audioNotifier.playSoundPreset(val); // 선택 시 바로 1회 미리듣기!
+        }
+        saveCurrentConfig();
+      });
+    }
+  });
+
+  document.querySelectorAll('.btn-test-sound').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const cat = e.target.getAttribute('data-sound-cat');
+      const selectEl = document.getElementById(`select-sound-${cat}`);
+      const soundVal = selectEl ? selectEl.value : 'chime';
+      if (window.audioNotifier) {
+        window.audioNotifier.initAudioContext();
+        window.audioNotifier.playSoundPreset(soundVal);
+      }
+    });
+  });
+}
+
+
 /**
  * 저장된 설정을 UI에 반영
  */
@@ -485,6 +514,17 @@ function applyConfigToUI(cfg) {
   window.audioNotifier.setVolume(cfg.volume);
   window.audioNotifier.setTTS(cfg.ttsVoice);
   window.audioNotifier.setFlash(cfg.visualFlash);
+
+  // 항목별 커스텀 사운드 설정 반영
+  if (cfg.customSounds) {
+    window.audioNotifier.customSounds = { ...cfg.customSounds };
+    ['rune', 'popup', 'janus', 'exp'].forEach(cat => {
+      const selectEl = document.getElementById(`select-sound-${cat}`);
+      if (selectEl && cfg.customSounds[cat]) {
+        selectEl.value = cfg.customSounds[cat];
+      }
+    });
+  }
 
   // 경험치 타이머 프리셋
   document.querySelectorAll('.btn-preset').forEach(btn => {
@@ -520,15 +560,23 @@ function saveCurrentConfig() {
   const activePresetBtn = document.querySelector('.btn-preset.active');
   const janusRadio = document.querySelector('input[name="janus-cycle"]:checked');
 
+  const customSounds = {};
+  ['rune', 'popup', 'janus', 'exp'].forEach(cat => {
+    const selectEl = document.getElementById(`select-sound-${cat}`);
+    if (selectEl) customSounds[cat] = selectEl.value;
+  });
+
   const cfg = {
     volume: volRange ? parseInt(volRange.value, 10) : 80,
     soundPreset: soundSelect ? soundSelect.value : 'chime',
-    ttsVoice: ttsToggle ? ttsToggle.checked : true,
+    ttsVoice: ttsToggle ? ttsToggle.checked : false,
     visualFlash: flashToggle ? flashToggle.checked : true,
     expPresetMinutes: activePresetBtn ? parseInt(activePresetBtn.getAttribute('data-minutes'), 10) : 30,
     janusCycle: janusRadio ? parseInt(janusRadio.value, 10) : 80,
-    runeRoi: window.screenCaptureManager ? window.screenCaptureManager.runeRoi : { x: 35, y: 20, w: 30, h: 40 },
-    popupRoi: window.screenCaptureManager ? window.screenCaptureManager.popupRoi : { x: 25, y: 25, w: 50, h: 50 }
+    customSounds: customSounds,
+    runeRoi: window.screenCaptureManager ? window.screenCaptureManager.runeRoi : { x: 1, y: 1, w: 22, h: 22 },
+    popupRoi: window.screenCaptureManager ? window.screenCaptureManager.popupRoi : { x: 0, y: 0, w: 100, h: 100 },
+    janusRoi: window.screenCaptureManager ? window.screenCaptureManager.janusRoi : { x: 75, y: 1, w: 24, h: 15 }
   };
 
   window.storageManager.saveConfig(cfg);

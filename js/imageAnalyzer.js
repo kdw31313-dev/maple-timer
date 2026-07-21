@@ -290,7 +290,7 @@ class ImageAnalyzer {
     }
 
     if (window.audioNotifier) {
-      window.audioNotifier.notify(`비상! ${detectedType}가 감지되었습니다! 즉시 화면을 확인하세요!`, 'siren');
+      window.audioNotifier.notify(`비상! ${detectedType}가 감지되었습니다! 즉시 화면을 확인하세요!`, 'popup');
     }
   }
 
@@ -396,7 +396,7 @@ class ImageAnalyzer {
     if (this.onJanusStatusChange) this.onJanusStatusChange('🚨 솔 야누스 종료됨! 재설치하세요!', true);
 
     if (window.audioNotifier) {
-      window.audioNotifier.notify('솔 야누스 버프가 종료되었습니다! 야누스를 재설치하세요!', 'beep');
+      window.audioNotifier.notify('솔 야누스 버프가 종료되었습니다! 야누스를 재설치하세요!', 'janus');
     }
   }
 
@@ -563,7 +563,7 @@ class ImageAnalyzer {
     }
 
     if (window.audioNotifier) {
-      window.audioNotifier.notify(`${buffText} 버프가 곧 종료됩니다! 도핑 재사용을 준비하세요!`, 'chime');
+      window.audioNotifier.notify(`${buffText} 버프가 곧 종료됩니다! 도핑 재사용을 준비하세요!`, 'exp');
     }
   }
 
@@ -580,7 +580,7 @@ class ImageAnalyzer {
     }
 
     if (window.audioNotifier) {
-      window.audioNotifier.notify(`${buffText} 버프가 종료되었습니다! 도핑 아이템을 재사용하세요!`, 'chime');
+      window.audioNotifier.notify(`${buffText} 버프가 종료되었습니다! 도핑 아이템을 재사용하세요!`, 'exp');
     }
   }
 
@@ -589,7 +589,7 @@ class ImageAnalyzer {
     if (this.onJanusStatusChange) this.onJanusStatusChange('🚨 야누스 10초 남음!', true);
 
     if (window.audioNotifier) {
-      window.audioNotifier.notify('솔 야누스 10초 남았습니다. 재사용을 준비하세요!', 'beep');
+      window.audioNotifier.notify('솔 야누스 10초 남았습니다. 재사용을 준비하세요!', 'janus');
     }
   }
 
