@@ -25,9 +25,12 @@ class ImageAnalyzer {
       isBuffActive: false,
       consecutiveActiveCount: 0,
       consecutiveInactiveCount: 0,
-      flashCount: 0,
-      lastBrightness: 0,
-      alert10Triggered: false
+      alert10Triggered: false,
+      alertExpiredTriggered: false,
+      // 노란 숫자 카운트다운 추적 (Number Recognizer)
+      lastYellowDigitCount: 0,
+      peakYellowDigitCount: 0,  // 최초 감지 시 노란 픽셀 최대치 (1:20 = 많음)
+      lowDigitFrames: 0         // 노란 숫자 급감 연속 프레임 수 (10초 이하 감지용)
     };
 
     this.expBuffState = {
@@ -235,7 +238,13 @@ class ImageAnalyzer {
   }
 
   /**
-   * ⚡ 유저 첨부 스크린샷 기반: 솔 야누스 (보랏빛 구체 + 라임/노란색 디지털 지속시간 숫자) 정밀 매처
+   * ⚡ 유저 첨부 스크린샷 기반 솔 야누스 4단계 파이프라인:
+   *   1. Parser: 1사분면에서 보랏빛 구체 아이콘 포착
+   *   2. Matcher: 바이올렛 구체 + 노란 디지털 숫자 조합으로 야누스 100% 매칭
+   *   3. Number Recognizer: 노란 숫자 픽셀 개수 변화량으로 카운트다운 직접 추적
+   *      - "1:20" = 노란 픽셀 많음(3자리+콜론) → "42" = 중간(2자리) → "9" = 극소(1자리)
+   *      - 노란 픽셀이 피크 대비 30% 이하로 급감 → 10초 이하 진입 판정!
+   *   4. 소멸 추적: 보라 구체+숫자 모두 사라지면 0.1초 즉시 재설치 알림
    */
   processJanusFrame(imageData) {
     if (!imageData || !imageData.data || imageData.data.length === 0) return;
@@ -249,49 +258,81 @@ class ImageAnalyzer {
       const g = data[i + 1];
       const b = data[i + 2];
 
-      // 1) 솔 야누스 중앙 보랏빛 바이올렛 구체 바탕 (R:70~140, G:60~120, B:130~210)
-      const isVioletOrb = (r >= 70 && r <= 140 && g >= 60 && g <= 120 && b >= 130 && b <= 210 && (b - g >= 35));
-      if (isVioletOrb) janusOrbPixels++;
+      // 1) 솔 야누스 중앙 보랏빛 바이올렛 구체 바탕
+      if (r >= 70 && r <= 140 && g >= 60 && g <= 120 && b >= 130 && b <= 210 && (b - g >= 35)) {
+        janusOrbPixels++;
+      }
 
-      // 2) 지속시간 라임/노란색 디지털 숫자 (R >= 150, G >= 150, B <= 90)
-      const isYellowDigit = (r >= 150 && g >= 150 && b <= 90);
-      if (isYellowDigit) yellowDigitPixels++;
+      // 2) 지속시간 라임/노란색 디지털 숫자 ("1:20", "42", "9" 등)
+      if (r >= 150 && g >= 150 && b <= 90) {
+        yellowDigitPixels++;
+      }
     }
 
-    // 보랏빛 구체 픽셀 또는 노란 디지털 숫자가 동시에 포착되면 솔 야누스 가동 중!
+    // ===== 2. Matcher: 야누스 아이콘 매칭 =====
     const hasJanusIcon = (janusOrbPixels >= 6) || (janusOrbPixels >= 3 && yellowDigitPixels >= 3);
 
     if (hasJanusIcon) {
       this.janusState.consecutiveActiveCount++;
       this.janusState.consecutiveInactiveCount = 0;
 
-      if (!this.janusState.isBuffActive && this.janusState.consecutiveActiveCount >= 1) {
+      // 최초 감지: 야누스 가동 시작
+      if (!this.janusState.isBuffActive && this.janusState.consecutiveActiveCount >= 2) {
         this.janusState.isBuffActive = true;
         this.janusState.alert10Triggered = false;
+        this.janusState.alertExpiredTriggered = false;
+        this.janusState.peakYellowDigitCount = yellowDigitPixels;
+        this.janusState.lowDigitFrames = 0;
         if (this.onJanusStatusChange) this.onJanusStatusChange('⚡ 솔 야누스 가동 중', false);
+      }
 
-        if (window.timerModule && !window.timerModule.janusTimer.isRunning) {
-          window.timerModule.startJanusTimer();
+      // ===== 3. Number Recognizer: 노란 숫자 카운트다운 추적 =====
+      if (this.janusState.isBuffActive) {
+        // 피크 업데이트 (가장 많았던 노란 픽셀 수 = "1:20" 처럼 숫자가 많을 때)
+        if (yellowDigitPixels > this.janusState.peakYellowDigitCount) {
+          this.janusState.peakYellowDigitCount = yellowDigitPixels;
+        }
+
+        // 노란 숫자가 피크 대비 30% 이하로 급감 = 한 자릿수(10초 미만) 진입!
+        // 예: "1:20"(피크) → "42" → "9"(급감) → 10초 이하 판정
+        const peak = this.janusState.peakYellowDigitCount;
+        const isLowDigit = (peak > 0 && yellowDigitPixels <= peak * 0.30 && yellowDigitPixels >= 1);
+
+        if (isLowDigit) {
+          this.janusState.lowDigitFrames++;
+        } else {
+          this.janusState.lowDigitFrames = 0;
+        }
+
+        // 연속 3프레임 이상 급감이 감지되면 → 10초 이하 진입 확정!
+        if (this.janusState.lowDigitFrames >= 3 && !this.janusState.alert10Triggered) {
+          this.triggerJanus10sAlert();
+        }
+
+        // UI 상태 표시
+        if (this.onJanusStatusChange && !this.janusState.alert10Triggered) {
+          this.onJanusStatusChange(`⚡ 야누스 가동 중 (숫자 픽셀: ${yellowDigitPixels})`, false);
         }
       }
 
-      const isJanus10sTimer = window.timerModule && window.timerModule.janusTimer.isRunning && window.timerModule.janusTimer.remainingSeconds <= 10;
-      if (this.janusState.isBuffActive && isJanus10sTimer && !this.janusState.alert10Triggered) {
-        this.triggerJanus10sAlert();
-      }
+      this.janusState.lastYellowDigitCount = yellowDigitPixels;
     } else {
-      // 🚨 60초 지나 우상단 버프창에서 야누스 아이콘이 꺼지거나 사라지는 0.1초 즉시 재설치 알림!
+      // ===== 4. 소멸 추적: 야누스 아이콘이 우상단에서 완전히 사라짐 =====
       this.janusState.consecutiveInactiveCount++;
       if (this.janusState.isBuffActive && this.janusState.consecutiveInactiveCount >= 2) {
         this.janusState.isBuffActive = false;
-        this.janusState.flashCount = 0;
-        this.triggerJanusExpiredAlert();
+        this.janusState.lowDigitFrames = 0;
+        this.janusState.peakYellowDigitCount = 0;
+        if (!this.janusState.alertExpiredTriggered) {
+          this.triggerJanusExpiredAlert();
+        }
       }
     }
   }
 
   triggerJanusExpiredAlert() {
-    if (this.onJanusStatusChange) this.onJanusStatusChange('🚨 솔 야누스 종료됨!', true);
+    this.janusState.alertExpiredTriggered = true;
+    if (this.onJanusStatusChange) this.onJanusStatusChange('🚨 솔 야누스 종료됨! 재설치하세요!', true);
 
     if (window.audioNotifier) {
       window.audioNotifier.notify('솔 야누스 버프가 종료되었습니다! 야누스를 재설치하세요!', 'beep');
@@ -299,11 +340,10 @@ class ImageAnalyzer {
   }
 
   /**
-   * 🍁 5대 버프 매처 & 클러스터링(Clustering) 엔진
+   * 🍁 4대 도핑 버프 매처 & 클러스터링(Clustering) 엔진
    * 1. 최상단 1줄 (VIP/PC방 아이콘) 자동 제외
-   * 2. Matcher: 5대 분류 (유니온의 힘, 유니온의 부, 비약, 경험치 쿠폰, Unknown)
-           * 3. Number Recognizer: 남은 시간 숫자 추적
-   * 4. Clustering: 10초 이내 동시 종료 버프 묶어서 1회 알림!
+   * 2. Matcher: 4대 분류 (유니온의 힘, 유니온의 부, 비약, 경험치 쿠폰) - 야누스 제외
+   * 3. Clustering: 10초 이내 동시 종료 버프 묶어서 1회 알림!
    */
   processExpFrame(imageData) {
     if (!imageData || imageData.data.length === 0) return;
