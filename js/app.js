@@ -447,9 +447,10 @@ function initPortalGuideUI() {
       });
 
       card.innerHTML = `
-        <h4>📍 ${mapInfo.name}</h4>
+        <h4>🗺️ ${mapInfo.name}</h4>
+        ${mapInfo.svgDiagram ? `<div class="map-diagram-container" style="margin:10px 0;">${mapInfo.svgDiagram}</div>` : ''}
         ${portalItemsHtml}
-        <div style="font-size:0.85rem; color:var(--accent-gold); margin-top:6px;">💡 <strong>동선 꿀팁:</strong> ${mapInfo.tip}</div>
+        <div style="font-size:0.85rem; color:var(--accent-gold); margin-top:8px;">💡 <strong>동선 꿀팁:</strong> ${mapInfo.tip}</div>
       `;
       groupDiv.appendChild(card);
     });
