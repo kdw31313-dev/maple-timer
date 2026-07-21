@@ -108,10 +108,6 @@ function bindEvents() {
     window.screenCaptureManager.openRoiModal('rune');
   });
 
-  document.getElementById('btn-select-popup-roi')?.addEventListener('click', () => {
-    window.screenCaptureManager.openRoiModal('rune');
-  });
-
   document.getElementById('btn-select-janus-roi')?.addEventListener('click', () => {
     window.screenCaptureManager.openRoiModal('janus');
   });
