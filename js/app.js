@@ -88,9 +88,9 @@ function bindEvents() {
   const stopBtn = document.getElementById('btn-stop-share');
 
   if (startBtn) {
-    startBtn.addEventListener('click', async () => {
-      window.audioNotifier.initAudioContext(); // 사운드 컨텍스트 잠금 해제
-      await window.screenCaptureManager.startCapture();
+    startBtn.addEventListener('click', () => {
+      window.audioNotifier.initAudioContext(); // 사운드 컨텍스트 동기 초기화
+      window.screenCaptureManager.startCapture(); // 유저 제스처 활성 상태 유지하며 즉시 화면 공유 창 팝업!
     });
   }
 

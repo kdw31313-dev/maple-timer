@@ -40,13 +40,13 @@ class ScreenCaptureManager {
 
   async startCapture() {
     try {
-      // getDisplayMedia 호환성 극대화를 위한 순수 비디오 옵션
-      this.mediaStream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          cursor: 'never'
-        },
+      // ⚠️ 크롬 보안 정책: 버튼 클릭 유저 제스처(User Gesture) 유효 시간 내에 getDisplayMedia를 즉시 호출해야 합니다.
+      const capturePromise = navigator.mediaDevices.getDisplayMedia({
+        video: true,
         audio: false
       });
+
+      this.mediaStream = await capturePromise;
 
       this.videoEl.srcObject = this.mediaStream;
       this.isStreaming = true;
@@ -69,9 +69,8 @@ class ScreenCaptureManager {
       return true;
     } catch (err) {
       console.error('화면 공유 실패/취소:', err);
-      // 사용자가 취소하지 않고 브라우저 권한 문제일 경우 안내
       if (err.name !== 'NotAllowedError') {
-        alert('게임 창 공유를 시작할 수 없습니다. 브라우저의 화면 공유 권한을 허용해 주세요.');
+        alert('게임 창 공유를 시작할 수 없습니다. 크롬 주소창을 재접속하신 후 다시 클릭해 주세요.');
       }
       return false;
     }
