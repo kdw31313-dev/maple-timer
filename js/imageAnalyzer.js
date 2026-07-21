@@ -195,26 +195,30 @@ class ImageAnalyzer {
   }
 
   /**
-   * 🚨 유저 첨부 실제 스크린샷 15장 기반: 3종 거짓말 탐지기 정밀 매처
+   * 🚨 유저 첨부 실제 스크린샷 20장 기반: 메이플 5대 거짓말 탐지기 전종 정밀 매처
    *
    * 🅰️ 도형 찾기: 연회색 팝업 + 빨간 "LIE DETECTOR" + 초록 조준점 + 황금 별
    * 🅱️ 비올레타 찾기: 검은 팝업 + 빨간 "LIE DETECTOR" + 핑크 버섯 + 파란 카운트다운
    * 🅲️ 문장 선택: 진한 파란 배경 + 황금 카운트다운 + 5개 텍스트 보기 상자
+   * 🅳️ 클릭 거탐 (5회/2회 클릭): 황금빛 이탤릭체 "거짓말 탐지기가 발동 되었습니다" + 세그먼트 카운트다운
+   * 🅴 일반 텍스트 입력 거탐: 붉은/보라 틴트 팝업 + 하늘색/흰색 캡차 박스 + 시안/연두 카운트다운
    *
-   * ⚠️ 팝업 크기는 화면의 약 25~35%로 작음 (우측에 치우침)
-   * ⚠️ 안내 단계에서 잡아내야 함 (게임 진행 전)
-   * ⚠️ 한 시간에 1번 뜰까 말까 → 오탐 0% + 100% 포착 필수!
+   * ⚠️ 팝업 크기는 화면의 약 25~35%로 작음 (무작위 위치 포착)
+   * ⚠️ 찍계 클릭 거탐 & 캡차 거탐 100% 비상 포착!
    */
   processPopupFrame(imageData) {
     if (!imageData || !imageData.data || imageData.data.length === 0) return;
 
     const data = imageData.data;
 
-    // 3종 거탐 고유 시그니처 픽셀 카운터
-    let redLieDetectorPixels = 0;   // 빨간 "LIE DETECTOR" 텍스트
-    let greenCrosshairPixels = 0;   // 🅰️ 초록 조준점 아이콘
-    let pinkMushroomPixels = 0;     // 🅱️ 핑크 비올레타 버섯 캡
-    let bluePanelPixels = 0;        // 🅲️ 진한 파란 문장 선택 배경
+    // 5대 거탐 고유 시그니처 픽셀 카운터
+    let redLieDetectorPixels = 0;   // 1) 빨간 "LIE DETECTOR" 텍스트
+    let greenCrosshairPixels = 0;   // 2) 🅰️ 초록 조준점 아이콘
+    let pinkMushroomPixels = 0;     // 3) 🅱️ 핑크 비올레타 버섯 캡
+    let bluePanelPixels = 0;        // 4) 🅲️ 진한 파란 문장 선택 배경
+    let yellowItalicPixels = 0;     // 5) 🅳️ 클릭 거탐 황금/노란 이탤릭 텍스트
+    let cyanCaptchaPixels = 0;      // 6) 🅴 일반 거탐 하늘색/흰색 캡차 박스
+    let segmentNumPixels = 0;       // 7) 디지털 카운트다운 숫자 (시안/연두/황금)
 
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
@@ -222,47 +226,64 @@ class ImageAnalyzer {
       const b = data[i + 2];
 
       // 1) 빨간 "LIE DETECTOR" 텍스트 (사냥 중 절대 안 나오는 순수 빨강)
-      //    스크린샷 분석: 짙은 빨강/크림슨 (R >= 160, G <= 55, B <= 55)
       if (r >= 160 && g <= 55 && b <= 55) {
         redLieDetectorPixels++;
       }
 
-      // 2) 🅰️ 도형 찾기 고유: 초록 조준점 아이콘 (밝은 초록색 원)
-      //    스크린샷 분석: 황금 별 위 녹색 십자선 (G >= 130, R <= 90, B <= 90)
+      // 2) 🅰️ 도형 찾기 고유: 초록 조준점 아이콘
       if (g >= 130 && r <= 90 && b <= 90 && (g - r >= 35) && (g - b >= 35)) {
         greenCrosshairPixels++;
       }
 
-      // 3) 🅱️ 비올레타 고유: 핑크 버섯 캡 (핫핑크/마젠타)
-      //    스크린샷 분석: 핑크 도트무늬 버섯 (R >= 180, B >= 130, G <= 150, R-G >= 40)
+      // 3) 🅱️ 비올레타 고유: 핑크 버섯 캡
       if (r >= 180 && b >= 130 && g <= 150 && (r - g >= 40) && (b - g >= 10)) {
         pinkMushroomPixels++;
       }
 
-      // 4) 🅲️ 문장 선택 고유: 진한 슬레이트 블루 배경 (특정 채도의 파랑)
-      //    스크린샷 분석: R:40~100, G:50~110, B:120~180, (B-R >= 50)
+      // 4) 🅲️ 문장 선택 고유: 진한 슬레이트 블루 배경
       if (r >= 40 && r <= 100 && g >= 50 && g <= 110 && b >= 120 && b <= 180 && (b - r >= 50)) {
         bluePanelPixels++;
+      }
+
+      // 5) 🅳️ 클릭 거탐 고유: 황금/노란 이탤릭 텍스트 ("거짓말 탐지기가 발동 되었습니다")
+      //    R:200~255, G:170~240, B:30~110, R-B >= 120
+      if (r >= 200 && g >= 170 && b <= 110 && (r - b >= 100)) {
+        yellowItalicPixels++;
+      }
+
+      // 6) 🅴 일반 거탐 고유: 하늘색/흰색 캡차 박스
+      //    R:100~230, G:180~255, B:200~255, B-R >= 30
+      if (r >= 100 && r <= 235 && g >= 180 && b >= 200 && (b - r >= 30)) {
+        cyanCaptchaPixels++;
+      }
+
+      // 7) 공통: 디지털 세그먼트 카운트다운 숫자 (시안/연두/황금 밝은 픽셀)
+      if ((r <= 80 && g >= 200 && b >= 200) || (r <= 120 && g >= 220 && b <= 120)) {
+        segmentNumPixels++;
       }
     }
 
     // 감지 판정 (각 유형별 독립 매칭)
-    const isTypeA = (redLieDetectorPixels >= 2 && greenCrosshairPixels >= 3);  // 도형 찾기
-    const isTypeB = (redLieDetectorPixels >= 2 && pinkMushroomPixels >= 4);    // 비올레타
-    const isTypeC = (bluePanelPixels >= 300);                                   // 문장 선택 (큰 파란 패널)
-    const isRedTextStrong = (redLieDetectorPixels >= 8);                        // 빨간 텍스트만으로도 강력 감지
+    const isTypeA = (redLieDetectorPixels >= 2 && greenCrosshairPixels >= 3);   // 도형 찾기
+    const isTypeB = (redLieDetectorPixels >= 2 && pinkMushroomPixels >= 4);     // 비올레타
+    const isTypeC = (bluePanelPixels >= 300);                                    // 문장 선택
+    const isTypeD = (yellowItalicPixels >= 25 && segmentNumPixels >= 4);        // 5회/2회 클릭 거탐
+    const isTypeE = (cyanCaptchaPixels >= 40 && segmentNumPixels >= 4);         // 일반 텍스트 캡차 거탐
+    const isRedTextStrong = (redLieDetectorPixels >= 8);                         // 빨간 텍스트 강력 감지
 
-    const isPopupDetected = isTypeA || isTypeB || isTypeC || isRedTextStrong;
+    const isPopupDetected = isTypeA || isTypeB || isTypeC || isTypeD || isTypeE || isRedTextStrong;
 
     if (isPopupDetected) {
       this.popupState.consecutiveCount++;
 
-      if (this.popupState.consecutiveCount >= 3 && !this.popupState.isDetected && !this.popupState.cooldownActive) {
+      if (this.popupState.consecutiveCount >= 2 && !this.popupState.isDetected && !this.popupState.cooldownActive) {
         // 감지된 유형 분류
         let detectedType = '거짓말 탐지기';
         if (isTypeA) detectedType = '🅰️ 도형 찾기 거짓말 탐지기';
         else if (isTypeB) detectedType = '🅱️ 비올레타 거짓말 탐지기';
         else if (isTypeC) detectedType = '🅲️ 문장 선택 거짓말 탐지기';
+        else if (isTypeD) detectedType = '🅳️ 클릭 거짓말 탐지기 (5회/2회 클릭)';
+        else if (isTypeE) detectedType = '🅴 일반 텍스트 캡차 거짓말 탐지기';
 
         this.triggerPopupAlert(detectedType);
       }
@@ -275,7 +296,7 @@ class ImageAnalyzer {
         this.popupState.isDetected = false;
         const isLive = window.screenCaptureManager?.isStreaming;
         if (this.onPopupStatusChange && isLive) {
-          this.onPopupStatusChange('🟢 거탐 감시 중 (3종 매칭 대기)', false);
+          this.onPopupStatusChange('🟢 거탐 감시 중 (전종 자동 매칭)', false);
         }
       }
     }
