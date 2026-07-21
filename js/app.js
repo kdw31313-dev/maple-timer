@@ -319,7 +319,7 @@ function bindEvents() {
   });
 
   const importFileBtn = document.getElementById('btn-import-settings');
-  const importFileInput = document.getElementById('file-import-settings');
+  const importFileInput = document.getElementById('file-import-input');
 
   importFileBtn?.addEventListener('click', () => {
     importFileInput?.click();
@@ -330,13 +330,13 @@ function bindEvents() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const imported = window.storageManager.importConfig(event.target.result);
-      if (imported) {
-        applyConfigToUI(imported);
-        alert('설정이 성공적으로 복원되었습니다!');
+    reader.onload = (evt) => {
+      const restored = window.storageManager.importConfig(evt.target.result);
+      if (restored) {
+        alert('✅ 설정이 성공적으로 복원되었습니다!');
+        applyConfigToUI(restored);
       } else {
-        alert('올바르지 않은 설정 파일입니다.');
+        alert('❌ 올바르지 않은 설정 파일입니다.');
       }
     };
     reader.readAsText(file);
@@ -344,11 +344,17 @@ function bindEvents() {
 
   // 설정 초기화 버튼
   document.getElementById('btn-reset-settings')?.addEventListener('click', () => {
-    if (confirm('모든 감지 영역 및 알림 설정을 초기화하시겠습니까?')) {
-      const def = window.storageManager.resetConfig();
-      applyConfigToUI(def);
-      alert('설정이 초기화되었습니다.');
+    if (confirm('모든 사냥 타이머 및 ROI 설정이 초기화됩니다. 계속 진행할까요?')) {
+      window.storageManager.resetConfig();
+      location.reload();
     }
+  });
+
+  // 타이머 알림 설정 체크박스들 저장 연동
+  ['chk-exp-alert-10', 'chk-exp-alert-end', 'chk-janus-prealert', 'chk-janus-endalert', 'chk-doping-10s', 'chk-doping-end'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', () => {
+      saveCurrentConfig();
+    });
   });
 }
 
@@ -545,10 +551,26 @@ function applyConfigToUI(cfg) {
   if (janusRadio) janusRadio.checked = true;
   window.timerModule.setJanusCycle(cfg.janusCycle);
 
+  // 타이머 세부 체크박스 반영
+  const chkExp10 = document.getElementById('chk-exp-alert-10');
+  const chkExpEnd = document.getElementById('chk-exp-alert-end');
+  const chkJanusPre = document.getElementById('chk-janus-prealert');
+  const chkJanusEnd = document.getElementById('chk-janus-endalert');
+  const chkDoping10 = document.getElementById('chk-doping-10s');
+  const chkDopingEnd = document.getElementById('chk-doping-end');
+
+  if (chkExp10 && cfg.expAlert10 !== undefined) chkExp10.checked = cfg.expAlert10;
+  if (chkExpEnd && cfg.expAlertEnd !== undefined) chkExpEnd.checked = cfg.expAlertEnd;
+  if (chkJanusPre && cfg.janusPreAlert !== undefined) chkJanusPre.checked = cfg.janusPreAlert;
+  if (chkJanusEnd && cfg.janusEndAlert !== undefined) chkJanusEnd.checked = cfg.janusEndAlert;
+  if (chkDoping10 && cfg.dopingAlert10 !== undefined) chkDoping10.checked = cfg.dopingAlert10;
+  if (chkDopingEnd && cfg.dopingAlertEnd !== undefined) chkDopingEnd.checked = cfg.dopingAlertEnd;
+
   // ROI 좌표
   if (window.screenCaptureManager) {
     if (cfg.runeRoi) window.screenCaptureManager.runeRoi = cfg.runeRoi;
     if (cfg.popupRoi) window.screenCaptureManager.popupRoi = cfg.popupRoi;
+    if (cfg.janusRoi) window.screenCaptureManager.janusRoi = cfg.janusRoi;
   }
 }
 
@@ -576,10 +598,16 @@ function saveCurrentConfig() {
     visualFlash: flashToggle ? flashToggle.checked : true,
     expPresetMinutes: activePresetBtn ? parseInt(activePresetBtn.getAttribute('data-minutes'), 10) : 30,
     janusCycle: janusRadio ? parseInt(janusRadio.value, 10) : 80,
+    expAlert10: document.getElementById('chk-exp-alert-10')?.checked ?? true,
+    expAlertEnd: document.getElementById('chk-exp-alert-end')?.checked ?? true,
+    janusPreAlert: document.getElementById('chk-janus-prealert')?.checked ?? true,
+    janusEndAlert: document.getElementById('chk-janus-endalert')?.checked ?? true,
+    dopingAlert10: document.getElementById('chk-doping-10s')?.checked ?? true,
+    dopingAlertEnd: document.getElementById('chk-doping-end')?.checked ?? true,
     customSounds: customSounds,
     runeRoi: window.screenCaptureManager ? window.screenCaptureManager.runeRoi : { x: 1, y: 1, w: 22, h: 22 },
     popupRoi: window.screenCaptureManager ? window.screenCaptureManager.popupRoi : { x: 0, y: 0, w: 100, h: 100 },
-    janusRoi: window.screenCaptureManager ? window.screenCaptureManager.janusRoi : { x: 75, y: 1, w: 24, h: 15 }
+    janusRoi: window.screenCaptureManager ? window.screenCaptureManager.janusRoi : { x: 55, y: 1.5, w: 44, h: 22 }
   };
 
   window.storageManager.saveConfig(cfg);

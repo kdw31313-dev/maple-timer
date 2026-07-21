@@ -4,26 +4,35 @@
 class HuntingCalculator {
   constructor() {
     this.mapDatabase = [
+      // --- 세르니움 (Lv.260~264) ---
+      { region: '세르니움', name: '세르니움 서쪽 성벽 2', mobLevel: 260, spawnPerWave: 36, hourlyMax: 17280, baseExp: 420000 },
+      { region: '세르니움', name: '세르니움 동쪽 성벽 2 (인기)', mobLevel: 261, spawnPerWave: 40, hourlyMax: 19200, baseExp: 435000 },
+      { region: '세르니움', name: '왕립 도서관 제1구역', mobLevel: 263, spawnPerWave: 40, hourlyMax: 19200, baseExp: 460000 },
+      { region: '세르니움', name: '분노의 회랑 2', mobLevel: 264, spawnPerWave: 40, hourlyMax: 19200, baseExp: 480000 },
+
+      // --- 호텔 아르쿠스 (Lv.265~269) ---
+      { region: '호텔 아르쿠스', name: 'Outlaw Street 2', mobLevel: 265, spawnPerWave: 40, hourlyMax: 19200, baseExp: 550000 },
+      { region: '호텔 아르쿠스', name: '낭만있는 카라반 1', mobLevel: 267, spawnPerWave: 40, hourlyMax: 19200, baseExp: 610000 },
+      { region: '호텔 아르쿠스', name: '드라이브 스루 2 (인기)', mobLevel: 268, spawnPerWave: 40, hourlyMax: 19200, baseExp: 650000 },
+
+      // --- 오디움 (Lv.270~274) ---
+      { region: '오디움', name: '성곽 접근로 2', mobLevel: 270, spawnPerWave: 40, hourlyMax: 19200, baseExp: 790000 },
+      { region: '오디움', name: '점배되는 연구실 1 (인기)', mobLevel: 272, spawnPerWave: 40, hourlyMax: 19200, baseExp: 860000 },
+      { region: '오디움', name: '닫힌 문 너머 실험실 2', mobLevel: 274, spawnPerWave: 40, hourlyMax: 19200, baseExp: 940000 },
+
+      // --- 도원경 (Lv.275~279) ---
+      { region: '도원경', name: '빛이 약한 여름 4 (인기)', mobLevel: 275, spawnPerWave: 40, hourlyMax: 19200, baseExp: 1100000 },
+      { region: '도원경', name: '생기가 맴도는 가을 2', mobLevel: 277, spawnPerWave: 40, hourlyMax: 19200, baseExp: 1220000 },
+      { region: '도원경', name: '눈이 내리는 겨울 4', mobLevel: 279, spawnPerWave: 40, hourlyMax: 19200, baseExp: 1350000 },
+
       // --- 아르테리아 (Lv.280~284) ---
       { region: '아르테리아', name: '북쪽 외곽지역', mobLevel: 280, spawnPerWave: 36, hourlyMax: 17280, baseExp: 1450000 },
       { region: '아르테리아', name: '서쪽 외곽지역', mobLevel: 280, spawnPerWave: 40, hourlyMax: 19200, baseExp: 1460000 },
-      { region: '아르테리아', name: '남쪽 외곽지역', mobLevel: 281, spawnPerWave: 36, hourlyMax: 17280, baseExp: 1480000 },
-      { region: '아르테리아', name: '동쪽 외곽지역', mobLevel: 281, spawnPerWave: 40, hourlyMax: 19200, baseExp: 1490000 },
-      { region: '아르테리아', name: '외곽 전투지역 1', mobLevel: 280, spawnPerWave: 40, hourlyMax: 19200, baseExp: 1460000 },
-      { region: '아르테리아', name: '외곽 전투지역 2', mobLevel: 281, spawnPerWave: 40, hourlyMax: 19200, baseExp: 1490000 },
-      { region: '아르테리아', name: '최하층 통로 1', mobLevel: 282, spawnPerWave: 36, hourlyMax: 17280, baseExp: 1520000 },
       { region: '아르테리아', name: '최하층 통로 2 (인기)', mobLevel: 282, spawnPerWave: 40, hourlyMax: 19200, baseExp: 1530000 },
-      { region: '아르테리아', name: '최하층 통로 3', mobLevel: 282, spawnPerWave: 40, hourlyMax: 19200, baseExp: 1530000 },
-      { region: '아르테리아', name: '최하층 통로 4', mobLevel: 283, spawnPerWave: 36, hourlyMax: 17280, baseExp: 1550000 },
-      { region: '아르테리아', name: '최하층 통로 5', mobLevel: 283, spawnPerWave: 40, hourlyMax: 19200, baseExp: 1550000 },
-      { region: '아르테리아', name: '최하층 통로 6', mobLevel: 283, spawnPerWave: 40, hourlyMax: 19200, baseExp: 1550000 },
-      { region: '아르테리아', name: '최상층 통로 1', mobLevel: 284, spawnPerWave: 36, hourlyMax: 17280, baseExp: 1580000 },
       { region: '아르테리아', name: '최상층 통로 2', mobLevel: 284, spawnPerWave: 40, hourlyMax: 19200, baseExp: 1580000 },
 
       // --- 카르시온 (Lv.285~289) ---
-      { region: '카르시온', name: '거대 산호 군락 1', mobLevel: 285, spawnPerWave: 36, hourlyMax: 17280, baseExp: 1620000 },
       { region: '카르시온', name: '거대 산호 군락 3 (인기)', mobLevel: 286, spawnPerWave: 40, hourlyMax: 19200, baseExp: 1640000 },
-      { region: '카르시온', name: '잔잔한 해안가 2', mobLevel: 286, spawnPerWave: 40, hourlyMax: 19200, baseExp: 1670000 },
       { region: '카르시온', name: '어둠이 내리는 나무줄기 1', mobLevel: 288, spawnPerWave: 40, hourlyMax: 19200, baseExp: 1770000 }
     ];
   }
