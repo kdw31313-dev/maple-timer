@@ -55,10 +55,85 @@ class ScreenCaptureManager {
       this.overlayCanvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
       this.overlayCanvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
       this.overlayCanvas.addEventListener('mouseup', () => this.handleMouseUp());
+      this.overlayCanvas.addEventListener('mouseleave', () => this.handleMouseUp());
     }
     window.addEventListener('resize', () => this.resizeCanvas());
 
     this.initModalEvents();
+  }
+
+  handleMouseDown(e) {
+    if (!this.isStreaming || !this.overlayCanvas) return;
+    const rect = this.overlayCanvas.getBoundingClientRect();
+    this.isDragging = true;
+    this.dragStart = {
+      x: (e.clientX - rect.left) / rect.width,
+      y: (e.clientY - rect.top) / rect.height
+    };
+    this.dragCurrent = { ...this.dragStart };
+  }
+
+  handleMouseMove(e) {
+    if (!this.isDragging || !this.overlayCanvas) return;
+    const rect = this.overlayCanvas.getBoundingClientRect();
+    this.dragCurrent = {
+      x: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
+      y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
+    };
+    this.drawOverlayWithDrag();
+  }
+
+  handleMouseUp() {
+    if (!this.isDragging) return;
+    this.isDragging = false;
+
+    const x1 = Math.min(this.dragStart.x, this.dragCurrent.x);
+    const y1 = Math.min(this.dragStart.y, this.dragCurrent.y);
+    const w = Math.abs(this.dragCurrent.x - this.dragStart.x);
+    const h = Math.abs(this.dragCurrent.y - this.dragStart.y);
+
+    if (w > 0.01 && h > 0.01) {
+      // 드래그한 위치가 우측 상단(x > 0.45)에 가깝다면 버프 영역(janusRoi), 아니면 미니맵(runeRoi)으로 수동 지정!
+      if (x1 > 0.45) {
+        this.janusRoi = {
+          x: Math.round(x1 * 100 * 10) / 10,
+          y: Math.round(y1 * 100 * 10) / 10,
+          w: Math.round(w * 100 * 10) / 10,
+          h: Math.round(h * 100 * 10) / 10
+        };
+      } else {
+        this.runeRoi = {
+          x: Math.round(x1 * 100 * 10) / 10,
+          y: Math.round(y1 * 100 * 10) / 10,
+          w: Math.round(w * 100 * 10) / 10,
+          h: Math.round(h * 100 * 10) / 10
+        };
+      }
+    }
+    this.drawOverlay();
+    if (window.saveCurrentConfig) window.saveCurrentConfig();
+  }
+
+  drawOverlayWithDrag() {
+    this.drawOverlay();
+    if (!this.isDragging || !this.overlayCtx) return;
+
+    const w = this.overlayCanvas.width;
+    const h = this.overlayCanvas.height;
+
+    const x1 = Math.min(this.dragStart.x, this.dragCurrent.x) * w;
+    const y1 = Math.min(this.dragStart.y, this.dragCurrent.y) * h;
+    const mw = Math.abs(this.dragCurrent.x - this.dragStart.x) * w;
+    const mh = Math.abs(this.dragCurrent.y - this.dragStart.y) * h;
+
+    this.overlayCtx.strokeStyle = '#f39c12';
+    this.overlayCtx.lineWidth = 3;
+    this.overlayCtx.setLineDash([4, 2]);
+    this.overlayCtx.strokeRect(x1, y1, mw, mh);
+    this.overlayCtx.setLineDash([]);
+
+    this.overlayCtx.fillStyle = 'rgba(243, 156, 18, 0.2)';
+    this.overlayCtx.fillRect(x1, y1, mw, mh);
   }
 
   initModalEvents() {
@@ -154,7 +229,7 @@ class ScreenCaptureManager {
 
     this.modalTarget = targetType;
     if (targetType === 'rune') this.modalTempRoi = { ...this.runeRoi };
-    else if (targetType === 'janus') this.modalTempRoi = { ...this.janusRoi };
+    else if (targetType === 'janus' || targetType === 'exp') this.modalTempRoi = { ...this.janusRoi };
 
     const titleEl = document.getElementById('roi-modal-title');
     const subTitleEl = document.getElementById('roi-modal-subtitle');
@@ -162,8 +237,8 @@ class ScreenCaptureManager {
     if (targetType === 'rune') {
       if (titleEl) titleEl.textContent = '📍 미니맵 영역 지정 (200% 정밀 확대)';
       if (subTitleEl) subTitleEl.textContent = '미니맵의 내부 지도 영역만 마우스 드래그로 직사각형으로 지정하세요.';
-    } else if (targetType === 'janus') {
-      if (titleEl) titleEl.textContent = '⚡ 버프 영역 수동 지정 (200% 정밀 확대)';
+    } else {
+      if (titleEl) titleEl.textContent = '⚡ 버프 영역 지정 (200% 정밀 확대)';
       if (subTitleEl) subTitleEl.textContent = '1사분면 자동 추적 외 수동으로 버프 줄 위치를 드래그하실 수도 있습니다.';
     }
 
@@ -230,12 +305,13 @@ class ScreenCaptureManager {
 
     if (this.modalTarget === 'rune') {
       this.runeRoi = { ...this.modalTempRoi };
-    } else if (this.modalTarget === 'janus') {
+    } else if (this.modalTarget === 'janus' || this.modalTarget === 'exp') {
       this.janusRoi = { ...this.modalTempRoi };
     }
 
     this.drawOverlay();
     this.closeRoiModal();
+    if (window.saveCurrentConfig) window.saveCurrentConfig();
   }
 
   startCapture() {
