@@ -360,8 +360,8 @@ class ImageAnalyzer {
       }
     }
 
-    // --- B. 경험치 쿠폰 (골드 물약 & VIP 버프) 처리 ---
-    const hasExpBuffIcon = (expCouponPixels >= 18 || vipBuffPixels >= 20);
+    // --- B. 도핑 버프 아이콘 (경쿠, 재획비, 익스골드, VIP 등) 자동 감지 및 10초 전 알림 ---
+    const hasExpBuffIcon = (expCouponPixels >= 16 || vipBuffPixels >= 18);
     const expBrightnessDiff = Math.abs(avgBrightness - this.expBuffState.lastBrightness);
     this.expBuffState.lastBrightness = avgBrightness;
 
@@ -372,10 +372,15 @@ class ImageAnalyzer {
       if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveActiveCount >= 2) {
         this.expBuffState.isBuffActive = true;
         this.expBuffState.alert10Triggered = false;
-        if (this.onExpBuffStatusChange) this.onExpBuffStatusChange('경쿠 버프 가동 중', false);
+        if (this.onExpBuffStatusChange) this.onExpBuffStatusChange('도핑 버프 가동 중', false);
+
+        // 경험치 쿠폰 수동 타이머 자동 시동 동기화
+        if (window.timerModule && !window.timerModule.expTimer.isRunning) {
+          window.timerModule.startExpTimer();
+        }
       }
 
-      // 경험치 쿠폰 버프 아이콘 10초 이하 점멸/깜빡임 감지
+      // 버프창 아이콘 10초 전 점멸(밝기 진동) 포착 시
       if (this.expBuffState.isBuffActive && expBrightnessDiff > 10) {
         this.expBuffState.flashCount++;
         if (this.expBuffState.flashCount >= 3 && !this.expBuffState.alert10Triggered) {
@@ -401,9 +406,9 @@ class ImageAnalyzer {
 
   triggerExpBuff10sAlert() {
     this.expBuffState.alert10Triggered = true;
-    if (this.onExpBuffStatusChange) this.onExpBuffStatusChange('경쿠 10초 남음!', true);
+    if (this.onExpBuffStatusChange) this.onExpBuffStatusChange('도핑 10초 남음!', true);
 
-    window.audioNotifier.notify('경험치 쿠폰 종료 10초 전입니다. 재사용을 준비하세요!', 'chime');
+    window.audioNotifier.notify('사냥 도핑 버프 종료 10초 전입니다. 도핑 재사용을 준비하세요!', 'chime');
   }
 }
 
