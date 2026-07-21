@@ -397,65 +397,65 @@
             </div>
           </div>
 
-          <!-- 우측: Mapleroad 스타일 실시간 연산 결과 카드 -->
+          <!-- 우측: 유저 수식 기반 정밀 연산 결과 카드 -->
           <div class="calc-result-panel">
-            <!-- 1) 드롭률 및 메획 정보 -->
-            <div class="result-card-box highlight">
-              <h3><span class="icon">🔍</span> 드롭률 & 메소 획득 수치</h3>
+            <!-- 1) 메소 제한 도달 필요 마릿수 & 필요 재획량 (핵심!) -->
+            <div class="result-card-box highlight" style="border-color: #00f2fe;">
+              <h3><span class="icon">🛑</span> 일일 메소 제한 & 필요 재획량</h3>
               <div class="result-row">
-                <span>아이템 드롭률 (아획):</span>
-                <strong id="res-drop-rate-val" class="text-accent">98%</strong>
+                <span>메소 제한 도달 필요 마릿수:</span>
+                <strong id="res-req-kills" style="color:#00f2fe; font-size:1.05rem;">80,952 마리</strong>
               </div>
               <div class="result-row">
-                <span>메소 획득량 (메획):</span>
-                <strong id="res-meso-rate-val" class="text-gold">188%</strong>
+                <span>필요 재획량 (재획비 개수):</span>
+                <strong id="res-req-rehoek" style="color:var(--accent-gold); font-size:1.05rem;">약 2.152 개</strong>
               </div>
               <div class="result-row">
-                <span>메소 주머니 드롭률:</span>
-                <span id="res-meso-bag-rate" class="badge badge-success">100% (확정 드롭)</span>
+                <span>메소 제한까지 소요 시간:</span>
+                <strong id="res-cap-time-needed" style="color:#ff4b2b; font-size:1.05rem;">약 4시간 18분</strong>
               </div>
             </div>
 
-            <!-- 2) 시간별 메소 획득량 -->
+            <!-- 2) 메획 반영 상한선 & 주머니 평균값 -->
             <div class="result-card-box">
-              <h3><span class="icon">💰</span> 시간별 메소 획득량</h3>
+              <h3><span class="icon">💰</span> 메획 반영 메소 상한선 (d) & 주머니</h3>
+              <div class="result-row">
+                <span>기본 제한량 (메획 0% 기준):</span>
+                <strong id="res-base-cap">1억 7,000 만 메소</strong>
+              </div>
+              <div class="result-row">
+                <span>메획% 반영 최종 메소 상한 (d):</span>
+                <strong id="res-total-cap-meso" class="text-gold">4억 290 만 메소</strong>
+              </div>
+              <div class="result-row">
+                <span>메소주머니 1개 평균액 (a):</span>
+                <strong id="res-meso-per-bag">약 5,451 메소</strong>
+              </div>
+            </div>
+
+            <!-- 3) 시간별 예상 메소 획득액 -->
+            <div class="result-card-box">
+              <h3><span class="icon">📈</span> 시간별 메소 획득량</h3>
               <div class="result-row">
                 <span>30분 획득 메소:</span>
-                <strong id="res-30min-meso">약 5,705 만 메소</strong>
+                <strong id="res-30min-meso">약 5,124 만 메소</strong>
               </div>
               <div class="result-row">
                 <span>시간당(1시간) 획득 메소:</span>
-                <strong id="res-hourly-meso" class="text-accent">약 1억 1,410 만 메소</strong>
+                <strong id="res-hourly-meso" class="text-accent">약 1억 248 만 메소</strong>
               </div>
               <div class="result-row">
                 <span>1재획(2시간) 획득 메소:</span>
-                <strong id="res-2hr-meso" class="text-gold">약 2억 2,821 만 메소</strong>
+                <strong id="res-2hr-meso" class="text-gold">약 2억 497 만 메소</strong>
               </div>
             </div>
 
-            <!-- 3) 일일 메소 제한 & 걸리는 시간 -->
-            <div class="result-card-box" style="border-color: #00f2fe;">
-              <h3><span class="icon">🛑</span> 일일 메소 제한 & 소요 시간</h3>
-              <div class="result-row">
-                <span>일일 기준 순메소 제한:</span>
-                <strong>1억 9,000 만 메소</strong>
-              </div>
-              <div class="result-row">
-                <span>제한까지 실제 획득 메소:</span>
-                <strong id="res-cap-total-meso" style="color:#00f2fe;">약 5억 3,819 만 메소</strong>
-              </div>
-              <div class="result-row">
-                <span>메소 제한까지 걸리는 시간:</span>
-                <strong id="res-cap-time-needed" style="color:#f6d365; font-size:1.05rem;">약 4시간 43분</strong>
-              </div>
-            </div>
-
-            <!-- 4) 경험치 & 조각 -->
+            <!-- 4) 사냥 마릿수 & 경험치/조각 -->
             <div class="result-card-box">
-              <h3><span class="icon">📈</span> 예상 마릿수 / 경험치 / 조각</h3>
+              <h3><span class="icon">⚔️</span> 예상 마릿수 / 경험치 / 조각</h3>
               <div class="result-row">
-                <span>1시간 / 1재획 마릿수:</span>
-                <strong id="res-hourly-kills">19,200 마리 / 38,400 마리</strong>
+                <span>시간당 / 1재획 마릿수:</span>
+                <strong id="res-hourly-kills">18,800 마리 / 37,600 마리</strong>
               </div>
               <div class="result-row">
                 <span>1재획(2시간) 총 경험치:</span>

@@ -389,15 +389,18 @@ function initCalculatorUI() {
     // 6분 마릿수 자동 채움 (사용자가 수동 변경하지 않은 경우)
     kills6minInput.value = res.actual6MinKills;
 
-    // 결과 렌더링 (Mapleroad 정밀 렌더링 모듈)
-    document.getElementById('res-drop-rate-val').textContent = `${dropRatePct}%`;
-    document.getElementById('res-meso-rate-val').textContent = `${mesoRatePct}%`;
+    // 결과 렌더링 (유저 오피셜 수식 연산 모듈)
+    document.getElementById('res-req-kills').textContent = `${res.requiredKillsForCap.toLocaleString()} 마리`;
+    document.getElementById('res-req-rehoek').textContent = `약 ${res.requiredRehoekCount} 개`;
+    document.getElementById('res-cap-time-needed').textContent = `약 ${res.timeToCapFormatted}`;
 
-    const bagRatePill = document.getElementById('res-meso-bag-rate');
-    if (bagRatePill) {
-      bagRatePill.textContent = `${res.mesoBagDropRate}% (${res.mesoBagDropRate >= 100 ? '확정 드롭' : '미확정 드롭'})`;
-      bagRatePill.className = res.mesoBagDropRate >= 100 ? 'badge badge-success' : 'badge badge-warning';
-    }
+    // 기본 상한 및 메획 반영 상한 (d) & 주머니 평균값 (a)
+    const baseCapEok = (res.baseCapMeso / 100000000).toFixed(1);
+    const totalCapEok = (res.totalCapMesoWithRate / 100000000).toFixed(3);
+
+    document.getElementById('res-base-cap').textContent = `${baseCapEok} 억 메소`;
+    document.getElementById('res-total-cap-meso').textContent = `약 ${totalCapEok} 억 메소`;
+    document.getElementById('res-meso-per-bag').textContent = `약 ${res.actualMesoPerBag.toLocaleString()} 메소`;
 
     // 30분 / 1시간 / 1재획 메소
     const thirtyMinMan = Math.round(res.thirtyMinMeso / 10000);
@@ -408,11 +411,6 @@ function initCalculatorUI() {
     document.getElementById('res-30min-meso').textContent = `약 ${thirtyMinMan.toLocaleString()} 만 메소`;
     document.getElementById('res-hourly-meso').textContent = `약 ${hourlyMesoEok} 억 (${hourlyMesoMan.toLocaleString()} 만) 메소`;
     document.getElementById('res-2hr-meso').textContent = `약 ${twoHrMesoEok} 억 메소`;
-
-    // 일일 제한까지 총 획득 메소 및 시간
-    const capMesoEok = (res.totalMesoAtCap / 100000000).toFixed(2);
-    document.getElementById('res-cap-total-meso').textContent = `약 ${capMesoEok} 억 메소`;
-    document.getElementById('res-cap-time-needed').textContent = `약 ${res.timeToCapFormatted}`;
 
     // 마릿수 & 경험치
     document.getElementById('res-hourly-kills').textContent = `${res.hourlyKills.toLocaleString()} 마리 / ${res.twoHourKills.toLocaleString()} 마리`;
