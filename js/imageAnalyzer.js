@@ -367,8 +367,13 @@ class ImageAnalyzer {
       }
     }
 
-    // --- B. 도핑 버프 아이콘 (경쿠, 재획비, 익스골드, VIP 등) 자동 감지 및 10초(0:10) 전 알림 ---
-    const hasExpBuffIcon = (expCouponPixels >= 16 || vipBuffPixels >= 18);
+    // --- B. 도핑 버프 아이콘 (경쿠, 재획비, 익스골드, VIP, MVP 5종) 시각 매칭 및 10초(0:10) 전 알림 ---
+    const activeBuffName = pixelCounts.wealthPotion >= 15 ? '재물 획득의 약' :
+                           pixelCounts.vipBuff >= 16 ? 'VIP 경험치 버프' :
+                           pixelCounts.mvpBuff >= 15 ? 'MVP 뿌리기' :
+                           pixelCounts.goldFlask >= 15 ? '경험치 쿠폰' : null;
+
+    const hasExpBuffIcon = activeBuffName !== null;
     const expBrightnessDiff = Math.abs(avgBrightness - this.expBuffState.lastBrightness);
     this.expBuffState.lastBrightness = avgBrightness;
 
@@ -379,20 +384,18 @@ class ImageAnalyzer {
       if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveActiveCount >= 2) {
         this.expBuffState.isBuffActive = true;
         this.expBuffState.alert10Triggered = false;
-        if (this.onExpBuffStatusChange) this.onExpBuffStatusChange('도핑 버프 가동 중', false);
+        if (this.onExpBuffStatusChange) this.onExpBuffStatusChange(`${activeBuffName} 가동 중`, false);
 
-        // 경험치 쿠폰 수동 타이머 자동 시동 동기화
         if (window.timerModule && !window.timerModule.expTimer.isRunning) {
           window.timerModule.startExpTimer();
         }
       }
 
-      // 버프창 아이콘 숫자가 0:10 이하로 떨어지는 초단위 텍스트 변화 포착 또는 자동 타이머 10초 시점
       const isExp10sTimer = window.timerModule && window.timerModule.expTimer.isRunning && window.timerModule.expTimer.remainingSeconds <= 10;
       if (this.expBuffState.isBuffActive && (expBrightnessDiff > 7 || isExp10sTimer)) {
         this.expBuffState.flashCount++;
         if (this.expBuffState.flashCount >= 2 && !this.expBuffState.alert10Triggered) {
-          this.triggerExpBuff10sAlert();
+          this.triggerExpBuff10sAlert(activeBuffName || '도핑 버프');
         }
       }
     } else {
