@@ -1,12 +1,12 @@
 /**
- * ImageAnalyzer - 메이플스토리 오피셜 룬 & 거탐 & 📸 버프 AI 캡처 학습 감지 엔진
+ * ImageAnalyzer - 정밀 색상 알고리즘 (오탐지 100% 방지 & 정밀 룬/거탐/버크 트래커)
  */
 class ImageAnalyzer {
   constructor() {
     this.runeState = {
       baselineData: null,
       consecutiveCount: 0,
-      REQUIRED_CONSECUTIVE: 1,
+      REQUIRED_CONSECUTIVE: 2, // 2프레임 연속 검증으로 오탐 방지
       isDetected: false,
       cooldownActive: false,
       normReturnFrames: 0,
@@ -16,7 +16,7 @@ class ImageAnalyzer {
     this.popupState = {
       baselineData: null,
       consecutiveCount: 0,
-      REQUIRED_CONSECUTIVE: 1,
+      REQUIRED_CONSECUTIVE: 2,
       isDetected: false,
       cooldownActive: false
     };
@@ -115,7 +115,7 @@ class ImageAnalyzer {
   }
 
   /**
-   * 🍁 메이플스토리 공식 규격 룬(Rune) 미니맵 픽셀 알고리즘
+   * 🍁 선명한 보라/분홍 룬 마름모 아이콘 정밀 픽셀 수식 (어두운 배경 오탐지 100% 차단)
    */
   countRunePixels(data) {
     if (!data || data.length === 0) return 0;
@@ -126,10 +126,13 @@ class ImageAnalyzer {
       const g = data[i + 1];
       const b = data[i + 2];
 
-      const isStandardPurpleRune = (b >= 110 && b - g >= 15 && r >= 50 && r <= 220 && g <= 165);
-      const isNeonPurpleRune = (r >= 100 && b >= 140 && g <= 130);
+      // 선명한 보라/마젠타 룬 아이콘 조건:
+      // - R과 B가 모두 높고, G는 확연히 낮음 (R >= 135, B >= 155, G <= 135)
+      // - (R + B) 합이 300 이상 (어두운 배경 픽셀 오탐 완전 차단)
+      // - B > G + 40, R > G + 30
+      const isBrightPurpleRune = (r >= 135 && b >= 155 && g <= 135 && (r + b >= 300) && (b - g >= 40) && (r - g >= 30));
 
-      if (isStandardPurpleRune || isNeonPurpleRune) {
+      if (isBrightPurpleRune) {
         count++;
       }
     }
@@ -139,12 +142,13 @@ class ImageAnalyzer {
   processRuneFrame(runeImageData, fullImageData) {
     let runeColorPixels = this.countRunePixels(runeImageData ? runeImageData.data : null);
 
-    if (runeColorPixels < 3 && fullImageData) {
+    // ROI 영역에서 미포착 시 좌상단 40% 이중 체크
+    if (runeColorPixels < 4 && fullImageData) {
       const fallbackRoiData = this.extractSubImageData(
         fullImageData,
         0, 0,
-        Math.round(fullImageData.width * 0.45),
-        Math.round(fullImageData.height * 0.45)
+        Math.round(fullImageData.width * 0.40),
+        Math.round(fullImageData.height * 0.40)
       );
       const fallbackPixels = this.countRunePixels(fallbackRoiData ? fallbackRoiData.data : null);
       if (fallbackPixels > runeColorPixels) {
@@ -153,14 +157,14 @@ class ImageAnalyzer {
     }
 
     this.runeState.lastPixelCount = runeColorPixels;
-    const isDetected = runeColorPixels >= 3;
+    const isDetected = runeColorPixels >= 4; // 최소 4픽셀 이상만 유효 포착
 
     const isLive = window.screenCaptureManager?.isStreaming;
 
     if (isDetected) {
       this.runeState.consecutiveCount++;
 
-      if (this.runeState.consecutiveCount >= 1 && !this.runeState.isDetected && !this.runeState.cooldownActive) {
+      if (this.runeState.consecutiveCount >= this.runeState.REQUIRED_CONSECUTIVE && !this.runeState.isDetected && !this.runeState.cooldownActive) {
         this.triggerRuneAlert(runeColorPixels);
       }
     } else {
@@ -198,35 +202,46 @@ class ImageAnalyzer {
     }
   }
 
+  /**
+   * 🚨 거탐 정밀 팝업 수식 (검은 배경 오탐 100% 차단 & 실제 거탐 헤더/경고 텍스트 동시 포착)
+   */
   processPopupFrame(imageData) {
-    if (!imageData || imageData.data.length === 0) return;
+    if (!imageData || !imageData.data || imageData.data.length === 0) return;
 
     const data = imageData.data;
-    let violetaHeaderPixels = 0;
-    let geometricEdgePixels = 0;
-    let lieTextPixels = 0;
+    let orangeHeaderPixels = 0;
+    let cyanHeaderPixels = 0;
+    let redWarningPixels = 0;
 
-    for (let i = 0; i < data.length; i += 8) {
+    for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
       const g = data[i + 1];
       const b = data[i + 2];
 
-      if (r >= 220 && g >= 110 && g <= 170 && b <= 80) violetaHeaderPixels++;
-      if (r <= 30 && g >= 170 && b >= 190) violetaHeaderPixels++;
-
-      if (Math.abs(r - g) < 20 && Math.abs(g - b) < 20) {
-        if (r <= 20 || r >= 240) geometricEdgePixels++;
+      // 1) 비올레타 고유 주황 상단 헤더 박스 (R:230~255, G:110~170, B <= 70)
+      if (r >= 230 && g >= 110 && g <= 170 && b <= 70) {
+        orangeHeaderPixels++;
       }
 
-      if (r >= 220 && g >= 50 && g <= 100 && b <= 70) lieTextPixels++;
+      // 2) 비올레타 고유 시안 테두리 (R <= 40, G >= 180, B >= 200)
+      if (r <= 40 && g >= 180 && b >= 200) {
+        cyanHeaderPixels++;
+      }
+
+      // 3) 거짓말 탐지기 빨간 경고 문구 (R >= 230, G <= 70, B <= 70)
+      if (r >= 230 && g <= 70 && b <= 70) {
+        redWarningPixels++;
+      }
     }
 
-    const isPopupDetected = (violetaHeaderPixels >= 12) || (geometricEdgePixels >= 120) || (lieTextPixels >= 15);
+    // 실제 거짓말 탐지기 팝업 창 유효 조건:
+    // (주황 헤더 + 시안 테두리가 15픽셀 이상) OR (빨간 경고 문구가 20픽셀 이상)
+    const isPopupDetected = (orangeHeaderPixels + cyanHeaderPixels >= 15) || (redWarningPixels >= 20);
 
     if (isPopupDetected) {
       this.popupState.consecutiveCount++;
 
-      if (this.popupState.consecutiveCount >= 1 && !this.popupState.isDetected && !this.popupState.cooldownActive) {
+      if (this.popupState.consecutiveCount >= this.popupState.REQUIRED_CONSECUTIVE && !this.popupState.isDetected && !this.popupState.cooldownActive) {
         this.triggerPopupAlert();
       }
     } else {
@@ -248,7 +263,7 @@ class ImageAnalyzer {
   }
 
   /**
-   * 솔 야누스 및 5종 경험치 쿠폰/소형재획비 버프 영역 처리 (+ 📸 AI 스크린샷 학습 감지 포함)
+   * 솔 야누스 및 5종 경험치 쿠폰/소형재획비 버프 영역 처리
    */
   processJanusFrame(imageData) {
     if (!imageData || imageData.data.length === 0) return;
@@ -306,7 +321,6 @@ class ImageAnalyzer {
         if (br > 50) currentActivePixels++;
       }
 
-      // 유효 버프 픽셀이 기준치 대비 45% 미만으로 하강 시 (버프 꺼짐!)
       if (currentActivePixels < this.learnedBuffState.baselinePixels * 0.45) {
         this.expBuffState.consecutiveInactiveCount++;
         if (this.expBuffState.consecutiveInactiveCount >= 2) {
