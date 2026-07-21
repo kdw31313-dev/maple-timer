@@ -27,10 +27,10 @@ class ScreenCaptureManager {
     this.isStreaming = false;
     this.loopIntervalId = null;
 
-    // ROI 좌표 (% 비율 단위)
-    this.runeRoi = { x: 1, y: 1, w: 25, h: 25 };
+    // ROI 좌표 (% 비율 단위 - 미니맵 정밀 초밀착 타이트 규격)
+    this.runeRoi = { x: 1.5, y: 1.5, w: 14, h: 14 };
     this.popupRoi = { x: 0, y: 0, w: 100, h: 100 };
-    this.janusRoi = { x: 70, y: 0, w: 30, h: 20 };
+    this.janusRoi = { x: 72, y: 1, w: 27, h: 15 };
 
     // 200% 정밀 모달 관련 상태
     this.modalEl = document.getElementById('roi-modal');

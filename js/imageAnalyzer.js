@@ -144,9 +144,9 @@ class ImageAnalyzer {
 
     this.runeState.lastPixelCount = runeColorPixels;
 
-    // 🚨 룬 아이콘 고유 픽셀 유효 범위: 3개 이상 350개 이하!
-    // (8,000개 이상의 거대한 배경/UI 보라색은 룬 아이콘이 아니므로 100% 자동 제외!)
-    const isDetected = (runeColorPixels >= 3 && runeColorPixels <= 350);
+    // 🚨 룬 아이콘 고유 규격 픽셀: 3개 이상 120개 이하!
+    // (지정한 미니맵 영역 내부만 오직 100% 감지하며, 120개가 넘는 픽셀은 룬이 아닌 미니맵 테두리/배경이므로 100% 자동 차단!)
+    const isDetected = (runeColorPixels >= 3 && runeColorPixels <= 120);
 
     const isLive = window.screenCaptureManager?.isStreaming;
 
@@ -166,12 +166,12 @@ class ImageAnalyzer {
           this.runeState.isDetected = false;
           this.runeState.normReturnFrames = 0;
           if (this.onRuneStatusChange) {
-            this.onRuneStatusChange(isLive ? `🟢 인식 중 (보라 룬 픽셀 ${runeColorPixels}개)` : '⚪ 대기 중', false);
+            this.onRuneStatusChange(isLive ? `🟢 미니맵 스캔 중 (보라 룬 픽셀 ${runeColorPixels}개)` : '⚪ 대기 중', false);
           }
         }
       } else if (!this.runeState.isDetected) {
         if (this.onRuneStatusChange && isLive) {
-          const displayLabel = runeColorPixels > 350 ? `🟢 인식 중 (배경 제외: ${runeColorPixels}개)` : `🟢 인식 중 (보라 룬 픽셀 ${runeColorPixels}개)`;
+          const displayLabel = runeColorPixels > 120 ? `🟢 미니맵 스캔 중 (미니맵 배경 노이즈 제외: ${runeColorPixels}개)` : `🟢 미니맵 스캔 중 (보라 룬 픽셀 ${runeColorPixels}개)`;
           this.onRuneStatusChange(displayLabel, false);
         }
       }
