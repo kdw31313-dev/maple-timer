@@ -1,5 +1,5 @@
 /**
- * ImageAnalyzer - Canvas 영상 분석기 (초광범위 룬/거탐/버프 실시간 픽셀 트래커)
+ * ImageAnalyzer - 메이플스토리 오피셜 규격 룬(보라 마름모/소용돌이) & 거탐 & 버프 실시간 알고리즘
  */
 class ImageAnalyzer {
   constructor() {
@@ -64,7 +64,9 @@ class ImageAnalyzer {
   }
 
   /**
-   * 룬 픽셀 카운트 함수 (보라/분홍/마젠타/딥퍼플 계열)
+   * 🍁 메이플스토리 공식 규격 룬(Rune) 미니맵 픽셀 알고리즘
+   * - 룬 모양: 미니맵 상에 보라색 마름모(Diamond) 또는 소용돌이(Swirl) 모양 아이콘으로 단일 규격 고정
+   * - 맵 테마(배경)에 따른 착시 대비: 테마 착시와 관계없이 보라색(R: 60~220, G: 0~160, B: 110~255) 픽셀 뭉치 포착
    */
   countRunePixels(data) {
     if (!data || data.length === 0) return 0;
@@ -75,12 +77,12 @@ class ImageAnalyzer {
       const g = data[i + 1];
       const b = data[i + 2];
 
-      // 1) 딥퍼플 / 보라색 룬 (B가 높고 G는 상대적으로 낮음)
-      const isPurpleRune = (b >= 115 && g <= 180 && (b - g > 12) && r >= 40);
-      // 2) 분홍색 / 마젠타 룬 (R과 B가 높음)
-      const isPinkRune = (r >= 115 && b >= 105 && (r - g > 15));
+      // 1) 표준 보라색/마젠타 룬 아이콘 (B가 R/G보다 우세한 메이플 고유 룬 컬러)
+      const isStandardPurpleRune = (b >= 110 && b - g >= 15 && r >= 50 && r <= 220 && g <= 165);
+      // 2) 네온/딥 바이올렛 룬 아이콘
+      const isNeonPurpleRune = (r >= 100 && b >= 140 && g <= 130);
 
-      if (isPurpleRune || isPinkRune) {
+      if (isStandardPurpleRune || isNeonPurpleRune) {
         count++;
       }
     }
@@ -88,12 +90,11 @@ class ImageAnalyzer {
   }
 
   /**
-   * 룬 영역 분석 (기본 ROI + 상단 40% 이중 안전 폴백 스캔)
+   * 룬 영역 분석 (기본 ROI + 상단 45% 이중 안전 폴백 스캔)
    */
   processRuneFrame(runeImageData, fullImageData) {
     let runeColorPixels = this.countRunePixels(runeImageData ? runeImageData.data : null);
 
-    // 🚨 2차 안전 장치: ROI 영역에서 놓쳤을 경우, 화면 좌상단 45% x 45% 영역 이중 폴백 스캔!
     if (runeColorPixels < 3 && fullImageData) {
       const fallbackRoiData = this.extractSubImageData(
         fullImageData,
@@ -123,17 +124,17 @@ class ImageAnalyzer {
 
       if (this.runeState.cooldownActive) {
         this.runeState.normReturnFrames++;
-        if (this.runeState.normReturnFrames >= 10) { // 약 2초 후 쿨다운 해제
+        if (this.runeState.normReturnFrames >= 10) {
           this.runeState.cooldownActive = false;
           this.runeState.isDetected = false;
           this.runeState.normReturnFrames = 0;
           if (this.onRuneStatusChange) {
-            this.onRuneStatusChange(isLive ? `🟢 인식 중 (보라픽셀 ${runeColorPixels}개)` : '⚪ 대기 중', false);
+            this.onRuneStatusChange(isLive ? `🟢 인식 중 (보라 룬 픽셀 ${runeColorPixels}개)` : '⚪ 대기 중', false);
           }
         }
       } else if (!this.runeState.isDetected) {
         if (this.onRuneStatusChange && isLive) {
-          this.onRuneStatusChange(`🟢 인식 중 (보라픽셀 ${runeColorPixels}개)`, false);
+          this.onRuneStatusChange(`🟢 인식 중 (보라 룬 픽셀 ${runeColorPixels}개)`, false);
         }
       }
     }
@@ -148,7 +149,6 @@ class ImageAnalyzer {
       this.onRuneStatusChange(`🚨 룬 감지됨! (${pixelCount}픽셀)`, true);
     }
 
-    // 알림 발송 (음성 TTS + 룬 전용 사운드 + 화면 깜빡임)
     if (window.audioNotifier) {
       window.audioNotifier.notify('미니맵에 룬이 출현했습니다! 룬을 해제해 주세요!', 'rune');
     }
@@ -228,31 +228,26 @@ class ImageAnalyzer {
       const brightness = (r + g + b) / 3;
       totalBrightness += brightness;
 
-      // 1. 솔 야누스 (보라 원형 아이콘)
       if (r >= 40 && r <= 185 && g >= 10 && g <= 140 && b >= 90 && b <= 255) {
         janusIconPixels++;
       }
 
-      // 2. 단풍잎 경쿠 (중앙 단풍잎 + 시안/블루 배경)
       const isWhiteLeaf = (r >= 200 && g >= 200 && b >= 200);
       const isLeafBg = (b >= 150 && (r >= 70 || g >= 70));
       if (isWhiteLeaf || isLeafBg) {
         mapleLeafCouponPixels++;
       }
 
-      // 3. MVP 경험치 쿠폰 (보라/시안/핑크 뱃지)
       const isMvpPurpleOrCyan = ((r >= 120 && g <= 160 && b >= 170) || (r <= 140 && g >= 140 && b >= 190));
       if (isMvpPurpleOrCyan) {
         mvpCouponPixels++;
       }
 
-      // 4. EXP+ 및 몬스터파크 익스트림 골드 포션
       const isExpPlus = (r <= 160 && g >= 145 && b >= 170);
       if (isExpPlus) {
         expPlusPixels++;
       }
 
-      // 5. 소형 재물 획득의 약 / 재물 획득의 약 (청록/황금 포션 병)
       const isTealFlask = (r <= 160 && g >= 130 && b >= 150);
       const isGoldCap = (r >= 170 && g >= 140 && b <= 130);
       if (isTealFlask || isGoldCap) {
@@ -358,9 +353,6 @@ class ImageAnalyzer {
     }
   }
 
-  /**
-   * ⚡ 0% 렉 사냥 스캐너: 마이크로 ROI + 전체 화면 240x135 다운샘플링 데이터를 직접 수급받아 0% 렉 감지!
-   */
   analyzeMicroFrame(runeImageData, janusImageData, popupImageData) {
     if (runeImageData) {
       this.processRuneFrame(runeImageData, null);
@@ -379,7 +371,6 @@ class ImageAnalyzer {
     const width = imageData.width;
     const height = imageData.height;
 
-    // A. 룬 미니맵 영역 ROI 슬라이싱
     let runeImageData = null;
     if (rois.runeRoi) {
       const rx = Math.round((rois.runeRoi.x / 100) * width);
@@ -391,10 +382,8 @@ class ImageAnalyzer {
     }
     this.processRuneFrame(runeImageData, imageData);
 
-    // B. 거짓말 탐지기 전체 화면 ROI
     this.processPopupFrame(imageData);
 
-    // C. 버프 영역 ROI 슬라이싱
     if (rois.janusRoi) {
       const jx = Math.round((rois.janusRoi.x / 100) * width);
       const jy = Math.round((rois.janusRoi.y / 100) * height);
