@@ -356,12 +356,13 @@ function initCalculatorUI() {
 
   if (!mapSelect || !window.huntingCalculator) return;
 
-  // 1) 맵 목록 셀렉트 채우기
+  // 1) 맵 목록 셀렉트 채우기 (MapleWidget 오피셜 DB 적용)
   mapSelect.innerHTML = '';
   window.huntingCalculator.mapDatabase.forEach((item, idx) => {
     const opt = document.createElement('option');
     opt.value = idx;
-    opt.textContent = `[${item.region}] ${item.name} (Lv.${item.mobLevel} / 젠당 ${item.spawnPerWave}마리)`;
+    const max6m = Math.round(item.hourlyMax / 10);
+    opt.textContent = `[${item.region}] ${item.name} (젠당 ${item.spawnPerWave}마리 | 6분 ${max6m.toLocaleString()}마리 | 1시간 ${item.hourlyMax.toLocaleString()}마리)`;
     if (item.name.includes('최하층 통로 2')) opt.selected = true;
     mapSelect.appendChild(opt);
   });
