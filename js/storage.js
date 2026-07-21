@@ -46,6 +46,29 @@ class StorageManager {
     }
   }
 
+  exportConfig() {
+    const config = this.loadConfig();
+    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'maple_timer_settings.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  importConfig(jsonString) {
+    try {
+      const parsed = JSON.parse(jsonString);
+      const merged = { ...this.defaultConfig, ...parsed };
+      this.saveConfig(merged);
+      return merged;
+    } catch (e) {
+      console.error('설정 복원 실패:', e);
+      return null;
+    }
+  }
+
   resetConfig() {
     localStorage.removeItem(this.STORAGE_KEY);
     return { ...this.defaultConfig };

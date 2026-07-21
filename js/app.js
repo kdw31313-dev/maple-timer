@@ -211,6 +211,35 @@ function bindEvents() {
     window.pipController.togglePip();
   });
 
+  // 백업 및 복원 버튼
+  document.getElementById('btn-export-settings')?.addEventListener('click', () => {
+    window.storageManager.exportConfig();
+  });
+
+  const importFileBtn = document.getElementById('btn-import-settings');
+  const importFileInput = document.getElementById('file-import-settings');
+
+  importFileBtn?.addEventListener('click', () => {
+    importFileInput?.click();
+  });
+
+  importFileInput?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const imported = window.storageManager.importConfig(event.target.result);
+      if (imported) {
+        applyConfigToUI(imported);
+        alert('설정이 성공적으로 복원되었습니다!');
+      } else {
+        alert('올바르지 않은 설정 파일입니다.');
+      }
+    };
+    reader.readAsText(file);
+  });
+
   // 설정 초기화 버튼
   document.getElementById('btn-reset-settings')?.addEventListener('click', () => {
     if (confirm('모든 감지 영역 및 알림 설정을 초기화하시겠습니까?')) {
