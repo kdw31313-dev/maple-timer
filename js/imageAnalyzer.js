@@ -234,30 +234,32 @@ class ImageAnalyzer {
     }
   }
 
+  /**
+   * ⚡ 유저 첨부 스크린샷 기반: 솔 야누스 (보랏빛 구체 + 라임/노란색 디지털 지속시간 숫자) 정밀 매처
+   */
   processJanusFrame(imageData) {
-    if (!imageData || imageData.data.length === 0) return;
+    if (!imageData || !imageData.data || imageData.data.length === 0) return;
 
     const data = imageData.data;
-    let janusIconPixels = 0;
-    let totalBrightness = 0;
+    let janusOrbPixels = 0;
+    let yellowDigitPixels = 0;
 
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
       const g = data[i + 1];
       const b = data[i + 2];
-      const brightness = (r + g + b) / 3;
-      totalBrightness += brightness;
 
-      // 6차 솔 야누스 우상단 버프 아이콘 고유 보라/시안 오라 픽셀
-      if (r >= 40 && r <= 185 && g >= 10 && g <= 140 && b >= 90 && b <= 255) {
-        janusIconPixels++;
-      }
+      // 1) 솔 야누스 중앙 보랏빛 바이올렛 구체 바탕 (R:70~140, G:60~120, B:130~210)
+      const isVioletOrb = (r >= 70 && r <= 140 && g >= 60 && g <= 120 && b >= 130 && b <= 210 && (b - g >= 35));
+      if (isVioletOrb) janusOrbPixels++;
+
+      // 2) 지속시간 라임/노란색 디지털 숫자 (R >= 150, G >= 150, B <= 90)
+      const isYellowDigit = (r >= 150 && g >= 150 && b <= 90);
+      if (isYellowDigit) yellowDigitPixels++;
     }
 
-    const avgBrightness = totalBrightness / (data.length / 4);
-    const hasJanusIcon = janusIconPixels >= 6;
-    const janusBrightnessDiff = Math.abs(avgBrightness - this.janusState.lastBrightness);
-    this.janusState.lastBrightness = avgBrightness;
+    // 보랏빛 구체 픽셀 또는 노란 디지털 숫자가 동시에 포착되면 솔 야누스 가동 중!
+    const hasJanusIcon = (janusOrbPixels >= 6) || (janusOrbPixels >= 3 && yellowDigitPixels >= 3);
 
     if (hasJanusIcon) {
       this.janusState.consecutiveActiveCount++;
@@ -278,7 +280,7 @@ class ImageAnalyzer {
         this.triggerJanus10sAlert();
       }
     } else {
-      // 🚨 5석펫 사냥 최적화: 우상단 버프창에서 야누스 아이콘이 꺼지는(소멸) 순간 0.1초 즉시 재사용 알림!
+      // 🚨 60초 지나 우상단 버프창에서 야누스 아이콘이 꺼지거나 사라지는 0.1초 즉시 재설치 알림!
       this.janusState.consecutiveInactiveCount++;
       if (this.janusState.isBuffActive && this.janusState.consecutiveInactiveCount >= 2) {
         this.janusState.isBuffActive = false;
