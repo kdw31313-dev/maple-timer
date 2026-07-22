@@ -210,64 +210,83 @@ class ImageAnalyzer {
     if (!imageData || !imageData.data || imageData.data.length === 0) return;
 
     const data = imageData.data;
+    const width = imageData.width;
+    const height = imageData.height;
 
-    // 5대 거탐 고유 시그니처 픽셀 카운터
+    // 5대 거탐 고유 시그니처 픽셀 카운터 및 바운딩 박스 트래킹
     let redLieDetectorPixels = 0;   // 1) 빨간 "LIE DETECTOR" 텍스트
     let greenCrosshairPixels = 0;   // 2) 🅰️ 초록 조준점 아이콘
     let pinkMushroomPixels = 0;     // 3) 🅱️ 핑크 비올레타 버섯 캡
-    let bluePanelPixels = 0;        // 4) 🅲️ 진한 파란 문장 선택 배경
-    let yellowItalicPixels = 0;     // 5) 🅳️ 클릭 거탐 황금/노란 이탤릭 텍스트
-    let cyanCaptchaPixels = 0;      // 6) 🅴 일반 거탐 하늘색/흰색 캡차 박스
-    let segmentNumPixels = 0;       // 7) 디지털 카운트다운 숫자 (시안/연두/황금)
 
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
+    let redMinX = 9999, redMaxX = 0, redMinY = 9999, redMaxY = 0;
+    let greenMinX = 9999, greenMaxX = 0, greenMinY = 9999, greenMaxY = 0;
+    let pinkMinX = 9999, pinkMaxX = 0, pinkMinY = 9999, pinkMaxY = 0;
 
-      // 1) 빨간 "LIE DETECTOR" 텍스트 (사냥 중 절대 안 나오는 순수 빨강)
-      if (r >= 160 && g <= 55 && b <= 55) {
-        redLieDetectorPixels++;
-      }
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
 
-      // 2) 🅰️ 도형 찾기 고유: 초록 조준점 아이콘
-      if (g >= 130 && r <= 90 && b <= 90 && (g - r >= 35) && (g - b >= 35)) {
-        greenCrosshairPixels++;
-      }
+        // 1) 빨간 "LIE DETECTOR" 텍스트 (순수 강렬한 빨강)
+        if (r >= 180 && g <= 45 && b <= 45) {
+          redLieDetectorPixels++;
+          if (x < redMinX) redMinX = x;
+          if (x > redMaxX) redMaxX = x;
+          if (y < redMinY) redMinY = y;
+          if (y > redMaxY) redMaxY = y;
+        }
 
-      // 3) 🅱️ 비올레타 고유: 핑크 버섯 캡
-      if (r >= 180 && b >= 130 && g <= 150 && (r - g >= 40) && (b - g >= 10)) {
-        pinkMushroomPixels++;
-      }
+        // 2) 🅰️ 도형 찾기 고유: 초록 조준점 아이콘
+        if (g >= 140 && r <= 80 && b <= 80 && (g - r >= 45) && (g - b >= 45)) {
+          greenCrosshairPixels++;
+          if (x < greenMinX) greenMinX = x;
+          if (x > greenMaxX) greenMaxX = x;
+          if (y < greenMinY) greenMinY = y;
+          if (y > greenMaxY) greenMaxY = y;
+        }
 
-      // 4) 🅲️ 문장 선택 고유: 진한 슬레이트 블루 팝업 패널
-      //    R:35~85, G:55~105, B:110~170 && B-R >= 60 (순수 거탐 패널 고유색)
-      if (r >= 35 && r <= 85 && g >= 55 && g <= 105 && b >= 110 && b <= 170 && (b - r >= 60)) {
-        bluePanelPixels++;
-      }
-
-      // 5) 🅳️ 클릭 거탐 고유: 선명한 황금/노란 이탤릭 텍스트 ("거짓말 탐지기가 발동 되었습니다")
-      //    데미지 스킨 노이즈 차단을 위해 R>=220, G>=180, B<=80 선명한 황금 폰트로 정밀화
-      if (r >= 220 && g >= 180 && b <= 80 && (r - b >= 130)) {
-        yellowItalicPixels++;
-      }
-
-      // 6) 🅴 일반 거탐 고유: 하늘색/흰색 캡차 박스
-      //    R:100~230, G:180~255, B:200~255, B-R >= 30
-      if (r >= 100 && r <= 235 && g >= 180 && b >= 200 && (b - r >= 30)) {
-        cyanCaptchaPixels++;
-      }
-
-      // 7) 공통: 디지털 세그먼트 카운트다운 숫자 (시안/연두/황금 밝은 픽셀)
-      if ((r <= 80 && g >= 200 && b >= 200) || (r <= 120 && g >= 220 && b <= 120)) {
-        segmentNumPixels++;
+        // 3) 🅱️ 비올레타 고유: 핑크 버섯 캡
+        if (r >= 195 && b >= 145 && g <= 130 && (r - g >= 60) && (b - g >= 15)) {
+          pinkMushroomPixels++;
+          if (x < pinkMinX) pinkMinX = x;
+          if (x > pinkMaxX) pinkMaxX = x;
+          if (y < pinkMinY) pinkMinY = y;
+          if (y > pinkMaxY) pinkMaxY = y;
+        }
       }
     }
 
     // ===== 감지 판정 (메인 2종: 🅰️도형 찾기 & 🅱️비올레타 집중 감지) =====
-    // 다른 서브 3종(문장선택, 클릭거탐, 캡차) 및 강제 감지는 오탐 방지를 위해 완전히 제외합니다.
-    const isTypeA = (redLieDetectorPixels >= 4 && greenCrosshairPixels >= 8);   // 도형 찾기 (조준점+LIE DETECTOR)
-    const isTypeB = (redLieDetectorPixels >= 4 && pinkMushroomPixels >= 8);     // 비올레타 (버섯+LIE DETECTOR)
+    // 사방으로 흩어져서 뜨는 데미지 스킨을 완전히 배제하기 위해, 
+    // 빨간 텍스트 영역과 아이콘 영역이 동일 팝업창 내(중심 거리 350px 이하)에 뭉쳐 있는지 기하학적으로 검증합니다.
+    let isTypeA = false;
+    let isTypeB = false;
+
+    // 🅰️ 투명도형찾기 판정 (빨강 25px 이상 & 초록 20px 이상이면서 350px 반경 이내 인접)
+    if (redLieDetectorPixels >= 25 && greenCrosshairPixels >= 20) {
+      const redCenterX = (redMinX + redMaxX) / 2;
+      const redCenterY = (redMinY + redMaxY) / 2;
+      const greenCenterX = (greenMinX + greenMaxX) / 2;
+      const greenCenterY = (greenMinY + greenMaxY) / 2;
+      const dist = Math.sqrt(Math.pow(redCenterX - greenCenterX, 2) + Math.pow(redCenterY - greenCenterY, 2));
+      if (dist <= 350) {
+        isTypeA = true;
+      }
+    }
+
+    // 🅱️ 비올레타 판정 (빨강 25px 이상 & 핑크 30px 이상이면서 350px 반경 이내 인접)
+    if (redLieDetectorPixels >= 25 && pinkMushroomPixels >= 30) {
+      const redCenterX = (redMinX + redMaxX) / 2;
+      const redCenterY = (redMinY + redMaxY) / 2;
+      const pinkCenterX = (pinkMinX + pinkMaxX) / 2;
+      const pinkCenterY = (pinkMinY + pinkMaxY) / 2;
+      const dist = Math.sqrt(Math.pow(redCenterX - pinkCenterX, 2) + Math.pow(redCenterY - pinkCenterY, 2));
+      if (dist <= 350) {
+        isTypeB = true;
+      }
+    }
 
     const isPopupDetected = isTypeA || isTypeB;
 
