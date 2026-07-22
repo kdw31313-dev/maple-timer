@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pill.className = 'status-pill detected';
       } else {
         const isLive = window.screenCaptureManager?.isStreaming;
-        pill.textContent = isLive ? '🟢 거탐 감시 중 (인식되지 않음)' : statusText;
+        pill.textContent = isLive ? '🟢 거탐 감시 중 (비올레타/도형찾기)' : statusText;
         pill.className = isLive ? 'status-pill active' : 'status-pill';
       }
     }
