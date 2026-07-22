@@ -217,6 +217,8 @@ class ImageAnalyzer {
     let redLieDetectorPixels = 0;   // 1) 빨간 "LIE DETECTOR" 텍스트
     let greenCrosshairPixels = 0;   // 2) 🅰️ 초록 조준점 아이콘
     let pinkMushroomPixels = 0;     // 3) 🅱️ 핑크 비올레타 버섯 캡
+    let grayBgPixels = 0;           // 4) 🅰️ 연회색 팝업 배경 (도형찾기)
+    let blackBgPixels = 0;          // 5) 🅱️ 어두운 검정 팝업 배경 (비올레타)
 
     let redMinX = 9999, redMaxX = 0, redMinY = 9999, redMaxY = 0;
     let greenMinX = 9999, greenMaxX = 0, greenMinY = 9999, greenMaxY = 0;
@@ -255,17 +257,29 @@ class ImageAnalyzer {
           if (y < pinkMinY) pinkMinY = y;
           if (y > pinkMaxY) pinkMaxY = y;
         }
+
+        // 4) 🅰️ 연회색 팝업 배경 (도형찾기 배경: RGB가 200~240 범위로 모여있는 회색)
+        if (r >= 190 && r <= 245 && g >= 190 && g <= 245 && b >= 190 && b <= 245 &&
+            Math.abs(r - g) <= 6 && Math.abs(g - b) <= 6) {
+          grayBgPixels++;
+        }
+
+        // 5) 🅱️ 어두운 검정 팝업 배경 (비올레타 배경: RGB가 8~45 범위의 고르고 낮은 검정)
+        if (r >= 8 && r <= 45 && g >= 8 && g <= 45 && b >= 8 && b <= 45 &&
+            Math.abs(r - g) <= 6 && Math.abs(g - b) <= 6) {
+          blackBgPixels++;
+        }
       }
     }
 
     // ===== 감지 판정 (메인 2종: 🅰️도형 찾기 & 🅱️비올레타 집중 감지) =====
-    // 사방으로 흩어져서 뜨는 데미지 스킨을 완전히 배제하기 위해, 
-    // 빨간 텍스트 영역과 아이콘 영역이 동일 팝업창 내(중심 거리 350px 이하)에 뭉쳐 있는지 기하학적으로 검증합니다.
+    // 투명 배경을 가지는 데미지 스킨은 절대로 가질 수 없는 
+    // 불투명 연회색(도형찾기) / 어두운 검정(비올레타) 배경 면적이 충분히(최소 2,500px 이상) 감지될 때만 팝업으로 최종 판단합니다.
     let isTypeA = false;
     let isTypeB = false;
 
-    // 🅰️ 투명도형찾기 판정 (빨강 25px 이상 & 초록 20px 이상이면서 350px 반경 이내 인접)
-    if (redLieDetectorPixels >= 25 && greenCrosshairPixels >= 20) {
+    // 🅰️ 투명도형찾기 판정 (빨강 >= 25 & 초록 >= 20 이며 350px 반경 이내 인접 & 연회색 배경 2,500px 이상 존재)
+    if (redLieDetectorPixels >= 25 && greenCrosshairPixels >= 20 && grayBgPixels >= 2500) {
       const redCenterX = (redMinX + redMaxX) / 2;
       const redCenterY = (redMinY + redMaxY) / 2;
       const greenCenterX = (greenMinX + greenMaxX) / 2;
@@ -276,8 +290,8 @@ class ImageAnalyzer {
       }
     }
 
-    // 🅱️ 비올레타 판정 (빨강 25px 이상 & 핑크 30px 이상이면서 350px 반경 이내 인접)
-    if (redLieDetectorPixels >= 25 && pinkMushroomPixels >= 30) {
+    // 🅱️ 비올레타 판정 (빨강 >= 25 & 핑크 >= 30 이며 350px 반경 이내 인접 & 검정 배경 3,000px 이상 존재)
+    if (redLieDetectorPixels >= 25 && pinkMushroomPixels >= 30 && blackBgPixels >= 3000) {
       const redCenterX = (redMinX + redMaxX) / 2;
       const redCenterY = (redMinY + redMaxY) / 2;
       const pinkCenterX = (pinkMinX + pinkMaxX) / 2;
