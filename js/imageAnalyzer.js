@@ -423,8 +423,11 @@ class ImageAnalyzer {
         const g = data[idx + 1];
         const b = data[idx + 2];
 
-        // 오직 새벽 (보랏빛 바이올렛 구체 - 설치기 60초)
-        const isDawnViolet = (r >= 65 && r <= 150 && g >= 50 && g <= 130 && b >= 120 && b <= 220 && (b - g >= 30));
+        // 유저 첨부 2장 스크린샷 100% 매칭: 솔 야누스 새벽 메카닉 톱니 구체 (어두운 회보라 링 + 4개 도트)
+        const isDawnViolet = (
+          (r >= 60 && r <= 150 && g >= 50 && g <= 130 && b >= 115 && b <= 220 && (b - g >= 25)) ||
+          (r >= 45 && r <= 120 && g >= 45 && g <= 115 && b >= 70 && b <= 170)
+        );
 
         if (isDawnViolet) {
           janusOrbPixels++;
