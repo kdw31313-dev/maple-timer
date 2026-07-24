@@ -347,11 +347,52 @@ class ImageAnalyzer {
   }
 
   /**
-   * ⚡ 솔 야누스 새벽(설치기) 전용 4단계 스캐너:
-   *   1. Mode Parser: 오직 솔 야누스 '새벽' (설치기 - 보랏빛 몽환 구체 R:65~150, G:50~130, B:120~220)만 전용 감지
-   *   2. Dynamic Buff Tracker: 32x32 버프칸 위치 이동 시 실존 바운딩 박스 자동 추적
-   *   3. Number Recognizer: 어두운 외곽선(Stroke)을 동반한 타이머 텍스트 픽셀 추적
-   *   4. Expired Tracker: 0.1초 소멸 포착 및 재설치 즉시 알림
+   * 📌 메이플 버프창 제일 우측 검은 배경 화살표(>) 앵커 포착기
+   *   유저 제공 스크린샷 기반: 버프창 우측 끝에는 각 열(1열, 2열, 3열)마다 검은색 박스+흰색 > 화살표가 존재함.
+   *   이 화살표 앵커의 Y좌표를 기준으로 1열(Y_row1)과 3열(Y_row3)의 위치를 100% 정밀하게 산출합니다.
+   */
+  findBuffBarArrowAnchor(data, width, height) {
+    let arrowX = -1, arrowY = -1;
+
+    for (let y = 0; y < Math.min(height, 120); y++) {
+      for (let x = Math.max(0, width - 40); x < width; x++) {
+        const idx = (y * width + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+
+        // 화살표 > 내부의 강렬한 흰색/밝은 픽셀 (R>=220, G>=220, B>=220)
+        if (r >= 220 && g >= 220 && b >= 220) {
+          // 주변 2픽셀 내에 검은 배경(R,G,B <= 35)이 인접해 있으면 우측 화살표 앵커로 확정!
+          let blackCount = 0;
+          for (let dy = -2; dy <= 2; dy++) {
+            for (let dx = -2; dx <= 2; dx++) {
+              const nx = x + dx, ny = y + dy;
+              if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                const nIdx = (ny * width + nx) * 4;
+                if (data[nIdx] <= 35 && data[nIdx + 1] <= 35 && data[nIdx + 2] <= 35) {
+                  blackCount++;
+                }
+              }
+            }
+          }
+
+          if (blackCount >= 5) {
+            arrowX = x;
+            arrowY = y;
+            break;
+          }
+        }
+      }
+      if (arrowY !== -1) break;
+    }
+
+    return { x: arrowX, y: arrowY };
+  }
+
+  /**
+   * ⚡ 솔 야누스 새벽(설치기) 전용 스캐너 (1열 전용 스캔)
+   *   - 유저 안내: 솔 야누스는 버프창 1열(Row 1)에 고정 배치됨.
    */
   processJanusFrame(imageData) {
     if (!imageData || !imageData.data || imageData.data.length === 0) return;
@@ -360,11 +401,18 @@ class ImageAnalyzer {
     const width = imageData.width;
     const height = imageData.height;
 
+    // 우측 화살표 > 앵커 포착
+    const anchor = this.findBuffBarArrowAnchor(data, width, height);
+
+    // 1열(Row 1) 스캔 범위 산출 (화살표 앵커 기준 Y: -16 ~ +24, 없으면 0 ~ height/2)
+    const row1MinY = anchor.y !== -1 ? Math.max(0, anchor.y - 16) : 0;
+    const row1MaxY = anchor.y !== -1 ? Math.min(height - 1, anchor.y + 28) : Math.floor(height * 0.45);
+
     let janusOrbPixels = 0;
     let orbMinX = width, orbMaxX = 0, orbMinY = height, orbMaxY = 0;
 
-    // ===== 1단계: 솔 야누스 '새벽' (설치기 보라 구체) 전용 포착 =====
-    for (let y = 0; y < height; y++) {
+    // ===== 1단계: 1열(Row 1) 내에서 솔 야누스 '새벽' (보라 구체) 포착 =====
+    for (let y = row1MinY; y <= row1MaxY; y++) {
       for (let x = 0; x < width; x++) {
         const idx = (y * width + x) * 4;
         const r = data[idx];
@@ -535,11 +583,18 @@ class ImageAnalyzer {
     const width = imageData.width;
     const height = imageData.height;
 
-    // ===== 1. 익스트림 골드 (황금 물약) 전용 아이콘 픽셀 포착 =====
+    // 우측 화살표 > 앵커 포착
+    const anchor = this.findBuffBarArrowAnchor(data, width, height);
+
+    // 3열(Row 3) 스캔 범위 산출 (화살표 앵커 기준 Y: +45 ~ +115, 없으면 height * 0.40 ~ height)
+    const row3MinY = anchor.y !== -1 ? Math.min(height - 1, anchor.y + 45) : Math.floor(height * 0.35);
+    const row3MaxY = anchor.y !== -1 ? Math.min(height - 1, anchor.y + 115) : height - 1;
+
+    // ===== 1. 3열(Row 3) 내에서 익스트림 골드 (황금 물약) 전용 아이콘 픽셀 포착 =====
     let extremeGoldPixels = 0;
     let buffMinX = width, buffMaxX = 0, buffMinY = height, buffMaxY = 0;
 
-    for (let y = 0; y < height; y++) {
+    for (let y = row3MinY; y <= row3MaxY; y++) {
       for (let x = 0; x < width; x++) {
         const idx = (y * width + x) * 4;
         const r = data[idx];
