@@ -519,6 +519,15 @@ class ImageAnalyzer {
    * 4대 분류: 유니온의 힘, 유니온의 부, 비약, 경험치 쿠폰
    * Clustering: 10초 이내 동시 종료 버프 묶어서 1회 알림!
    */
+  /**
+   * 🏆 익스트림 골드 (Extreme Gold - 몬스터파크 황금 물약 30분) 전용 초정밀 스캐너
+   *
+   * 유저 지정 사냥 필수 도핑: 몬스터파크 익스트림 골드 물약 전용 1:1 파싱
+   *   1. Potion Parser: 익스트림 골드 특유의 선명한 황금 물약 픽셀 (R:205~255, G:155~220, B:0~65)
+   *   2. Dynamic Tracker: 32x32 버프칸 위치 이동 시 황금 물약 아이콘 동적 1:1 자동 추적
+   *   3. Number Recognizer: 어두운 Stroke 외곽선이 둘러싸인 타이머 폰트 픽셀 추적
+   *   4. Expired Tracker: 0.1초 소멸 포착 및 익스트림 골드 재도핑 알림 발송
+   */
   processExpFrame(imageData) {
     if (!imageData || !imageData.data || imageData.data.length === 0) return;
 
@@ -526,14 +535,9 @@ class ImageAnalyzer {
     const width = imageData.width;
     const height = imageData.height;
 
-    // ===== 1. 4대 Matcher 스캔 & 버프 아이콘 위치 포착 =====
-    let unionPowerPixels = 0;  // 유니온의 힘
-    let unionWealthPixels = 0; // 유니온의 부
-    let elixirPixels = 0;      // 비약
-    let expCouponPixels = 0;   // 경험치 쿠폰
-
+    // ===== 1. 익스트림 골드 (황금 물약) 전용 아이콘 픽셀 포착 =====
+    let extremeGoldPixels = 0;
     let buffMinX = width, buffMaxX = 0, buffMinY = height, buffMaxY = 0;
-    let buffIconTotalPixels = 0;
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
@@ -542,19 +546,11 @@ class ImageAnalyzer {
         const g = data[idx + 1];
         const b = data[idx + 2];
 
-        let isBuffPixel = false;
+        // 익스트림 골드 황금 물약병 픽셀 (R>=205, G>=155, G<=220, B<=65)
+        const isGoldPotion = (r >= 205 && g >= 155 && g <= 220 && b <= 65 && (r - b >= 135));
 
-        // 1) 유니온의 힘 (레드-골드)
-        if (r >= 190 && g >= 140 && b <= 90) { unionPowerPixels++; isBuffPixel = true; }
-        // 2) 유니온의 부 (황금 동전)
-        else if (r >= 210 && g >= 170 && b <= 70) { unionWealthPixels++; isBuffPixel = true; }
-        // 3) 비약 (재획비/소형재획비 청록 병 + 황금 캡)
-        else if ((r <= 160 && g >= 130 && b >= 150) || (r >= 170 && g >= 140 && b <= 130)) { elixirPixels++; isBuffPixel = true; }
-        // 4) 경험치 쿠폰 (단풍잎/MVP/EXP+)
-        else if (r >= 200 && g >= 200 && b >= 200) { expCouponPixels++; isBuffPixel = true; }
-
-        if (isBuffPixel) {
-          buffIconTotalPixels++;
+        if (isGoldPotion) {
+          extremeGoldPixels++;
           if (x < buffMinX) buffMinX = x;
           if (x > buffMaxX) buffMaxX = x;
           if (y < buffMinY) buffMinY = y;
@@ -563,15 +559,15 @@ class ImageAnalyzer {
       }
     }
 
-    // ===== 2. 버프 아이콘 바운딩 박스 근처의 진짜 숫자 폰트 픽셀만 정밀 스캔 =====
+    // ===== 2. 익스트림 골드 32x32 버프 아이콘 박스 동적 자동 추적 =====
     let digitPixels = 0;
 
-    const scanMinX = buffIconTotalPixels >= 3 ? Math.max(0, buffMinX - 16) : 0;
-    const scanMaxX = buffIconTotalPixels >= 3 ? Math.min(width - 1, buffMaxX + 16) : width - 1;
-    const scanMinY = buffIconTotalPixels >= 3 ? Math.max(0, buffMinY - 16) : 0;
-    const scanMaxY = buffIconTotalPixels >= 3 ? Math.min(height - 1, buffMaxY + 16) : height - 1;
+    const scanMinX = extremeGoldPixels >= 3 ? Math.max(0, buffMinX - 16) : 0;
+    const scanMaxX = extremeGoldPixels >= 3 ? Math.min(width - 1, buffMaxX + 16) : width - 1;
+    const scanMinY = extremeGoldPixels >= 3 ? Math.max(0, buffMinY - 16) : 0;
+    const scanMaxY = extremeGoldPixels >= 3 ? Math.min(height - 1, buffMaxY + 16) : height - 1;
 
-    if (buffIconTotalPixels >= 3) {
+    if (extremeGoldPixels >= 3) {
       for (let y = scanMinY; y <= scanMaxY; y++) {
         for (let x = scanMinX; x <= scanMaxX; x++) {
           const idx = (y * width + x) * 4;
@@ -579,7 +575,7 @@ class ImageAnalyzer {
           const g = data[idx + 1];
           const b = data[idx + 2];
 
-          // 밝은 노란색/연두색/흰색 폰트 (R>=180, G>=180)
+          // 밝은 노란색/연두색/흰색 타이머 폰트 (R>=180, G>=180)
           if (r >= 180 && g >= 180) {
             // 주변 1픽셀에 검은색/어두운 회색 아웃라인 Stroke(R,G,B <= 75)가 있는지 100% 검증
             let hasBlackBorder = false;
@@ -610,51 +606,35 @@ class ImageAnalyzer {
       }
     }
 
-    // ===== 3. Matcher: 4대 버프 분류 =====
-    const currentDetectedSet = new Set();
-    if (unionPowerPixels >= 6) currentDetectedSet.add('유니온의 힘');
-    if (unionWealthPixels >= 6) currentDetectedSet.add('유니온의 부');
-    if (elixirPixels >= 6) currentDetectedSet.add('재물 획득의 약(비약)');
-    if (expCouponPixels >= 6) currentDetectedSet.add('경험치 쿠폰');
+    // ===== 3. 익스트림 골드 버프 상태 및 타이머 관리 =====
+    const hasGoldBuff = (extremeGoldPixels >= 4);
 
-    const hasBuffIcons = (buffIconTotalPixels >= 6) || (currentDetectedSet.size > 0);
-
-    if (hasBuffIcons) {
+    if (hasGoldBuff) {
       this.expBuffState.consecutiveActiveCount++;
       this.expBuffState.consecutiveInactiveCount = 0;
 
-      // 최초 감지: 도핑 버프 가동 시작
+      // 최초 감지: 익스트림 골드 버프 가동 시작
       if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveActiveCount >= 2) {
         this.expBuffState.isBuffActive = true;
         this.expBuffState.alert10Triggered = false;
         this.expBuffState.alertExpiredTriggered = false;
         this.expBuffState.peakDigitPixelCount = digitPixels;
         this.expBuffState.lowDigitFrames = 0;
-        this.expBuffState.detectedBuffNames = Array.from(currentDetectedSet);
+        this.expBuffState.detectedBuffNames = ['익스트림 골드'];
 
-        const buffNames = currentDetectedSet.size > 0
-          ? Array.from(currentDetectedSet).join(', ')
-          : '도핑 버프';
         if (this.onExpBuffStatusChange) {
-          this.onExpBuffStatusChange(`🍁 [${buffNames}] 가동 중`, false);
+          this.onExpBuffStatusChange('🏆 익스트림 골드 가동 중', false);
         }
       }
 
-      // ===== 3. Number Recognizer: 숫자 카운트다운 추적 =====
+      // ===== Number Recognizer: 익스트림 골드 카운트다운 추적 =====
       if (this.expBuffState.isBuffActive) {
-        // 감지된 버프 이름 업데이트
-        if (currentDetectedSet.size > 0) {
-          this.expBuffState.detectedBuffNames = Array.from(currentDetectedSet);
-          this.clusterState.activeBuffs = currentDetectedSet;
-        }
-
-        // 피크 업데이트 ("13" 2자리 표시 때 숫자 픽셀 최대)
+        // 피크 업데이트
         if (digitPixels > this.expBuffState.peakDigitPixelCount) {
           this.expBuffState.peakDigitPixelCount = digitPixels;
         }
 
         // 숫자가 피크 대비 30% 이하로 급감 = 1자리(1분 미만) 진입!
-        // 예: "13"(피크) → "9:24" → "8"(급감) → 종료 임박 판정
         const peak = this.expBuffState.peakDigitPixelCount;
         const isLowDigit = (peak > 0 && digitPixels <= peak * 0.30 && digitPixels >= 1);
 
@@ -664,32 +644,35 @@ class ImageAnalyzer {
           this.expBuffState.lowDigitFrames = 0;
         }
 
-        // 연속 3프레임 이상 급감 → 종료 임박 알림! (Clustering 적용)
+        // 연속 3프레임 이상 급감 → 익스트림 골드 종료 임박 알림!
         if (this.expBuffState.lowDigitFrames >= 3 && !this.expBuffState.alert10Triggered) {
-          this.triggerClusterAlert(this.expBuffState.detectedBuffNames);
+          this.triggerClusterAlert(['익스트림 골드']);
         }
 
         // UI 상태 표시
-        const buffNames = this.expBuffState.detectedBuffNames.length > 0
-          ? this.expBuffState.detectedBuffNames.join(', ')
-          : '도핑 버프';
         if (this.onExpBuffStatusChange && !this.expBuffState.alert10Triggered) {
-          this.onExpBuffStatusChange(`🍁 [${buffNames}] 가동 중 (숫자: ${digitPixels})`, false);
+          this.onExpBuffStatusChange(`🏆 익스트림 골드 가동 중 (타이머: ${digitPixels})`, false);
         }
       }
-
-      this.expBuffState.lastDigitPixelCount = digitPixels;
     } else {
-      // ===== 4. 소멸 추적: 버프 아이콘이 1사분면에서 완전히 사라짐 =====
+      // ===== 소멸 추적: 익스트림 골드 아이콘 소멸 =====
       this.expBuffState.consecutiveInactiveCount++;
-      if (this.expBuffState.isBuffActive && this.expBuffState.consecutiveInactiveCount >= 5) {
+
+      if (this.expBuffState.isBuffActive && this.expBuffState.consecutiveInactiveCount >= 2) {
         this.expBuffState.isBuffActive = false;
         this.expBuffState.lowDigitFrames = 0;
         this.expBuffState.peakDigitPixelCount = 0;
+
         if (!this.expBuffState.alertExpiredTriggered) {
-          this.triggerExpBuffExpiredAlert();
+          this.expBuffState.alertExpiredTriggered = true;
+          if (this.onExpBuffStatusChange) {
+            this.onExpBuffStatusChange('🚨 익스트림 골드 만료! 재도핑하세요!', true);
+          }
+          if (window.audioNotifier) {
+            window.audioNotifier.notify('🏆 [메이플] 익스트림 골드 버프가 종료되었습니다! 물약을 재사용하세요.', 'exp');
+          }
         }
-      } else if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveInactiveCount >= 5) {
+      } else if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveInactiveCount >= 3) {
         if (this.onExpBuffStatusChange) {
           this.onExpBuffStatusChange('⚪ 대기 중 (인식되지 않음)', false);
         }
