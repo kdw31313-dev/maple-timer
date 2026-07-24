@@ -355,6 +355,15 @@ class ImageAnalyzer {
    *      - 노란 픽셀이 피크 대비 30% 이하로 급감 → 10초 이하 진입 판정!
    *   4. 소멸 추적: 보라 구체+숫자 모두 사라지면 0.1초 즉시 재설치 알림
    */
+  /**
+   * ⚡ 솔 야누스 정밀 4단계 쇄신 스캐너:
+   *   1. Mode Parser: 솔 야누스 2가지 형태 100% 포착
+   *      - '새벽' (보라색 몽환 구체: R:70~150, G:50~130, B:120~220)
+   *      - '황혼' (주황/황금 몽환 구체: R:200~255, G:110~180, B:20~80)
+   *   2. Dynamic Buff Tracker: 32x32 버프칸 위치 이동 시 실존 바운딩 박스 자동 추적
+   *   3. Number Recognizer: 어두운 외곽선(Stroke)을 동반한 타이머 텍스트 픽셀 추적
+   *   4. Expired Tracker: 0.1초 소멸 포착 및 재설치 즉시 알림
+   */
   processJanusFrame(imageData) {
     if (!imageData || !imageData.data || imageData.data.length === 0) return;
 
@@ -365,7 +374,7 @@ class ImageAnalyzer {
     let janusOrbPixels = 0;
     let orbMinX = width, orbMaxX = 0, orbMinY = height, orbMaxY = 0;
 
-    // ===== 1단계: 보랏빛 바이올렛 야누스 구체 아이콘 위치 포착 =====
+    // ===== 1단계: 솔 야누스 2가지 모드 (새벽/황혼) 아이콘 포착 =====
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const idx = (y * width + x) * 4;
@@ -373,8 +382,12 @@ class ImageAnalyzer {
         const g = data[idx + 1];
         const b = data[idx + 2];
 
-        // 야누스 보라색 구체
-        if (r >= 70 && r <= 140 && g >= 60 && g <= 120 && b >= 130 && b <= 210 && (b - g >= 35)) {
+        // 1) 새벽 (보랏빛 바이올렛 구체)
+        const isDawnViolet = (r >= 65 && r <= 150 && g >= 50 && g <= 130 && b >= 120 && b <= 220 && (b - g >= 30));
+        // 2) 황혼 (주황/황금빛 사출 구체)
+        const isTwilightGold = (r >= 195 && g >= 105 && g <= 185 && b <= 85 && (r - b >= 95));
+
+        if (isDawnViolet || isTwilightGold) {
           janusOrbPixels++;
           if (x < orbMinX) orbMinX = x;
           if (x > orbMaxX) orbMaxX = x;
@@ -384,17 +397,15 @@ class ImageAnalyzer {
       }
     }
 
-    // ===== 2단계: 야누스 버프 아이콘 박스 근처만 스캔 (전체 풀림 방지) =====
+    // ===== 2단계: 32x32 버프 박스 동적 자동 추적 (위치 이동 완벽 대응) =====
     let yellowDigitPixels = 0;
 
-    // 아이콘 포착 여부와 상관없이 야누스 구체가 포착된 범위(또는 보라색 픽셀 발생 영역)로만 한정하여 스캔
-    // 포착되지 않은 경우에도 전체 화면이 아닌 보라색 계열 발생 상단 영역으로 범위를 제어하여 배경 2100개 노이즈 방지
-    const scanMinX = janusOrbPixels >= 1 ? Math.max(0, orbMinX - 12) : 0;
-    const scanMaxX = janusOrbPixels >= 1 ? Math.min(width - 1, orbMaxX + 12) : width - 1;
-    const scanMinY = janusOrbPixels >= 1 ? Math.max(0, orbMinY - 12) : 0;
-    const scanMaxY = janusOrbPixels >= 1 ? Math.min(height - 1, orbMaxY + 12) : height - 1;
+    const scanMinX = janusOrbPixels >= 1 ? Math.max(0, orbMinX - 16) : 0;
+    const scanMaxX = janusOrbPixels >= 1 ? Math.min(width - 1, orbMaxX + 16) : width - 1;
+    const scanMinY = janusOrbPixels >= 1 ? Math.max(0, orbMinY - 16) : 0;
+    const scanMaxY = janusOrbPixels >= 1 ? Math.min(height - 1, orbMaxY + 16) : height - 1;
 
-    // 야누스 구체 보라색이 1개라도 포착된 경우에만 정밀 스캔
+    // 야누스 구체가 포착된 32x32 주변 영역에서만 타이머 텍스트 스캔
     if (janusOrbPixels >= 1) {
       for (let y = scanMinY; y <= scanMaxY; y++) {
         for (let x = scanMinX; x <= scanMaxX; x++) {
@@ -403,9 +414,9 @@ class ImageAnalyzer {
           const g = data[idx + 1];
           const b = data[idx + 2];
 
-          // 선명한 옐로우/라임 폰트 (R>=190, G>=190, B<=80)
-          if (r >= 190 && g >= 190 && b <= 80) {
-            // 주변 1픽셀에 검은색 아웃라인 테두리가 있는지 확인 (진짜 폰트 검증)
+          // 선명한 옐로우/라임/흰색 타이머 폰트 (R>=185, G>=185)
+          if (r >= 185 && g >= 185) {
+            // 주변 1픽셀에 검은색/어두운 회색 아웃라인 Stroke(R,G,B <= 70)가 있는지 100% 검증
             let hasBlackBorder = false;
             for (let dy = -1; dy <= 1; dy++) {
               for (let dx = -1; dx <= 1; dx++) {
@@ -417,7 +428,7 @@ class ImageAnalyzer {
                   const nr = data[nIdx];
                   const ng = data[nIdx + 1];
                   const nb = data[nIdx + 2];
-                  if (nr <= 70 && ng <= 70 && nb <= 70) {
+                  if (nr <= 75 && ng <= 75 && nb <= 75) {
                     hasBlackBorder = true;
                     break;
                   }
@@ -448,7 +459,7 @@ class ImageAnalyzer {
         this.janusState.alertExpiredTriggered = false;
         this.janusState.peakYellowDigitCount = yellowDigitPixels;
         this.janusState.lowDigitFrames = 0;
-        if (this.onJanusStatusChange) this.onJanusStatusChange('⚡ 솔 야누스 가동 중', false);
+        if (this.onJanusStatusChange) this.onJanusStatusChange('⚡ 솔 야누스 가동 중 (새벽/황혼 모드)', false);
       }
 
       // ===== 3. Number Recognizer: 노란 숫자 카운트다운 추적 =====
@@ -459,7 +470,6 @@ class ImageAnalyzer {
         }
 
         // 노란 숫자가 피크 대비 30% 이하로 급감 = 한 자릿수(10초 미만) 진입!
-        // 예: "1:20"(피크) → "42" → "9"(급감) → 10초 이하 판정
         const peak = this.janusState.peakYellowDigitCount;
         const isLowDigit = (peak > 0 && yellowDigitPixels <= peak * 0.30 && yellowDigitPixels >= 1);
 
@@ -476,7 +486,7 @@ class ImageAnalyzer {
 
         // UI 상태 표시
         if (this.onJanusStatusChange && !this.janusState.alert10Triggered) {
-          this.onJanusStatusChange(`⚡ 야누스 가동 중 (숫자 픽셀: ${yellowDigitPixels})`, false);
+          this.onJanusStatusChange(`⚡ 야누스 가동 중 (타이머 픽셀: ${yellowDigitPixels})`, false);
         }
       }
 
@@ -569,43 +579,45 @@ class ImageAnalyzer {
     // ===== 2. 버프 아이콘 바운딩 박스 근처의 진짜 숫자 폰트 픽셀만 정밀 스캔 =====
     let digitPixels = 0;
 
-    const scanMinX = buffIconTotalPixels >= 3 ? Math.max(0, buffMinX - 10) : 0;
-    const scanMaxX = buffIconTotalPixels >= 3 ? Math.min(width - 1, buffMaxX + 10) : width - 1;
-    const scanMinY = buffIconTotalPixels >= 3 ? Math.max(0, buffMinY - 10) : 0;
-    const scanMaxY = buffIconTotalPixels >= 3 ? Math.min(height - 1, buffMaxY + 10) : height - 1;
+    const scanMinX = buffIconTotalPixels >= 3 ? Math.max(0, buffMinX - 16) : 0;
+    const scanMaxX = buffIconTotalPixels >= 3 ? Math.min(width - 1, buffMaxX + 16) : width - 1;
+    const scanMinY = buffIconTotalPixels >= 3 ? Math.max(0, buffMinY - 16) : 0;
+    const scanMaxY = buffIconTotalPixels >= 3 ? Math.min(height - 1, buffMaxY + 16) : height - 1;
 
-    for (let y = scanMinY; y <= scanMaxY; y++) {
-      for (let x = scanMinX; x <= scanMaxX; x++) {
-        const idx = (y * width + x) * 4;
-        const r = data[idx];
-        const g = data[idx + 1];
-        const b = data[idx + 2];
+    if (buffIconTotalPixels >= 3) {
+      for (let y = scanMinY; y <= scanMaxY; y++) {
+        for (let x = scanMinX; x <= scanMaxX; x++) {
+          const idx = (y * width + x) * 4;
+          const r = data[idx];
+          const g = data[idx + 1];
+          const b = data[idx + 2];
 
-        // 밝은 노란색/연두색/흰색 폰트 (R>=180, G>=180)
-        if (r >= 180 && g >= 180) {
-          // 주변 1픽셀에 검은색 아웃라인 테두리가 있는지 확인 (진짜 숫자 폰트 검증)
-          let hasBlackBorder = false;
-          for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-              if (dx === 0 && dy === 0) continue;
-              const nx = x + dx;
-              const ny = y + dy;
-              if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                const nIdx = (ny * width + nx) * 4;
-                const nr = data[nIdx];
-                const ng = data[nIdx + 1];
-                const nb = data[nIdx + 2];
-                if (nr <= 70 && ng <= 70 && nb <= 70) {
-                  hasBlackBorder = true;
-                  break;
+          // 밝은 노란색/연두색/흰색 폰트 (R>=180, G>=180)
+          if (r >= 180 && g >= 180) {
+            // 주변 1픽셀에 검은색/어두운 회색 아웃라인 Stroke(R,G,B <= 75)가 있는지 100% 검증
+            let hasBlackBorder = false;
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                const nx = x + dx;
+                const ny = y + dy;
+                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                  const nIdx = (ny * width + nx) * 4;
+                  const nr = data[nIdx];
+                  const ng = data[nIdx + 1];
+                  const nb = data[nIdx + 2];
+                  if (nr <= 75 && ng <= 75 && nb <= 75) {
+                    hasBlackBorder = true;
+                    break;
+                  }
                 }
               }
+              if (hasBlackBorder) break;
             }
-            if (hasBlackBorder) break;
-          }
 
-          if (hasBlackBorder) {
-            digitPixels++;
+            if (hasBlackBorder) {
+              digitPixels++;
+            }
           }
         }
       }
