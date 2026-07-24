@@ -511,9 +511,9 @@ class ImageAnalyzer {
           this.janusState.peakYellowDigitCount = yellowDigitPixels;
         }
 
-        // 노란 숫자가 피크 대비 30% 이하로 급감 = 한 자릿수(10초 미만) 진입!
+        // 노란 숫자가 피크 대비 45% 이하로 급감 = 유저 스크린샷 '9'초, '8'초 한 자릿수 진입!
         const peak = this.janusState.peakYellowDigitCount;
-        const isLowDigit = (peak > 0 && yellowDigitPixels <= peak * 0.30 && yellowDigitPixels >= 1);
+        const isLowDigit = (peak > 0 && yellowDigitPixels <= peak * 0.45 && yellowDigitPixels >= 1);
 
         if (isLowDigit) {
           this.janusState.lowDigitFrames++;
