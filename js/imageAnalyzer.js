@@ -190,7 +190,7 @@ class ImageAnalyzer {
     }
 
     if (window.audioNotifier) {
-      window.audioNotifier.notify('미니맵에 룬이 출현했습니다! 룬을 해제해 주세요!', 'rune');
+      window.audioNotifier.notify('📍 [메이플] 미니맵 보라 룬 출현! 룬을 해제해 주세요.', 'rune');
     }
   }
 
@@ -342,7 +342,7 @@ class ImageAnalyzer {
     }
 
     if (window.audioNotifier) {
-      window.audioNotifier.notify(`비상! ${detectedType}가 감지되었습니다! 즉시 화면을 확인하세요!`, 'popup');
+      window.audioNotifier.notify(`🚨 [메이플] 비상! ${detectedType}가 감지되었습니다! 화면을 확인하세요!`, 'popup');
     }
   }
 

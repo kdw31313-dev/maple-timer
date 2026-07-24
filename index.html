@@ -206,7 +206,22 @@
                 <span class="slider"></span>
               </label>
               <button id="btn-capture-buff-snapshot" class="btn btn-small btn-secondary" onclick="if(window.screenCaptureManager) window.screenCaptureManager.captureBuffSnapshot();">📸 버프 캡처 학습</button>
-              <span class="status-pill" id="exp-status-pill">대기 중</span>
+          <!-- 📱 텔레그램 봇 알림 연동 (실시간 메세지 전송) -->
+          <div class="roi-tool-item" style="border:1px solid rgba(0, 136, 204, 0.4); background:rgba(0, 136, 204, 0.1);">
+            <div class="tool-title">
+              <span class="color-badge" style="background:#0088cc; width:12px; height:12px; border-radius:50%; display:inline-block;"></span>
+              <div>
+                <strong>✈️ 텔레그램 봇 실시간 알림 연동</strong>
+                <div style="font-size:0.75rem; color:var(--text-muted);">모든 사건(룬/거탐/야누스/도핑/쿠폰) 발생 시 텔레그램 메세지를 자동 발송합니다.</div>
+              </div>
+            </div>
+            <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <button id="btn-telegram-test" class="btn btn-small btn-primary" style="background:#0088cc; border:none;">📲 텔레그램 테스트 메세지 전송</button>
+              <label class="switch">
+                <input type="checkbox" id="toggle-telegram-alert" checked>
+                <span class="slider"></span>
+              </label>
+              <span class="status-pill active" id="telegram-status-pill">🟢 연동 완료</span>
             </div>
           </div>
         </div>
@@ -646,6 +661,7 @@
 
   <!-- 스크립트 불러오기 모듈 -->
   <script src="js/storage.js"></script>
+  <script src="js/telegramNotifier.js"></script>
   <script src="js/audioNotifier.js"></script>
   <script src="js/timerModule.js"></script>
   <script src="js/imageAnalyzer.js"></script>

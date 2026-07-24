@@ -113,7 +113,7 @@ class TimerModule {
 
     if (rem === 10 && chk10 && !this.expTimer.alert10Triggered) {
       this.expTimer.alert10Triggered = true;
-      window.audioNotifier.notify('경험치 쿠폰 종료 10초 전입니다', 'chime');
+      window.audioNotifier.notify('🧪 [메이플] 경험치 쿠폰 종료 10초 전입니다.', 'chime');
     }
   }
 
@@ -122,13 +122,13 @@ class TimerModule {
       this.expTimer.alertEndTriggered = true;
       const chkEnd = document.getElementById('chk-exp-alert-end')?.checked;
       
-      window.audioNotifier.notify('경험치 쿠폰이 종료되었습니다!', 'siren');
+      window.audioNotifier.notify('🧪 [메이플] 경험치 쿠폰 타이머가 만료되었습니다!', 'siren');
 
       if (chkEnd) {
         // 종료 후 10초마다 반복 알림
         this.expTimer.endRepeatInterval = setInterval(() => {
           if (!this.expTimer.isRunning && this.expTimer.remainingSeconds <= 0) {
-            window.audioNotifier.notify('경험치 쿠폰 재사용이 필요합니다!', 'siren');
+            window.audioNotifier.notify('🧪 [메이플] 경험치 쿠폰 재사용이 필요합니다!', 'siren');
           } else {
             this.stopExpEndRepeat();
           }
@@ -202,7 +202,7 @@ class TimerModule {
 
     if (rem === 5 && chkPre && !this.janusTimer.preAlertTriggered) {
       this.janusTimer.preAlertTriggered = true;
-      window.audioNotifier.notify('솔 야누스 5초 전', 'beep');
+      window.audioNotifier.notify('⚡ [메이플] 솔 야누스 5초 전', 'beep');
     }
   }
 
@@ -210,7 +210,7 @@ class TimerModule {
     this.resetJanusTimer();
     const chkEnd = document.getElementById('chk-janus-endalert')?.checked;
     if (chkEnd) {
-      window.audioNotifier.notify('솔 야누스 재설치가 필요합니다!', 'beep');
+      window.audioNotifier.notify('⚡ [메이플] 솔 야누스 만료! 구체를 재설치하세요.', 'beep');
     }
   }
 
@@ -276,13 +276,13 @@ class TimerModule {
 
     if (rem === 10 && chk10s && !item.alert10s) {
       item.alert10s = true;
-      window.audioNotifier.notify(`${item.name} 버프 종료 10초 전입니다`, 'chime');
+      window.audioNotifier.notify(`💰 [메이플] ${item.name} 버프 종료 10초 전입니다.`, 'chime');
     }
   }
 
   handleDopingEnd(key, item) {
     this.pauseDopingTimer(key);
-    window.audioNotifier.notify(`${item.name} 버프가 종료되었습니다! 재사용을 권장합니다.`, 'siren');
+    window.audioNotifier.notify(`💰 [메이플] ${item.name} 버프가 종료되었습니다!`, 'siren');
   }
 }
 

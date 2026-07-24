@@ -134,6 +134,29 @@ function bindEvents() {
     window.screenCaptureManager.openRoiModal('exp');
   });
 
+  // --- 📲 텔레그램 봇 알림 이벤트 바인딩 ---
+  const btnTelegramTest = document.getElementById('btn-telegram-test');
+  const toggleTelegram = document.getElementById('toggle-telegram-alert');
+  const pillTelegram = document.getElementById('telegram-status-pill');
+
+  if (toggleTelegram) {
+    toggleTelegram.checked = window.telegramNotifier?.config?.enabled ?? true;
+    toggleTelegram.addEventListener('change', (e) => {
+      const isEnabled = e.target.checked;
+      window.telegramNotifier?.saveConfig({ enabled: isEnabled });
+      if (pillTelegram) {
+        pillTelegram.textContent = isEnabled ? '🟢 연동 완료' : '⚪ 알림 끔';
+        pillTelegram.className = isEnabled ? 'status-pill active' : 'status-pill';
+      }
+    });
+  }
+
+  btnTelegramTest?.addEventListener('click', () => {
+    if (window.telegramNotifier) {
+      window.telegramNotifier.sendTestMessage();
+    }
+  });
+
   // --- 경험치 쿠폰 타이머 버튼 ---
   const expStartBtn = document.getElementById('btn-exp-start');
   const expPauseBtn = document.getElementById('btn-exp-pause');

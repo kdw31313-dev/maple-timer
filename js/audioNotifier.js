@@ -86,7 +86,12 @@ class AudioNotifier {
       }
     }
 
-    // 3. 시각 깜빡임 (Flash)
+    // 3. 📱 텔레그램 메세지 알림 자동 전송 (간결한 문구)
+    if (window.telegramNotifier && message) {
+      window.telegramNotifier.send(message);
+    }
+
+    // 4. 시각 깜빡임 (Flash)
     if (this.useFlash) {
       this.triggerFlash();
     }
