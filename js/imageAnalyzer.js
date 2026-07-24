@@ -347,19 +347,8 @@ class ImageAnalyzer {
   }
 
   /**
-   * ⚡ 유저 첨부 스크린샷 기반 솔 야누스 4단계 파이프라인:
-   *   1. Parser: 1사분면에서 보랏빛 구체 아이콘 포착
-   *   2. Matcher: 바이올렛 구체 + 노란 디지털 숫자 조합으로 야누스 100% 매칭
-   *   3. Number Recognizer: 노란 숫자 픽셀 개수 변화량으로 카운트다운 직접 추적
-   *      - "1:20" = 노란 픽셀 많음(3자리+콜론) → "42" = 중간(2자리) → "9" = 극소(1자리)
-   *      - 노란 픽셀이 피크 대비 30% 이하로 급감 → 10초 이하 진입 판정!
-   *   4. 소멸 추적: 보라 구체+숫자 모두 사라지면 0.1초 즉시 재설치 알림
-   */
-  /**
-   * ⚡ 솔 야누스 정밀 4단계 쇄신 스캐너:
-   *   1. Mode Parser: 솔 야누스 2가지 형태 100% 포착
-   *      - '새벽' (보라색 몽환 구체: R:70~150, G:50~130, B:120~220)
-   *      - '황혼' (주황/황금 몽환 구체: R:200~255, G:110~180, B:20~80)
+   * ⚡ 솔 야누스 새벽(설치기) 전용 4단계 스캐너:
+   *   1. Mode Parser: 오직 솔 야누스 '새벽' (설치기 - 보랏빛 몽환 구체 R:65~150, G:50~130, B:120~220)만 전용 감지
    *   2. Dynamic Buff Tracker: 32x32 버프칸 위치 이동 시 실존 바운딩 박스 자동 추적
    *   3. Number Recognizer: 어두운 외곽선(Stroke)을 동반한 타이머 텍스트 픽셀 추적
    *   4. Expired Tracker: 0.1초 소멸 포착 및 재설치 즉시 알림
@@ -374,7 +363,7 @@ class ImageAnalyzer {
     let janusOrbPixels = 0;
     let orbMinX = width, orbMaxX = 0, orbMinY = height, orbMaxY = 0;
 
-    // ===== 1단계: 솔 야누스 2가지 모드 (새벽/황혼) 아이콘 포착 =====
+    // ===== 1단계: 솔 야누스 '새벽' (설치기 보라 구체) 전용 포착 =====
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const idx = (y * width + x) * 4;
@@ -382,12 +371,10 @@ class ImageAnalyzer {
         const g = data[idx + 1];
         const b = data[idx + 2];
 
-        // 1) 새벽 (보랏빛 바이올렛 구체)
+        // 오직 새벽 (보랏빛 바이올렛 구체 - 설치기 60초)
         const isDawnViolet = (r >= 65 && r <= 150 && g >= 50 && g <= 130 && b >= 120 && b <= 220 && (b - g >= 30));
-        // 2) 황혼 (주황/황금빛 사출 구체)
-        const isTwilightGold = (r >= 195 && g >= 105 && g <= 185 && b <= 85 && (r - b >= 95));
 
-        if (isDawnViolet || isTwilightGold) {
+        if (isDawnViolet) {
           janusOrbPixels++;
           if (x < orbMinX) orbMinX = x;
           if (x > orbMaxX) orbMaxX = x;
@@ -416,7 +403,7 @@ class ImageAnalyzer {
 
           // 선명한 옐로우/라임/흰색 타이머 폰트 (R>=185, G>=185)
           if (r >= 185 && g >= 185) {
-            // 주변 1픽셀에 검은색/어두운 회색 아웃라인 Stroke(R,G,B <= 70)가 있는지 100% 검증
+            // 주변 1픽셀에 검은색/어두운 회색 아웃라인 Stroke(R,G,B <= 75)가 있는지 100% 검증
             let hasBlackBorder = false;
             for (let dy = -1; dy <= 1; dy++) {
               for (let dx = -1; dx <= 1; dx++) {
@@ -459,7 +446,7 @@ class ImageAnalyzer {
         this.janusState.alertExpiredTriggered = false;
         this.janusState.peakYellowDigitCount = yellowDigitPixels;
         this.janusState.lowDigitFrames = 0;
-        if (this.onJanusStatusChange) this.onJanusStatusChange('⚡ 솔 야누스 가동 중 (새벽/황혼 모드)', false);
+        if (this.onJanusStatusChange) this.onJanusStatusChange('⚡ 야누스 새벽(설치기) 가동 중', false);
       }
 
       // ===== 3. Number Recognizer: 노란 숫자 카운트다운 추적 =====
