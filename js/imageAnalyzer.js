@@ -347,52 +347,56 @@ class ImageAnalyzer {
   }
 
   /**
-   * 📌 메이플 버프창 제일 우측 검은 배경 화살표(>) 앵커 포착기
-   *   유저 제공 스크린샷 기반: 버프창 우측 끝에는 각 열(1열, 2열, 3열)마다 검은색 박스+흰색 > 화살표가 존재함.
-   *   이 화살표 앵커의 Y좌표를 기준으로 1열(Y_row1)과 3열(Y_row3)의 위치를 100% 정밀하게 산출합니다.
+   * 📌 메이플 버프창 상단/하단 화살표(>) 2중 절대 앵커 포착기
+   *   유저 지적 반영: 1열 버프가 길어지면 2줄을 차지(줄바꿈)할 수 있음.
+   *   그러나 각 줄(열)의 제일 우측에는 항상 독립된 검은 박스 + 흰색 > 화살표 버튼이 붙어있음!
+   *   - topArrowY: 가장 상단의 1번째 화살표 버튼 Y좌표 => 1열(Row 1: 솔 야누스) 절대 앵커
+   *   - bottomArrowY: 가장 하단의 마지막 화살표 버튼 Y좌표 => 3열(Row 3: 익스트림 골드) 절대 앵커
    */
-  findBuffBarArrowAnchor(data, width, height) {
-    let arrowX = -1, arrowY = -1;
+  findBuffBarArrowAnchors(data, width, height) {
+    let topArrowY = -1;
+    let bottomArrowY = -1;
+    let arrowX = -1;
 
-    for (let y = 0; y < Math.min(height, 120); y++) {
-      for (let x = Math.max(0, width - 40); x < width; x++) {
+    for (let y = 0; y < Math.min(height, 160); y++) {
+      for (let x = Math.max(0, width - 50); x < width; x++) {
         const idx = (y * width + x) * 4;
         const r = data[idx];
         const g = data[idx + 1];
         const b = data[idx + 2];
 
-        // 화살표 > 내부의 강렬한 흰색/밝은 픽셀 (R>=220, G>=220, B>=220)
-        if (r >= 220 && g >= 220 && b >= 220) {
-          // 주변 2픽셀 내에 검은 배경(R,G,B <= 35)이 인접해 있으면 우측 화살표 앵커로 확정!
+        // 화살표 > 내부의 강렬한 흰색/밝은 픽셀 (R>=215, G>=215, B>=215)
+        if (r >= 215 && g >= 215 && b >= 215) {
+          // 주변 2픽셀 내에 검은 배경(R,G,B <= 40)이 인접해 있으면 우측 화살표 앵커로 확정!
           let blackCount = 0;
           for (let dy = -2; dy <= 2; dy++) {
             for (let dx = -2; dx <= 2; dx++) {
               const nx = x + dx, ny = y + dy;
               if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
                 const nIdx = (ny * width + nx) * 4;
-                if (data[nIdx] <= 35 && data[nIdx + 1] <= 35 && data[nIdx + 2] <= 35) {
+                if (data[nIdx] <= 40 && data[nIdx + 1] <= 40 && data[nIdx + 2] <= 40) {
                   blackCount++;
                 }
               }
             }
           }
 
-          if (blackCount >= 5) {
+          if (blackCount >= 4) {
             arrowX = x;
-            arrowY = y;
-            break;
+            if (topArrowY === -1) {
+              topArrowY = y; // 가장 첫 번째 발견된 상단 화살표 (1열 앵커)
+            }
+            bottomArrowY = y; // 가장 마지막으로 발견된 하단 화살표 (3열 앵커)
           }
         }
       }
-      if (arrowY !== -1) break;
     }
 
-    return { x: arrowX, y: arrowY };
+    return { x: arrowX, topY: topArrowY, bottomY: bottomArrowY };
   }
 
   /**
-   * ⚡ 솔 야누스 새벽(설치기) 전용 스캐너 (1열 전용 스캔)
-   *   - 유저 안내: 솔 야누스는 버프창 1열(Row 1)에 고정 배치됨.
+   * ⚡ 솔 야누스 새벽(설치기) 전용 스캐너 (상단 화살표 = 1열 절대 앵커 스캔)
    */
   processJanusFrame(imageData) {
     if (!imageData || !imageData.data || imageData.data.length === 0) return;
@@ -401,12 +405,12 @@ class ImageAnalyzer {
     const width = imageData.width;
     const height = imageData.height;
 
-    // 우측 화살표 > 앵커 포착
-    const anchor = this.findBuffBarArrowAnchor(data, width, height);
+    // 상단/하단 화살표 > 앵커 포착
+    const anchors = this.findBuffBarArrowAnchors(data, width, height);
 
-    // 1열(Row 1) 스캔 범위 산출 (화살표 앵커 기준 Y: -16 ~ +24, 없으면 0 ~ height/2)
-    const row1MinY = anchor.y !== -1 ? Math.max(0, anchor.y - 16) : 0;
-    const row1MaxY = anchor.y !== -1 ? Math.min(height - 1, anchor.y + 28) : Math.floor(height * 0.45);
+    // 1열(Row 1) 스캔 범위: 상단 화살표 topY 기준 Y: -16 ~ +24
+    const row1MinY = anchors.topY !== -1 ? Math.max(0, anchors.topY - 16) : 0;
+    const row1MaxY = anchors.topY !== -1 ? Math.min(height - 1, anchors.topY + 26) : Math.floor(height * 0.45);
 
     let janusOrbPixels = 0;
     let orbMinX = width, orbMaxX = 0, orbMinY = height, orbMaxY = 0;
@@ -583,12 +587,12 @@ class ImageAnalyzer {
     const width = imageData.width;
     const height = imageData.height;
 
-    // 우측 화살표 > 앵커 포착
-    const anchor = this.findBuffBarArrowAnchor(data, width, height);
+    // 상단/하단 화살표 > 앵커 포착
+    const anchors = this.findBuffBarArrowAnchors(data, width, height);
 
-    // 3열(Row 3) 스캔 범위 산출 (화살표 앵커 기준 Y: +45 ~ +115, 없으면 height * 0.40 ~ height)
-    const row3MinY = anchor.y !== -1 ? Math.min(height - 1, anchor.y + 45) : Math.floor(height * 0.35);
-    const row3MaxY = anchor.y !== -1 ? Math.min(height - 1, anchor.y + 115) : height - 1;
+    // 3열(Row 3) 스캔 범위: 하단 화살표 bottomY 기준 Y: -16 ~ +24 (가장 마지막 화살표 줄)
+    const row3MinY = anchors.bottomY !== -1 ? Math.max(0, anchors.bottomY - 16) : Math.floor(height * 0.40);
+    const row3MaxY = anchors.bottomY !== -1 ? Math.min(height - 1, anchors.bottomY + 28) : height - 1;
 
     // ===== 1. 3열(Row 3) 내에서 익스트림 골드 (황금 물약) 전용 아이콘 픽셀 포착 =====
     let extremeGoldPixels = 0;
