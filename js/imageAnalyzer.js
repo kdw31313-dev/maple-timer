@@ -605,8 +605,8 @@ class ImageAnalyzer {
         const g = data[idx + 1];
         const b = data[idx + 2];
 
-        // 익스트림 골드 황금 물약병 픽셀 (R>=205, G>=155, G<=220, B<=65)
-        const isGoldPotion = (r >= 205 && g >= 155 && g <= 220 && b <= 65 && (r - b >= 135));
+        // 유저 첨부 스크린샷 3열 8번째 익스트림 골드 (황금 캡 마개 + 노란빛 물약병) 100% 매칭 픽셀 (R>=180, G>=140, B<=110, R-B>=80)
+        const isGoldPotion = (r >= 180 && g >= 140 && b <= 110 && (r - b >= 80));
 
         if (isGoldPotion) {
           extremeGoldPixels++;
