@@ -29,9 +29,10 @@ class ScreenCaptureManager {
     this.loopIntervalId = null;
 
     // ⚡ 1사분면 무설정 자동 캡처 범위 (% 비율 단위 - 1사분면 최상단 1줄 제외)
-    this.runeRoi = { x: 1.5, y: 1.5, w: 14, h: 14 };
+    // 실제 1280x720 사냥 화면 기준 미니맵 내부 전체(제목줄 제외).
+    this.runeRoi = { x: 0.3, y: 8.3, w: 14.5, h: 13 };
     this.popupRoi = { x: 0, y: 0, w: 100, h: 100 };
-    this.janusRoi = { x: 55, y: 1.5, w: 44, h: 22 }; // 메이플 1사분면 전체 버프 영역 자동 탑재!
+    this.janusRoi = { x: 55, y: 0, w: 44, h: 24 }; // 최상단부터 여러 줄로 이동하는 버프 아이콘 전체
 
     // 200% 정밀 모달 관련 상태
     this.modalEl = document.getElementById('roi-modal');

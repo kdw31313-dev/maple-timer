@@ -10,7 +10,8 @@ class ImageAnalyzer {
       isDetected: false,
       cooldownActive: false,
       normReturnFrames: 0,
-      lastPixelCount: 0
+      lastPixelCount: 0,
+      lastCandidateCount: 0
     };
 
     this.popupState = {
@@ -126,29 +127,158 @@ class ImageAnalyzer {
     };
   }
 
-  countRunePixels(data) {
-    if (!data || data.length === 0) return 0;
-    let count = 0;
+  /**
+   * 실제 사냥 화면의 미니맵 룬 표식 전용 검출기.
+   *
+   * 배경에 보라색이 얼마나 많은지는 판정에 사용하지 않는다. 분홍/보라 후보
+   * 픽셀을 연결된 작은 덩어리로 묶은 뒤, 룬 표식과 같은 크기의 마름모 형태만
+   * 남긴다. 이 방식은 큰 보라색 지형과 작은 원형 캐릭터 표식을 함께 제외한다.
+   */
+  findRuneDiamondCandidates(imageData) {
+    if (!imageData || !imageData.data || !imageData.width || !imageData.height) return [];
 
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
+    const { data, width, height } = imageData;
+    const pixelTotal = width * height;
+    const colorMask = new Uint8Array(pixelTotal);
+    const expandedMask = new Uint8Array(pixelTotal);
 
-      const isPureRuneIcon = (r >= 160 && b >= 180 && g <= 110 && (b - g >= 80) && (r - g >= 60));
+    // 룬 외곽선의 진한 보라부터 내부의 밝은 분홍까지 포함하되,
+    // 파란 미니맵 선과 회색 UI는 제외한다.
+    for (let p = 0; p < pixelTotal; p++) {
+      const idx = p * 4;
+      const r = data[idx];
+      const g = data[idx + 1];
+      const b = data[idx + 2];
+      const isRuneMagenta = (
+        r >= 135 &&
+        b >= 145 &&
+        g <= 165 &&
+        r - g >= 22 &&
+        b - g >= 28 &&
+        Math.abs(r - b) <= 105
+      );
+      if (isRuneMagenta) colorMask[p] = 1;
+    }
 
-      if (isPureRuneIcon) {
-        count++;
+    // JPEG 압축과 안티앨리어싱으로 끊어진 외곽선을 1픽셀만 연결한다.
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const p = y * width + x;
+        if (!colorMask[p]) continue;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+              expandedMask[ny * width + nx] = 1;
+            }
+          }
+        }
       }
     }
-    return count;
+
+    const visited = new Uint8Array(pixelTotal);
+    const candidates = [];
+    const minSide = Math.max(7, Math.round(Math.min(width, height) * 0.06));
+    const maxSide = Math.max(20, Math.round(Math.min(width, height) * 0.24));
+
+    for (let start = 0; start < pixelTotal; start++) {
+      if (!expandedMask[start] || visited[start]) continue;
+
+      const queue = [start];
+      visited[start] = 1;
+      let head = 0;
+      let minX = width, maxX = 0, minY = height, maxY = 0;
+      const originalPixels = [];
+
+      while (head < queue.length) {
+        const p = queue[head++];
+        const x = p % width;
+        const y = Math.floor(p / width);
+        if (colorMask[p]) originalPixels.push({ x, y });
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+            const np = ny * width + nx;
+            if (expandedMask[np] && !visited[np]) {
+              visited[np] = 1;
+              queue.push(np);
+            }
+          }
+        }
+      }
+
+      const boxWidth = maxX - minX + 1;
+      const boxHeight = maxY - minY + 1;
+      const aspect = boxWidth / Math.max(1, boxHeight);
+      const density = originalPixels.length / Math.max(1, boxWidth * boxHeight);
+      let redSum = 0;
+      let greenSum = 0;
+      for (const pixel of originalPixels) {
+        const idx = (pixel.y * width + pixel.x) * 4;
+        redSum += data[idx];
+        greenSum += data[idx + 1];
+      }
+      const averageRedGreenContrast = originalPixels.length > 0
+        ? (redSum - greenSum) / originalPixels.length
+        : 0;
+      if (
+        boxWidth < minSide || boxHeight < minSide ||
+        boxWidth > maxSide || boxHeight > maxSide ||
+        aspect < 0.62 || aspect > 1.38 ||
+        originalPixels.length < 5 ||
+        (originalPixels.length <= 8 && aspect > 1.2) ||
+        density < 0.055 || density > 0.72 ||
+        averageRedGreenContrast < 38
+      ) {
+        continue;
+      }
+
+      // 마름모 외곽선은 중심을 기준으로 위/아래/왼쪽/오른쪽에 색점이 있다.
+      // 큰 배경 덩어리나 한쪽으로 치우친 이펙트를 이 단계에서 제거한다.
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+      const marginX = boxWidth * 0.18;
+      const marginY = boxHeight * 0.18;
+      let hasLeft = false, hasRight = false, hasTop = false, hasBottom = false;
+      for (const pixel of originalPixels) {
+        if (pixel.x <= centerX - marginX) hasLeft = true;
+        if (pixel.x >= centerX + marginX) hasRight = true;
+        if (pixel.y <= centerY - marginY) hasTop = true;
+        if (pixel.y >= centerY + marginY) hasBottom = true;
+      }
+
+      if (hasLeft && hasRight && hasTop && hasBottom) {
+        candidates.push({
+          x: minX,
+          y: minY,
+          width: boxWidth,
+          height: boxHeight,
+          pixelCount: originalPixels.length,
+          density,
+          averageRedGreenContrast
+        });
+      }
+    }
+
+    return candidates;
   }
 
   processRuneFrame(runeImageData, fullImageData) {
-    let runeColorPixels = this.countRunePixels(runeImageData ? runeImageData.data : null);
+    const candidates = this.findRuneDiamondCandidates(runeImageData);
+    const runeColorPixels = candidates.reduce((sum, candidate) => sum + candidate.pixelCount, 0);
 
     this.runeState.lastPixelCount = runeColorPixels;
-    const isDetected = (runeColorPixels >= 3 && runeColorPixels <= 120);
+    this.runeState.lastCandidateCount = candidates.length;
+    const isDetected = candidates.length > 0;
 
     const isLive = window.screenCaptureManager?.isStreaming;
 
@@ -168,13 +298,12 @@ class ImageAnalyzer {
           this.runeState.isDetected = false;
           this.runeState.normReturnFrames = 0;
           if (this.onRuneStatusChange) {
-            this.onRuneStatusChange(isLive ? `🟢 미니맵 스캔 중 (보라 룬 픽셀 ${runeColorPixels}개)` : '⚪ 대기 중', false);
+            this.onRuneStatusChange(isLive ? '🟢 미니맵 스캔 중 (룬 형태 없음)' : '⚪ 대기 중', false);
           }
         }
       } else if (!this.runeState.isDetected) {
         if (this.onRuneStatusChange && isLive) {
-          const displayLabel = runeColorPixels > 120 ? `🟢 미니맵 스캔 중 (미니맵 배경 노이즈 제외: ${runeColorPixels}개)` : `🟢 미니맵 스캔 중 (보라 룬 픽셀 ${runeColorPixels}개)`;
-          this.onRuneStatusChange(displayLabel, false);
+          this.onRuneStatusChange('🟢 미니맵 스캔 중 (룬 형태 없음)', false);
         }
       }
     }
@@ -186,7 +315,7 @@ class ImageAnalyzer {
     this.runeState.normReturnFrames = 0;
 
     if (this.onRuneStatusChange) {
-      this.onRuneStatusChange(`🚨 룬 감지됨! (${pixelCount}픽셀)`, true);
+      this.onRuneStatusChange(`🚨 룬 감지됨! (마름모 형태, ${pixelCount}픽셀)`, true);
     }
 
     if (window.audioNotifier) {
@@ -792,17 +921,180 @@ class ImageAnalyzer {
     }
   }
 
+  /**
+   * 실제 사냥 화면에서 채집한 33px 버프 아이콘 표본을 찾는다.
+   * 넓은 색상 픽셀 수가 아니라 아이콘 내부 8x8 RGB 배열을 비교한다.
+   */
+  findBuffTemplateMatch(imageData, templateName) {
+    const template = window.BUFF_ICON_TEMPLATES?.[templateName];
+    if (!imageData?.data || !template) return { found: false, score: Infinity, x: 0, y: 0 };
+
+    const { data, width, height } = imageData;
+    const size = 33;
+    if (width < size || height < size) return { found: false, score: Infinity, x: 0, y: 0 };
+
+    const scoreAt = (left, top) => {
+      let difference = 0;
+      let compared = 0;
+      for (let gy = 0; gy < 8; gy++) {
+        for (let gx = 0; gx < 8; gx++) {
+          const t = (gy * 8 + gx) * 3;
+          if (template[t] < 0) continue;
+
+          const px = Math.min(width - 1, left + Math.round((gx + 0.5) * size / 8));
+          const py = Math.min(height - 1, top + Math.round((gy + 0.5) * size / 8));
+          const idx = (py * width + px) * 4;
+          const r = data[idx];
+          const g = data[idx + 1];
+          const b = data[idx + 2];
+
+          // 야누스 위에 겹쳐진 노란 시간 숫자는 프레임마다 바뀌므로 제외한다.
+          if (templateName === 'janus' && r >= 145 && g >= 135 && b <= 125) continue;
+
+          difference += Math.abs(r - template[t]);
+          difference += Math.abs(g - template[t + 1]);
+          difference += Math.abs(b - template[t + 2]);
+          compared += 3;
+        }
+      }
+      return compared ? difference / compared : Infinity;
+    };
+
+    let best = { score: Infinity, x: 0, y: 0 };
+
+    // 메이플 버프 슬롯은 우측 정렬 30px 격자다. 각 슬롯 주변 ±5px만
+    // 정밀 탐색하여 전투 화면을 훑는 오인식과 연산량을 함께 줄인다.
+    for (let baseY = 0; baseY <= height - size; baseY += 30) {
+      for (let baseX = width - 40; baseX >= 0; baseX -= 30) {
+        for (let y = Math.max(0, baseY - 5); y <= Math.min(height - size, baseY + 5); y++) {
+          for (let x = Math.max(0, baseX - 5); x <= Math.min(width - size, baseX + 5); x++) {
+            const score = scoreAt(x, y);
+            if (score < best.score) best = { score, x, y };
+          }
+        }
+      }
+    }
+
+    const shape = this.measureBuffIconShape(imageData, best.x, best.y, size);
+    const isJanus = templateName === 'janus';
+    const threshold = isJanus ? 35 : 33;
+    const shapePassed = isJanus
+      ? shape.violetPixels >= 18 && shape.darkPixels >= 35
+      : shape.goldPixels >= 18 && shape.darkPixels >= 22;
+
+    return { ...best, found: best.score <= threshold && shapePassed, shape };
+  }
+
+  measureBuffIconShape(imageData, left, top, size) {
+    const { data, width, height } = imageData;
+    let goldPixels = 0;
+    let violetPixels = 0;
+    let darkPixels = 0;
+    let yellowDigitPixels = 0;
+
+    for (let y = top; y < Math.min(height, top + size); y++) {
+      for (let x = left; x < Math.min(width, left + size); x++) {
+        const idx = (y * width + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+        if (r >= 165 && g >= 120 && b <= 125 && r - b >= 55) goldPixels++;
+        if (b >= 75 && b - g >= 16 && b - r >= 8 && r <= 175) violetPixels++;
+        if (r <= 70 && g <= 70 && b <= 80) darkPixels++;
+        if (r >= 175 && g >= 165 && b <= 135) yellowDigitPixels++;
+      }
+    }
+
+    return { goldPixels, violetPixels, darkPixels, yellowDigitPixels };
+  }
+
+  /**
+   * 야누스는 보라색 픽셀 하나가 아니라 동심원 아이콘 전체를 3프레임 확인한다.
+   */
+  processJanusTemplateFrame(imageData) {
+    if (!document.getElementById('toggle-janus-detection')?.checked) return;
+
+    const match = this.findBuffTemplateMatch(imageData, 'janus');
+    this.janusState.lastTemplateScore = match.score;
+
+    if (match.found) {
+      this.janusState.consecutiveActiveCount++;
+      this.janusState.consecutiveInactiveCount = 0;
+
+      if (!this.janusState.isBuffActive && this.janusState.consecutiveActiveCount >= 3) {
+        this.janusState.isBuffActive = true;
+        this.janusState.alert10Triggered = false;
+        this.janusState.alertExpiredTriggered = false;
+      }
+
+      if (this.onJanusStatusChange) {
+        const confidence = Math.max(0, Math.min(100, Math.round((1 - match.score / 45) * 100)));
+        this.onJanusStatusChange(`⚡ 솔 야누스 활성 (아이콘 ${confidence}%)`, false);
+      }
+      return;
+    }
+
+    this.janusState.consecutiveActiveCount = 0;
+    this.janusState.consecutiveInactiveCount++;
+
+    // 전투 이펙트나 창이 잠깐 가린 경우를 종료로 오인하지 않도록 5프레임 확인한다.
+    if (this.janusState.isBuffActive && this.janusState.consecutiveInactiveCount >= 5) {
+      this.janusState.isBuffActive = false;
+      if (!this.janusState.alertExpiredTriggered) this.triggerJanusExpiredAlert();
+    } else if (!this.janusState.isBuffActive && this.janusState.consecutiveInactiveCount >= 5) {
+      if (this.onJanusStatusChange) this.onJanusStatusChange('⚪ 대기 중 (야누스 아이콘 없음)', false);
+    }
+  }
+
+  /**
+   * 익스트림 골드는 모든 버프 줄을 훑어 금색 병의 고정 형태를 확인한다.
+   */
+  processExpTemplateFrame(imageData) {
+    if (!document.getElementById('toggle-exp-detection')?.checked) return;
+
+    const match = this.findBuffTemplateMatch(imageData, 'extremeGold');
+    this.expBuffState.lastTemplateScore = match.score;
+
+    if (match.found) {
+      this.expBuffState.consecutiveActiveCount++;
+      this.expBuffState.consecutiveInactiveCount = 0;
+
+      if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveActiveCount >= 3) {
+        this.expBuffState.isBuffActive = true;
+        this.expBuffState.alert10Triggered = false;
+        this.expBuffState.alertExpiredTriggered = false;
+        this.expBuffState.detectedBuffNames = ['익스트림 골드'];
+      }
+
+      if (this.onExpBuffStatusChange) {
+        const confidence = Math.max(0, Math.min(100, Math.round((1 - match.score / 48) * 100)));
+        this.onExpBuffStatusChange(`🏆 익스트림 골드 활성 (병 아이콘 ${confidence}%)`, false);
+      }
+      return;
+    }
+
+    this.expBuffState.consecutiveActiveCount = 0;
+    this.expBuffState.consecutiveInactiveCount++;
+
+    if (this.expBuffState.isBuffActive && this.expBuffState.consecutiveInactiveCount >= 5) {
+      this.expBuffState.isBuffActive = false;
+      if (!this.expBuffState.alertExpiredTriggered) this.triggerExpBuffExpiredAlert();
+    } else if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveInactiveCount >= 5) {
+      if (this.onExpBuffStatusChange) this.onExpBuffStatusChange('⚪ 대기 중 (익스트림 골드 없음)', false);
+    }
+  }
+
   analyze4MicroFrames(runeImageData, janusImageData, expImageData, popupImageData) {
-    if (runeImageData) {
+    if (runeImageData && document.getElementById('toggle-rune-detection')?.checked) {
       this.processRuneFrame(runeImageData, null);
     }
     if (janusImageData) {
-      this.processJanusFrame(janusImageData);
+      this.processJanusTemplateFrame(janusImageData);
     }
     if (expImageData) {
-      this.processExpFrame(expImageData);
+      this.processExpTemplateFrame(expImageData);
     }
-    if (popupImageData) {
+    if (popupImageData && document.getElementById('toggle-popup-detection')?.checked) {
       this.processPopupFrame(popupImageData);
     }
   }

@@ -631,9 +631,29 @@ function applyConfigToUI(cfg) {
 
   // ROI 좌표
   if (window.screenCaptureManager) {
-    if (cfg.runeRoi) window.screenCaptureManager.runeRoi = cfg.runeRoi;
+    if (cfg.runeRoi) {
+      const roi = cfg.runeRoi;
+      const isOldDefaultRoi = (
+        (roi.x === 1.5 && roi.y === 1.5 && roi.w === 14 && roi.h === 14) ||
+        (roi.x === 1 && roi.y === 1 && roi.w === 22 && roi.h === 22)
+      );
+      // 예전 기본 좌표만 실제 미니맵 위치로 이전한다.
+      // 사용자가 직접 드래그해 저장한 좌표는 그대로 유지한다.
+      window.screenCaptureManager.runeRoi = isOldDefaultRoi
+        ? { x: 0.3, y: 8.3, w: 14.5, h: 13 }
+        : roi;
+    }
     if (cfg.popupRoi) window.screenCaptureManager.popupRoi = cfg.popupRoi;
-    if (cfg.janusRoi) window.screenCaptureManager.janusRoi = cfg.janusRoi;
+    if (cfg.janusRoi) {
+      const roi = cfg.janusRoi;
+      const isOldBuffDefault = (
+        (roi.x === 55 && roi.y === 1.5 && roi.w === 44 && roi.h === 22) ||
+        (roi.x === 75 && roi.y === 1 && roi.w === 24 && roi.h === 15)
+      );
+      window.screenCaptureManager.janusRoi = isOldBuffDefault
+        ? { x: 55, y: 0, w: 44, h: 24 }
+        : roi;
+    }
   }
 }
 
@@ -668,9 +688,9 @@ function saveCurrentConfig() {
     dopingAlert10: document.getElementById('chk-doping-10s')?.checked ?? true,
     dopingAlertEnd: document.getElementById('chk-doping-end')?.checked ?? true,
     customSounds: customSounds,
-    runeRoi: window.screenCaptureManager ? window.screenCaptureManager.runeRoi : { x: 1, y: 1, w: 22, h: 22 },
+    runeRoi: window.screenCaptureManager ? window.screenCaptureManager.runeRoi : { x: 0.3, y: 8.3, w: 14.5, h: 13 },
     popupRoi: window.screenCaptureManager ? window.screenCaptureManager.popupRoi : { x: 0, y: 0, w: 100, h: 100 },
-    janusRoi: window.screenCaptureManager ? window.screenCaptureManager.janusRoi : { x: 55, y: 1.5, w: 44, h: 22 }
+    janusRoi: window.screenCaptureManager ? window.screenCaptureManager.janusRoi : { x: 55, y: 0, w: 44, h: 24 }
   };
 
   window.storageManager.saveConfig(cfg);
