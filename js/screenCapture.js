@@ -415,7 +415,7 @@ class ScreenCaptureManager {
         runePill.className = 'status-pill active';
       }
       if (popupPill && !window.imageAnalyzer?.popupState.isDetected) {
-        popupPill.textContent = '🟢 거탐 감시 중 (전종 자동 매칭)';
+        popupPill.textContent = '🟢 거탐 감시 중 (4종 정밀 인식)';
         popupPill.className = 'status-pill active';
       }
       if (janusPill && !window.imageAnalyzer?.janusState.isBuffActive) {
