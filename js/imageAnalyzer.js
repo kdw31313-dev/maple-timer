@@ -19,7 +19,10 @@ class ImageAnalyzer {
       consecutiveCount: 0,
       REQUIRED_CONSECUTIVE: 2,
       isDetected: false,
-      cooldownActive: false
+      cooldownActive: false,
+      missedCount: 0,
+      lastType: '',
+      lastConfidence: 0
     };
 
     this.janusState = {
@@ -78,6 +81,9 @@ class ImageAnalyzer {
     this.popupState.consecutiveCount = 0;
     this.popupState.isDetected = false;
     this.popupState.cooldownActive = false;
+    this.popupState.missedCount = 0;
+    this.popupState.lastType = '';
+    this.popupState.lastConfidence = 0;
 
     this.janusState.isBuffActive = false;
     this.janusState.alert10Triggered = false;
@@ -335,6 +341,220 @@ class ImageAnalyzer {
    * ⚠️ 팝업 크기는 화면의 약 25~35%로 작음 (무작위 위치 포착)
    * ⚠️ 찍계 클릭 거탐 & 캡차 거탐 100% 비상 포착!
    */
+  buildPopupIntegralMasks(imageData) {
+    const { data, width, height } = imageData;
+    const keys = ['dark', 'cyan', 'bright', 'pink', 'yellow', 'tan', 'green', 'blue'];
+    const masks = Object.fromEntries(keys.map(key => [key, new Uint32Array((width + 1) * (height + 1))]));
+
+    for (let y = 1; y <= height; y++) {
+      const row = Object.fromEntries(keys.map(key => [key, 0]));
+      for (let x = 1; x <= width; x++) {
+        const idx = ((y - 1) * width + x - 1) * 4;
+        const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+        const flags = {
+          dark: r < 75 && g < 85 && b < 95,
+          cyan: g > 85 && b > 90 && g > r * 1.15 && b > r * 1.15,
+          bright: r > 175 && g > 175 && b > 170,
+          pink: r > 145 && b > 105 && r > g * 1.25,
+          yellow: r > 145 && g > 105 && b < 100 && r > b * 1.6,
+          tan: r > 105 && g > 75 && b < 90 && r > b * 1.45,
+          green: g > 105 && g > r * 1.25 && g > b * 1.15,
+          blue: b > 85 && b > r * 1.25 && g > r * 1.1
+        };
+        for (const key of keys) {
+          if (flags[key]) row[key]++;
+          const pos = y * (width + 1) + x;
+          masks[key][pos] = masks[key][pos - width - 1] + row[key];
+        }
+      }
+    }
+    return masks;
+  }
+
+  popupRegionRatio(mask, width, height, x, y, w, h, rx, ry, rw, rh) {
+    const stride = width + 1;
+    const x1 = Math.max(0, x + Math.floor(w * rx));
+    const y1 = Math.max(0, y + Math.floor(h * ry));
+    const x2 = Math.min(width, x + Math.max(1, Math.floor(w * (rx + rw))));
+    const y2 = Math.min(height, y + Math.max(1, Math.floor(h * (ry + rh))));
+    const count = mask[y2 * stride + x2] - mask[y1 * stride + x2]
+      - mask[y2 * stride + x1] + mask[y1 * stride + x1];
+    return count / Math.max(1, (x2 - x1) * (y2 - y1));
+  }
+
+  findPopupStructure(imageData) {
+    const { width, height } = imageData;
+    const masks = this.buildPopupIntegralMasks(imageData);
+    const heights = [36, 44, 54, 66, 80, 94].filter(value => value < height);
+    let best = { found: false, type: '', confidence: 0 };
+
+    for (const h of heights) {
+      for (const aspect of [0.9, 1.08, 1.25, 1.45]) {
+        const w = Math.round(h * aspect);
+        if (w >= width) continue;
+        for (let y = 0; y <= height - h; y += 3) {
+          for (let x = 0; x <= width - w; x += 3) {
+            const ratio = (key, rx, ry, rw, rh) =>
+              this.popupRegionRatio(masks[key], width, height, x, y, w, h, rx, ry, rw, rh);
+            const headerDark = ratio('dark', 0.02, 0.00, 0.96, 0.20);
+
+            const middleCyan = ratio('cyan', 0.05, 0.20, 0.90, 0.38);
+            const lowerDark = ratio('dark', 0.05, 0.57, 0.90, 0.38);
+            const lowerRightPink = ratio('pink', 0.55, 0.55, 0.42, 0.42);
+            const headerYellow = ratio('yellow', 0.03, 0.02, 0.94, 0.18);
+            if (headerDark >= 0.24 && middleCyan >= 0.18 && lowerDark >= 0.20 &&
+                lowerRightPink >= 0.025 && headerYellow >= 0.006) {
+              const confidence = headerDark * 1.2 + middleCyan * 1.8 + lowerDark +
+                lowerRightPink * 1.8 + headerYellow;
+              if (confidence > best.confidence) {
+                best = { found: true, type: '버섯 안내창형 거짓말 탐지기', confidence };
+              }
+            }
+
+            const upperBright = ratio('bright', 0.05, 0.18, 0.90, 0.30);
+            const middleBright = ratio('bright', 0.05, 0.45, 0.90, 0.25);
+            const bottomTan = ratio('tan', 0.08, 0.72, 0.84, 0.25);
+            const bottomGreen = ratio('green', 0.08, 0.72, 0.84, 0.25);
+            if (headerDark >= 0.18 && upperBright >= 0.42 && middleBright >= 0.32 &&
+                bottomTan >= 0.07 && bottomGreen >= 0.004) {
+              const confidence = headerDark + upperBright * 1.5 + middleBright +
+                bottomTan * 1.4 + bottomGreen;
+              if (confidence > best.confidence) {
+                best = { found: true, type: '도형 선택형 거짓말 탐지기', confidence };
+              }
+            }
+
+            const topBlue = ratio('blue', 0.04, 0.04, 0.92, 0.25);
+            const middleBlue = ratio('blue', 0.04, 0.26, 0.92, 0.42);
+            const bottomBlue = ratio('blue', 0.04, 0.68, 0.92, 0.27);
+            const middleYellow = ratio('yellow', 0.05, 0.18, 0.90, 0.55);
+            if (topBlue >= 0.16 && middleBlue >= 0.20 && bottomBlue >= 0.16 &&
+                middleYellow >= 0.012 && headerDark >= 0.10) {
+              const confidence = topBlue + middleBlue * 1.3 + bottomBlue +
+                middleYellow * 1.8 + headerDark;
+              if (confidence > best.confidence) {
+                best = { found: true, type: '파란 이미지 선택형 거짓말 탐지기', confidence };
+              }
+            }
+          }
+        }
+      }
+    }
+    return best;
+  }
+
+  buildPopupRgbIntegrals(imageData) {
+    const { data, width, height } = imageData;
+    const size = (width + 1) * (height + 1);
+    const sums = [new Uint32Array(size), new Uint32Array(size), new Uint32Array(size)];
+    for (let y = 1; y <= height; y++) {
+      const row = [0, 0, 0];
+      for (let x = 1; x <= width; x++) {
+        const pixel = ((y - 1) * width + x - 1) * 4;
+        const pos = y * (width + 1) + x;
+        for (let channel = 0; channel < 3; channel++) {
+          row[channel] += data[pixel + channel];
+          sums[channel][pos] = sums[channel][pos - width - 1] + row[channel];
+        }
+      }
+    }
+    return sums;
+  }
+
+  popupRgbCellMean(integral, width, x1, y1, x2, y2) {
+    const stride = width + 1;
+    const total = integral[y2 * stride + x2] - integral[y1 * stride + x2]
+      - integral[y2 * stride + x1] + integral[y1 * stride + x1];
+    return total / Math.max(1, (x2 - x1) * (y2 - y1));
+  }
+
+  findPopupTemplateMatch(imageData) {
+    const templates = window.POPUP_TEMPLATES;
+    if (!templates || !imageData?.data?.length) return { found: false, type: '', confidence: 0 };
+    const { width, height } = imageData;
+    const integrals = this.buildPopupRgbIntegrals(imageData);
+    let best = { found: false, type: '', confidence: 0, score: Infinity, normalizedScore: Infinity };
+
+    for (const template of Object.values(templates)) {
+      for (const h of [32, 40, 48, 58, 70, 84, 98]) {
+        const w = Math.round(h * template.aspect);
+        if (w >= width || h >= height) continue;
+        for (let y = 0; y <= height - h; y += 3) {
+          for (let x = 0; x <= width - w; x += 3) {
+            let difference = 0;
+            for (let gridY = 0; gridY < 8; gridY++) {
+              const y1 = y + Math.floor(h * gridY / 8);
+              const y2 = y + Math.floor(h * (gridY + 1) / 8);
+              for (let gridX = 0; gridX < 8; gridX++) {
+                const x1 = x + Math.floor(w * gridX / 8);
+                const x2 = x + Math.floor(w * (gridX + 1) / 8);
+                const expected = template.pixels[gridY][gridX];
+                for (let channel = 0; channel < 3; channel++) {
+                  const actual = this.popupRgbCellMean(integrals[channel], width, x1, y1, x2, y2);
+                  difference += Math.abs(actual - expected[channel]);
+                }
+              }
+            }
+            const score = difference / (8 * 8 * 3);
+            const normalizedScore = score / template.threshold;
+            if (normalizedScore < best.normalizedScore) {
+              best = {
+                found: normalizedScore <= 1,
+                type: template.type,
+                score,
+                normalizedScore,
+                confidence: Math.max(0, 1 - normalizedScore)
+              };
+            }
+          }
+        }
+      }
+    }
+    return best;
+  }
+
+  processPopupStructureFrame(imageData) {
+    if (!imageData?.data?.length) return;
+    const match = this.findPopupTemplateMatch(imageData);
+    this.popupState.lastConfidence = match.confidence;
+
+    if (match.found) {
+      this.popupState.missedCount = 0;
+      this.popupState.consecutiveCount = this.popupState.lastType === match.type
+        ? this.popupState.consecutiveCount + 1
+        : 1;
+      this.popupState.lastType = match.type;
+
+      if (this.popupState.consecutiveCount >= 3 &&
+          !this.popupState.isDetected && !this.popupState.cooldownActive) {
+        this.triggerPopupStructureAlert(match.type);
+      }
+      return;
+    }
+
+    this.popupState.consecutiveCount = 0;
+    this.popupState.missedCount++;
+    if (this.popupState.cooldownActive && this.popupState.missedCount >= 5) {
+      this.popupState.cooldownActive = false;
+      this.popupState.isDetected = false;
+      this.popupState.lastType = '';
+      if (this.onPopupStatusChange && window.screenCaptureManager?.isStreaming) {
+        this.onPopupStatusChange('🟢 거탐 감시 중 (4종 정밀 인식)', false);
+      }
+    }
+  }
+
+  triggerPopupStructureAlert(detectedType) {
+    this.popupState.isDetected = true;
+    this.popupState.cooldownActive = true;
+    if (this.onPopupStatusChange) {
+      this.onPopupStatusChange(`🚨 ${detectedType} 감지`, true);
+    }
+    if (window.audioNotifier) {
+      window.audioNotifier.notify(`🚨 [메이플] ${detectedType}가 감지되었습니다. 화면을 확인하세요!`, 'popup');
+    }
+  }
+
   processPopupFrame(imageData) {
     if (!imageData || !imageData.data || imageData.data.length === 0) return;
 
@@ -1095,7 +1315,7 @@ class ImageAnalyzer {
       this.processExpTemplateFrame(expImageData);
     }
     if (popupImageData && document.getElementById('toggle-popup-detection')?.checked) {
-      this.processPopupFrame(popupImageData);
+      this.processPopupStructureFrame(popupImageData);
     }
   }
 
@@ -1116,7 +1336,7 @@ class ImageAnalyzer {
     }
     this.processRuneFrame(runeImageData, imageData);
 
-    this.processPopupFrame(imageData);
+    this.processPopupStructureFrame(imageData);
 
     if (rois.janusRoi) {
       const jx = Math.round((rois.janusRoi.x / 100) * width);
