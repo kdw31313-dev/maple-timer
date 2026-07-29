@@ -1317,10 +1317,20 @@ class ImageAnalyzer {
       : [template];
 
     const { data, width, height } = imageData;
-    const size = 33;
-    if (width < size || height < size) return { found: false, score: Infinity, x: 0, y: 0 };
+    // 화면 공유 원본 해상도와 메이플 UI 배율에 따라 같은 아이콘이
+    // 약 33px 또는 2배인 66px 전후로 들어온다. 한 크기로 고정하면
+    // 템플릿이 정확해도 전혀 다른 영역을 비교하게 되므로 여러 배율을 함께 찾는다.
+    const candidateSizes = templateName === 'janus'
+      ? [33, 40, 48, 56, 60, 66]
+      : [33];
+    const usableSizes = candidateSizes.filter((candidateSize) => (
+      width >= candidateSize && height >= candidateSize
+    ));
+    if (!usableSizes.length) {
+      return { found: false, score: Infinity, x: 0, y: 0, size: 33 };
+    }
 
-    const scoreAt = (left, top) => {
+    const scoreAt = (left, top, size) => {
       let bestTemplateScore = Infinity;
       for (const candidateTemplate of templateCandidates) {
         let difference = 0;
@@ -1352,32 +1362,56 @@ class ImageAnalyzer {
       return bestTemplateScore;
     };
 
-    let best = { score: Infinity, x: 0, y: 0 };
+    let best = { score: Infinity, x: 0, y: 0, size: usableSizes[0] };
 
     // 메이플 버프 슬롯은 우측 정렬 30px 격자다. 각 슬롯 주변 ±5px만
     // 정밀 탐색하여 전투 화면을 훑는 오인식과 연산량을 함께 줄인다.
     // 버프 추가·삭제에 따라 야누스가 다른 줄로 이동하므로 지정 범위의 모든 줄을 검색한다.
-    const maxIconTop = height - size;
-    for (let baseY = 0; baseY <= maxIconTop; baseY += 30) {
-      for (let baseX = width - 40; baseX >= 0; baseX -= 30) {
-        for (let y = Math.max(0, baseY - 5); y <= Math.min(maxIconTop, baseY + 5); y++) {
-          for (let x = Math.max(0, baseX - 5); x <= Math.min(width - size, baseX + 5); x++) {
-            const score = scoreAt(x, y);
-            if (score < best.score) best = { score, x, y };
+    for (const size of usableSizes) {
+      const maxIconTop = height - size;
+      const spacing = Math.max(30, Math.round(size * 0.94));
+      const searchMargin = Math.max(5, Math.round(size * 0.13));
+      // 오른쪽 정렬 버프줄과 왼쪽부터 시작하는 버프줄을 모두 고려한다.
+      for (const startX of [0, Math.max(0, width - size)]) {
+        for (let baseY = 0; baseY <= maxIconTop; baseY += spacing) {
+          if (maxIconTop - baseY < spacing * 0.45 && baseY !== maxIconTop) {
+            baseY = maxIconTop;
+          }
+          const direction = startX === 0 ? 1 : -1;
+          for (
+            let baseX = startX;
+            baseX >= 0 && baseX <= width - size;
+            baseX += direction * spacing
+          ) {
+            for (
+              let y = Math.max(0, baseY - searchMargin);
+              y <= Math.min(maxIconTop, baseY + searchMargin);
+              y++
+            ) {
+              for (
+                let x = Math.max(0, baseX - searchMargin);
+                x <= Math.min(width - size, baseX + searchMargin);
+                x++
+              ) {
+                const score = scoreAt(x, y, size);
+                if (score < best.score) best = { score, x, y, size };
+              }
+            }
           }
         }
       }
     }
 
-    const shape = this.measureBuffIconShape(imageData, best.x, best.y, size);
+    const shape = this.measureBuffIconShape(imageData, best.x, best.y, best.size);
     const isJanus = templateName === 'janus';
     // 야누스는 다른 보라/어두운 버프와 색이 겹치므로 아이콘 유사도를 더 엄격하게 본다.
     // 실제 야누스 사진 33장의 밝기·이펙트 편차(최대 오차 약 30.9)를 포함한다.
     // 실제 사냥 자료 82장으로 만든 외곽 템플릿을 사용한다.
     // 야누스 없음 자료의 최저 점수(약 22.7)와 간격을 두어 15까지만 시작 증거로 인정한다.
     const threshold = isJanus ? 15 : 33;
+    const areaScale = Math.pow(best.size / 33, 2);
     const shapePassed = isJanus
-      ? shape.violetPixels >= 26 && shape.darkPixels >= 45
+      ? shape.violetPixels >= 18 * areaScale && shape.darkPixels >= 30 * areaScale
       : shape.goldPixels >= 18 && shape.darkPixels >= 22;
 
     return { ...best, found: best.score <= threshold && shapePassed, shape };
@@ -1470,6 +1504,7 @@ class ImageAnalyzer {
       y: match.y,
       score: match.score,
       found: match.found,
+      size: match.size,
       shape: { ...match.shape }
     };
 
