@@ -43,6 +43,7 @@ class ImageAnalyzer {
       lastYellowDigitCount: 0,
       peakYellowDigitCount: 0,  // 최초 감지 시 노란 픽셀 최대치 (1:20 = 많음)
       lowDigitFrames: 0,        // 노란 숫자 급감 연속 프레임 수 (10초 이하 감지용)
+      startEvidenceHistory: [],
       lastTemplateMatch: null,
       confirmedTemplateMatch: null
     };
@@ -104,7 +105,11 @@ class ImageAnalyzer {
     this.popupState.lastConfidence = 0;
 
     this.janusState.isBuffActive = false;
+    this.janusState.consecutiveActiveCount = 0;
+    this.janusState.consecutiveInactiveCount = 0;
     this.janusState.alert10Triggered = false;
+    this.janusState.alertExpiredTriggered = false;
+    this.janusState.startEvidenceHistory = [];
     this.janusState.pendingTemplateMatch = null;
     this.janusState.lastTemplateMatch = null;
     this.janusState.confirmedTemplateMatch = null;
@@ -1338,11 +1343,8 @@ class ImageAnalyzer {
 
     // 메이플 버프 슬롯은 우측 정렬 30px 격자다. 각 슬롯 주변 ±5px만
     // 정밀 탐색하여 전투 화면을 훑는 오인식과 연산량을 함께 줄인다.
-    // 솔 야누스는 사용자가 표시한 최상단 두 줄에만 존재한다.
-    // 아래 줄의 보라색 아이콘과 전투 UI는 야누스 후보에서 제외한다.
-    const maxIconTop = templateName === 'janus'
-      ? Math.min(height - size, 44)
-      : height - size;
+    // 버프 추가·삭제에 따라 야누스가 다른 줄로 이동하므로 지정 범위의 모든 줄을 검색한다.
+    const maxIconTop = height - size;
     for (let baseY = 0; baseY <= maxIconTop; baseY += 30) {
       for (let baseX = width - 40; baseX >= 0; baseX -= 30) {
         for (let y = Math.max(0, baseY - 5); y <= Math.min(maxIconTop, baseY + 5); y++) {
@@ -1357,7 +1359,8 @@ class ImageAnalyzer {
     const shape = this.measureBuffIconShape(imageData, best.x, best.y, size);
     const isJanus = templateName === 'janus';
     // 야누스는 다른 보라/어두운 버프와 색이 겹치므로 아이콘 유사도를 더 엄격하게 본다.
-    const threshold = isJanus ? 29 : 33;
+    // 실제 야누스 사진 33장의 밝기·이펙트 편차(최대 오차 약 30.9)를 포함한다.
+    const threshold = isJanus ? 32 : 33;
     const shapePassed = isJanus
       ? shape.violetPixels >= 26 && shape.darkPixels >= 45
       : shape.goldPixels >= 18 && shape.darkPixels >= 22;
@@ -1371,6 +1374,7 @@ class ImageAnalyzer {
     let violetPixels = 0;
     let darkPixels = 0;
     let yellowDigitPixels = 0;
+    const yellowMask = new Uint8Array(size * size);
 
     for (let y = top; y < Math.min(height, top + size); y++) {
       for (let x = left; x < Math.min(width, left + size); x++) {
@@ -1381,11 +1385,56 @@ class ImageAnalyzer {
         if (r >= 165 && g >= 120 && b <= 125 && r - b >= 55) goldPixels++;
         if (b >= 75 && b - g >= 16 && b - r >= 8 && r <= 175) violetPixels++;
         if (r <= 70 && g <= 70 && b <= 80) darkPixels++;
-        if (r >= 175 && g >= 165 && b <= 135) yellowDigitPixels++;
+        const localX = x - left;
+        const localY = y - top;
+        const isTimerBand = localY >= Math.floor(size * 0.2) && localY <= Math.ceil(size * 0.82);
+        if (isTimerBand && r >= 165 && g >= 150 && b <= 145 && r - b >= 25) {
+          yellowDigitPixels++;
+          yellowMask[localY * size + localX] = 1;
+        }
       }
     }
 
-    return { goldPixels, violetPixels, darkPixels, yellowDigitPixels };
+    // JPEG 압축으로 숫자색이 끊어져도 서로 붙은 실제 글자 획이 있는지 확인한다.
+    const visited = new Uint8Array(size * size);
+    let largestYellowDigitComponent = 0;
+    for (let start = 0; start < yellowMask.length; start++) {
+      if (!yellowMask[start] || visited[start]) continue;
+      const queue = [start];
+      visited[start] = 1;
+      let head = 0;
+      let componentSize = 0;
+      while (head < queue.length) {
+        const p = queue[head++];
+        componentSize++;
+        const px = p % size;
+        const py = Math.floor(p / size);
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = px + dx;
+            const ny = py + dy;
+            if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+            const np = ny * size + nx;
+            if (yellowMask[np] && !visited[np]) {
+              visited[np] = 1;
+              queue.push(np);
+            }
+          }
+        }
+      }
+      if (componentSize > largestYellowDigitComponent) {
+        largestYellowDigitComponent = componentSize;
+      }
+    }
+
+    return {
+      goldPixels,
+      violetPixels,
+      darkPixels,
+      yellowDigitPixels,
+      largestYellowDigitComponent
+    };
   }
 
   /**
@@ -1404,48 +1453,71 @@ class ImageAnalyzer {
       shape: { ...match.shape }
     };
 
-    // 솔 야누스는 아이콘만이 아니라 그 위에 표시되는 노란 남은 시간까지 함께 있어야
-    // 활성으로 확정한다. 다른 버프 아이콘의 보라색/어두운 영역만으로는 시작하지 않는다.
-    const hasVisibleJanusTimer = match.shape.yellowDigitPixels >= 15;
-    const isConfirmedJanus = match.found && hasVisibleJanusTimer;
+    // 시작할 때만 아이콘과 중앙의 연결된 노란 숫자 획을 함께 요구한다.
+    // 활성 이후에는 실제 사진처럼 숫자가 잠시 비어도 아이콘 외곽이 있으면 계속 유지한다.
+    const hasVisibleJanusTimer = (
+      match.shape.yellowDigitPixels >= 7 &&
+      match.shape.largestYellowDigitComponent >= 3
+    );
+    const hasStartEvidence = match.found && hasVisibleJanusTimer;
+    const hasProbableJanusEvidence = (
+      match.found ||
+      (
+        hasVisibleJanusTimer &&
+        match.score <= 36 &&
+        match.shape.violetPixels >= 20 &&
+        match.shape.darkPixels >= 35
+      )
+    );
 
-    if (isConfirmedJanus) {
-      // 서로 다른 보라색 버프 칸이 프레임마다 번갈아 선택되어 누적되는 것을 막는다.
-      const previousMatch = this.janusState.pendingTemplateMatch;
-      const isSameSlot = previousMatch
-        && Math.hypot(match.x - previousMatch.x, match.y - previousMatch.y) <= 6;
-      this.janusState.consecutiveActiveCount = isSameSlot
-        ? this.janusState.consecutiveActiveCount + 1
-        : 1;
-      this.janusState.pendingTemplateMatch = { x: match.x, y: match.y };
-      this.janusState.consecutiveInactiveCount = 0;
+    if (!this.janusState.isBuffActive) {
+      const history = this.janusState.startEvidenceHistory;
+      history.push(hasStartEvidence ? 1 : 0);
+      if (history.length > 3) history.shift();
+      const evidenceCount = history.reduce((sum, value) => sum + value, 0);
+      this.janusState.consecutiveActiveCount = evidenceCount;
 
-      // 약 4.5초 동안 같은 칸에서 아이콘과 시간 숫자가 함께 보여야 추적을 시작한다.
-      if (!this.janusState.isBuffActive && this.janusState.consecutiveActiveCount >= 30) {
+      // 최근 3프레임 중 2프레임에서 아이콘과 숫자가 함께 보이면 활성으로 확정한다.
+      if (history.length === 3 && evidenceCount >= 2) {
         this.janusState.isBuffActive = true;
+        this.janusState.consecutiveInactiveCount = 0;
         this.janusState.alert10Triggered = false;
         this.janusState.alertExpiredTriggered = false;
         this.janusState.confirmedTemplateMatch = { ...this.janusState.lastTemplateMatch };
+      } else if (this.janusState.consecutiveInactiveCount >= 14 && this.onJanusStatusChange) {
+        this.onJanusStatusChange('⚪ 대기 중 (야누스 아이콘 없음)', false);
+      }
+    }
+
+    if (this.janusState.isBuffActive) {
+      if (hasProbableJanusEvidence) {
+        this.janusState.consecutiveInactiveCount = 0;
+        this.janusState.pendingTemplateMatch = { x: match.x, y: match.y };
+        this.janusState.confirmedTemplateMatch = { ...this.janusState.lastTemplateMatch };
+
+        if (this.onJanusStatusChange) {
+          const confidence = Math.max(0, Math.min(100, Math.round((1 - match.score / 45) * 100)));
+          const timerState = hasVisibleJanusTimer ? '시간 확인' : '아이콘 유지';
+          this.onJanusStatusChange(`⚡ 솔 야누스 활성 (${timerState}, ${confidence}%)`, false);
+        }
+        return;
       }
 
-      if (this.onJanusStatusChange) {
-        const confidence = Math.max(0, Math.min(100, Math.round((1 - match.score / 45) * 100)));
-        this.onJanusStatusChange(`⚡ 솔 야누스 활성 (아이콘 ${confidence}%)`, false);
+      this.janusState.consecutiveInactiveCount++;
+      // 150ms 주기 기준 약 2초(14프레임) 동안 아이콘과 시간 표시가 모두 없을 때만 종료한다.
+      if (this.janusState.consecutiveInactiveCount >= 14) {
+        this.janusState.isBuffActive = false;
+        this.janusState.startEvidenceHistory = [];
+        this.janusState.pendingTemplateMatch = null;
+        if (!this.janusState.alertExpiredTriggered) this.triggerJanusExpiredAlert();
       }
       return;
     }
 
-    this.janusState.consecutiveActiveCount = 0;
-    this.janusState.pendingTemplateMatch = null;
-    this.janusState.consecutiveInactiveCount++;
-
-    // 룬 미니게임, 이펙트, 숫자 갱신 중에는 일시적으로 아이콘 비교가 흔들릴 수 있다.
-    // 150ms 주기 기준 약 2초(14프레임) 동안 아이콘과 시간 표시가 모두 없을 때만 종료한다.
-    if (this.janusState.isBuffActive && this.janusState.consecutiveInactiveCount >= 14) {
-      this.janusState.isBuffActive = false;
-      if (!this.janusState.alertExpiredTriggered) this.triggerJanusExpiredAlert();
-    } else if (!this.janusState.isBuffActive && this.janusState.consecutiveInactiveCount >= 14) {
-      if (this.onJanusStatusChange) this.onJanusStatusChange('⚪ 대기 중 (야누스 아이콘 없음)', false);
+    if (hasProbableJanusEvidence) {
+      this.janusState.consecutiveInactiveCount = 0;
+    } else {
+      this.janusState.consecutiveInactiveCount++;
     }
   }
 

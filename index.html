@@ -156,7 +156,7 @@
               <span class="color-badge janus-badge"></span>
               <div>
                 <strong>⚡ 솔 야누스 버프 아이콘 정밀 감지</strong>
-                <div style="font-size:0.75rem; color:var(--text-muted);">실제 사냥 화면의 보라색 동심원 아이콘을 3회 확인하고, 5회 연속 사라질 때 종료로 판정합니다.</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">지정 범위 전체에서 야누스를 찾고, 최근 3회 중 2회 확인하면 시작합니다. 숫자가 잠시 없어도 아이콘이 유지되며, 둘 다 2초 이상 사라질 때 종료됩니다.</div>
               </div>
             </div>
             <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -175,7 +175,7 @@
                 <input type="checkbox" id="toggle-janus-detection" checked>
                 <span class="slider"></span>
               </label>
-              <button id="btn-select-janus-roi" class="btn btn-small btn-outline">영역 지정 (옵션)</button>
+              <button id="btn-select-janus-roi" class="btn btn-small btn-outline">야누스 버프 범위 지정</button>
               <span class="status-pill" id="janus-status-pill">대기 중</span>
             </div>
           </div>
@@ -216,12 +216,31 @@
               </div>
             </div>
             <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <input id="telegram-bot-token" type="password" class="input-field" placeholder="봇 토큰" autocomplete="off" style="width:210px; padding:6px 8px; font-size:0.75rem;">
+              <input id="telegram-chat-id" type="text" class="input-field" placeholder="Chat ID" autocomplete="off" style="width:150px; padding:6px 8px; font-size:0.75rem;">
+              <input id="telegram-thread-id" type="text" class="input-field" placeholder="Topic ID (선택)" autocomplete="off" style="width:130px; padding:6px 8px; font-size:0.75rem;">
+              <button id="btn-telegram-save" class="btn btn-small btn-secondary">💾 텔레그램 설정 저장</button>
               <button id="btn-telegram-test" class="btn btn-small btn-primary" style="background:#0088cc; border:none;">📲 텔레그램 테스트 메세지 전송</button>
               <label class="switch">
                 <input type="checkbox" id="toggle-telegram-alert" checked>
                 <span class="slider"></span>
               </label>
               <span class="status-pill active" id="telegram-status-pill">🟢 연동 완료</span>
+            </div>
+          </div>
+          <div class="roi-tool-item" style="border:1px solid rgba(155, 89, 182, 0.55); background:rgba(155, 89, 182, 0.12);">
+            <div class="tool-title">
+              <span class="color-badge janus-badge"></span>
+              <div>
+                <strong>🧪 야누스 텔레그램 학습 수집</strong>
+                <div style="font-size:0.75rem; color:var(--text-muted);">90분 동안 정상·애매·숫자 없음·종료 후보를 균형 수집해 2분마다 최대 10장의 원본 버프 범위를 전송합니다.</div>
+              </div>
+            </div>
+            <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <button id="btn-janus-learning-start" class="btn btn-small btn-primary">▶ 90분 수집 시작</button>
+              <button id="btn-janus-learning-stop" class="btn btn-small btn-secondary hidden">■ 수집 종료</button>
+              <span class="status-pill" id="janus-learning-status">⚪ 수집 대기</span>
+              <span id="janus-learning-count" style="font-size:0.78rem; color:var(--text-muted);">수집 0장 · 전송 0장</span>
             </div>
           </div>
         </div>
@@ -668,6 +687,7 @@
   <script src="js/거탐인식기기준.js"></script>
   <script src="js/imageAnalyzer.js"></script>
   <script src="js/screenCapture.js"></script>
+  <script src="js/야누스학습수집기.js"></script>
   <script src="js/pipController.js"></script>
   <script src="js/calculator.js"></script>
   <script src="js/app.js"></script>

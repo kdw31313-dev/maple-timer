@@ -240,7 +240,7 @@ class ScreenCaptureManager {
       if (subTitleEl) subTitleEl.textContent = '미니맵의 내부 지도 영역만 마우스 드래그로 직사각형으로 지정하세요.';
     } else {
       if (titleEl) titleEl.textContent = '⚡ 버프 영역 지정 (200% 정밀 확대)';
-      if (subTitleEl) subTitleEl.textContent = '1사분면 자동 추적 외 수동으로 버프 줄 위치를 드래그하실 수도 있습니다.';
+      if (subTitleEl) subTitleEl.textContent = '야누스가 이동할 수 있는 상단 버프 범위 전체를 여유 있게 드래그해 주세요.';
     }
 
     const vWidth = this.videoEl.videoWidth || 1280;
@@ -371,6 +371,9 @@ class ScreenCaptureManager {
   }
 
   stopCapture() {
+    if (window.야누스학습수집기?.isRunning) {
+      window.야누스학습수집기.stop('화면 공유 종료');
+    }
     if (this.mediaStream) {
       this.mediaStream.getTracks().forEach(track => track.stop());
       this.mediaStream = null;
@@ -561,15 +564,10 @@ class ScreenCaptureManager {
     if (!ctx) return Promise.resolve(null);
     ctx.drawImage(this.videoEl, 0, 0, width, height);
 
-    // 야누스는 최상단 두 줄에만 있으므로, 알림 캡처도 실제 판독 범위만 표시한다.
-    const janusTopRowsRoi = {
-      ...this.janusRoi,
-      h: Math.min(this.janusRoi.h, 9.2)
-    };
     const categoryInfo = {
       rune: { label: '룬 탐지 영역', color: '#ff2b86', roi: this.runeRoi },
       popup: { label: '거짓말 탐지기 전체 화면 분석', color: '#ff3b30', roi: this.popupRoi },
-      janus: { label: '솔 야누스 버프 분석 영역', color: '#9b59b6', roi: janusTopRowsRoi },
+      janus: { label: '솔 야누스 버프 분석 영역', color: '#9b59b6', roi: this.janusRoi },
       exp: { label: '익스트림 골드 버프 분석 영역', color: '#f1c40f', roi: this.janusRoi }
     };
     const info = categoryInfo[category];
@@ -652,6 +650,32 @@ class ScreenCaptureManager {
 
     return new Promise((resolve) => {
       canvas.toBlob(resolve, 'image/jpeg', 0.88);
+    });
+  }
+
+  /**
+   * 학습용으로 표시나 글자를 덧씌우지 않은 버프 ROI 원본을 캡처한다.
+   */
+  captureJanusLearningRoi() {
+    if (!this.isStreaming || !this.videoEl || this.videoEl.readyState < 2) {
+      return Promise.resolve(null);
+    }
+
+    const sourceWidth = this.videoEl.videoWidth || 1280;
+    const sourceHeight = this.videoEl.videoHeight || 720;
+    const x = Math.max(0, Math.round((this.janusRoi.x / 100) * sourceWidth));
+    const y = Math.max(0, Math.round((this.janusRoi.y / 100) * sourceHeight));
+    const width = Math.max(10, Math.min(sourceWidth - x, Math.round((this.janusRoi.w / 100) * sourceWidth)));
+    const height = Math.max(10, Math.min(sourceHeight - y, Math.round((this.janusRoi.h / 100) * sourceHeight)));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return Promise.resolve(null);
+    ctx.drawImage(this.videoEl, x, y, width, height, 0, 0, width, height);
+
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => resolve(blob ? { blob, width, height } : null), 'image/jpeg', 0.92);
     });
   }
 

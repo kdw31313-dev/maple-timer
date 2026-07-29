@@ -136,8 +136,18 @@ function bindEvents() {
 
   // --- 📲 텔레그램 봇 알림 이벤트 바인딩 ---
   const btnTelegramTest = document.getElementById('btn-telegram-test');
+  const btnTelegramSave = document.getElementById('btn-telegram-save');
   const toggleTelegram = document.getElementById('toggle-telegram-alert');
   const pillTelegram = document.getElementById('telegram-status-pill');
+  const telegramBotToken = document.getElementById('telegram-bot-token');
+  const telegramChatId = document.getElementById('telegram-chat-id');
+  const telegramThreadId = document.getElementById('telegram-thread-id');
+
+  if (window.telegramNotifier?.config) {
+    if (telegramBotToken) telegramBotToken.value = window.telegramNotifier.config.botToken || '';
+    if (telegramChatId) telegramChatId.value = window.telegramNotifier.config.chatId || '';
+    if (telegramThreadId) telegramThreadId.value = window.telegramNotifier.config.threadId || '';
+  }
 
   if (toggleTelegram) {
     toggleTelegram.checked = window.telegramNotifier?.config?.enabled ?? true;
@@ -155,6 +165,29 @@ function bindEvents() {
     if (window.telegramNotifier) {
       window.telegramNotifier.sendTestMessage();
     }
+  });
+
+  btnTelegramSave?.addEventListener('click', () => {
+    const botToken = telegramBotToken?.value.trim() || '';
+    const chatId = telegramChatId?.value.trim() || '';
+    const threadId = telegramThreadId?.value.trim() || '';
+    if (!botToken || !chatId) {
+      alert('봇 토큰과 Chat ID를 입력해 주세요.');
+      return;
+    }
+    window.telegramNotifier?.saveConfig({ botToken, chatId, threadId });
+    if (pillTelegram) {
+      pillTelegram.textContent = '🟢 설정 저장됨';
+      pillTelegram.className = 'status-pill active';
+    }
+  });
+
+  document.getElementById('btn-janus-learning-start')?.addEventListener('click', () => {
+    window.야누스학습수집기?.start();
+  });
+
+  document.getElementById('btn-janus-learning-stop')?.addEventListener('click', () => {
+    window.야누스학습수집기?.stop('사용자 종료');
   });
 
   // --- 경험치 쿠폰 타이머 버튼 ---
