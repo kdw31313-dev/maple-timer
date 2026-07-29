@@ -249,13 +249,20 @@ class ImageAnalyzer {
       const density = originalPixels.length / Math.max(1, boxWidth * boxHeight);
       let redSum = 0;
       let greenSum = 0;
+      let blueSum = 0;
       for (const pixel of originalPixels) {
         const idx = (pixel.y * width + pixel.x) * 4;
         redSum += data[idx];
         greenSum += data[idx + 1];
+        blueSum += data[idx + 2];
       }
       const averageRedGreenContrast = originalPixels.length > 0
         ? (redSum - greenSum) / originalPixels.length
+        : 0;
+      // 아르테리아 미니맵의 일반 분홍 표식은 빨강과 파랑이 비슷하지만,
+      // 실제 보라 룬 표식은 파랑 성분이 빨강보다 뚜렷하게 높다.
+      const averageBlueRedContrast = originalPixels.length > 0
+        ? (blueSum - redSum) / originalPixels.length
         : 0;
       if (
         boxWidth < minSide || boxHeight < minSide ||
@@ -264,7 +271,8 @@ class ImageAnalyzer {
         originalPixels.length < 5 ||
         (originalPixels.length <= 8 && aspect > 1.2) ||
         density < 0.055 || density > 0.72 ||
-        averageRedGreenContrast < 38
+        averageRedGreenContrast < 38 ||
+        averageBlueRedContrast < 40
       ) {
         continue;
       }
@@ -303,6 +311,7 @@ class ImageAnalyzer {
           pixelCount: originalPixels.length,
           density,
           averageRedGreenContrast,
+          averageBlueRedContrast,
           diamondFit
         });
       }
@@ -372,6 +381,28 @@ class ImageAnalyzer {
     });
   }
 
+  /**
+   * 아르테리아 미니맵에는 같은 높이에 반복 배치된 작은 보라/분홍 장식 표식이 있다.
+   * 실제 룬은 단일 표식으로 나타나므로, 크기가 비슷한 후보가 한 줄에 2개 이상이면
+   * 룬 후보에서 제외한다. 화면 효과로 일시적으로 생기는 큰 보라 영역은 여기서 다루지 않는다.
+   */
+  isRepeatedRuneMapDecoration(candidate, allCandidates, roiHeight) {
+    const rowTolerance = Math.max(3, roiHeight * 0.06);
+    const sameRowCount = allCandidates.filter((other) => {
+      const sizeRatio = Math.max(
+        candidate.width / Math.max(1, other.width),
+        other.width / Math.max(1, candidate.width),
+        candidate.height / Math.max(1, other.height),
+        other.height / Math.max(1, candidate.height)
+      );
+      return (
+        Math.abs(other.centerY - candidate.centerY) <= rowTolerance
+        && sizeRatio <= 1.5
+      );
+    }).length;
+    return sameRowCount >= 2;
+  }
+
   processRuneFrame(runeImageData, fullImageData) {
     const allCandidates = this.findRuneDiamondCandidates(runeImageData);
     const isLearningBackground = (
@@ -407,6 +438,7 @@ class ImageAnalyzer {
       return (
         isInsidePlayableMap
         && !isStaticArteriaMiddleCrystal
+        && !this.isRepeatedRuneMapDecoration(candidate, allCandidates, runeImageData.height)
         && !this.isRuneBackgroundCandidate(candidate)
       );
     });
@@ -1529,7 +1561,11 @@ class ImageAnalyzer {
 
       runeImageData = this.extractSubImageData(imageData, rx, ry, rw, rh);
     }
-    this.processRuneFrame(runeImageData, imageData);
+    // 화면 공유 중에는 150ms 미니맵 전용 경로가 룬 프레임을 처리한다.
+    // 같은 장면을 전체 프레임 경로에서 다시 세면 오탐 후보의 연속 횟수가 과하게 증가한다.
+    if (!window.screenCaptureManager?.isStreaming) {
+      this.processRuneFrame(runeImageData, imageData);
+    }
 
     this.processPopupStructureFrame(imageData);
 
