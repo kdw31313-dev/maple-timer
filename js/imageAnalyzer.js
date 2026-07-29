@@ -497,7 +497,7 @@ class ImageAnalyzer {
    */
   buildPopupIntegralMasks(imageData) {
     const { data, width, height } = imageData;
-    const keys = ['dark', 'cyan', 'bright', 'pink', 'yellow', 'tan', 'green', 'blue'];
+    const keys = ['dark', 'cyan', 'bright', 'pink', 'yellow', 'tan', 'green', 'blue', 'cream'];
     const masks = Object.fromEntries(keys.map(key => [key, new Uint32Array((width + 1) * (height + 1))]));
 
     for (let y = 1; y <= height; y++) {
@@ -513,7 +513,10 @@ class ImageAnalyzer {
           yellow: r > 145 && g > 105 && b < 100 && r > b * 1.6,
           tan: r > 105 && g > 75 && b < 90 && r > b * 1.45,
           green: g > 105 && g > r * 1.25 && g > b * 1.15,
-          blue: b > 85 && b > r * 1.25 && g > r * 1.1
+          blue: b > 85 && b > r * 1.25 && g > r * 1.1,
+          // 버섯 안내창 오른쪽 아래 캐릭터의 얼굴색. 단독으로는 사용하지 않고
+          // 분홍 모자와 노란 왕관과 함께만 사용한다.
+          cream: r > 155 && g > 105 && b > 85 && r > b * 1.15 && g > b * 1.05
         };
         for (const key of keys) {
           if (flags[key]) row[key]++;
@@ -555,11 +558,18 @@ class ImageAnalyzer {
             const middleCyan = ratio('cyan', 0.05, 0.20, 0.90, 0.38);
             const lowerDark = ratio('dark', 0.05, 0.57, 0.90, 0.38);
             const lowerRightPink = ratio('pink', 0.55, 0.55, 0.42, 0.42);
+            const lowerRightYellow = ratio('yellow', 0.55, 0.55, 0.42, 0.42);
+            const lowerRightCream = ratio('cream', 0.55, 0.55, 0.42, 0.42);
             const headerYellow = ratio('yellow', 0.03, 0.02, 0.94, 0.18);
-            if (headerDark >= 0.24 && middleCyan >= 0.18 && lowerDark >= 0.20 &&
-                lowerRightPink >= 0.025 && headerYellow >= 0.006) {
+            // 장비 합성/인벤토리 창은 큰 사각 UI와 밝은 칸 때문에 템플릿 유사도가
+            // 높아질 수 있다. 버섯 안내창 고유의 상단, 청록 설명판, 분홍 모자,
+            // 노란 왕관, 얼굴색이 한 팝업 안에 모두 있을 때만 인정한다.
+            if (headerDark >= 0.32 && middleCyan >= 0.22 && lowerDark >= 0.26 &&
+                lowerRightPink >= 0.035 && lowerRightYellow >= 0.004 &&
+                lowerRightCream >= 0.018) {
               const confidence = headerDark * 1.2 + middleCyan * 1.8 + lowerDark +
-                lowerRightPink * 1.8 + headerYellow;
+                lowerRightPink * 1.8 + lowerRightYellow * 1.2 + lowerRightCream * 1.4 +
+                headerYellow;
               if (confidence > best.confidence) {
                 best = { found: true, type: '버섯 안내창형 거짓말 탐지기', confidence };
               }
@@ -669,7 +679,9 @@ class ImageAnalyzer {
 
   processPopupStructureFrame(imageData) {
     if (!imageData?.data?.length) return;
-    const match = this.findPopupTemplateMatch(imageData);
+    // 전체 화면 색상 템플릿은 장비 합성/인벤토리 같은 이벤트 창과 쉽게 겹친다.
+    // 거탐은 실제 팝업 구성요소를 함께 검증하는 구조 인식만 경보에 사용한다.
+    const match = this.findPopupStructure(imageData);
     this.popupState.lastConfidence = match.confidence;
 
     if (match.found) {
