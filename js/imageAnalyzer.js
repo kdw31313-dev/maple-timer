@@ -6,13 +6,16 @@ class ImageAnalyzer {
     this.runeState = {
       baselineData: null,
       consecutiveCount: 0,
-      REQUIRED_CONSECUTIVE: 2,
+      // 전투 이펙트와 캐릭터 표식은 짧게 룬과 비슷해질 수 있다.
+      // 실제 룬은 같은 미니맵 좌표에 유지되므로 약 1.2초 동안 확인한다.
+      REQUIRED_CONSECUTIVE: 8,
       isDetected: false,
       cooldownActive: false,
       normReturnFrames: 0,
       lastPixelCount: 0,
       lastCandidateCount: 0,
       lastCandidates: [],
+      pendingCandidate: null,
       backgroundLearningFrames: 0,
       BACKGROUND_LEARNING_REQUIRED: 12,
       backgroundCandidateTracks: [],
@@ -85,6 +88,7 @@ class ImageAnalyzer {
     this.runeState.lastPixelCount = 0;
     this.runeState.lastCandidateCount = 0;
     this.runeState.lastCandidates = [];
+    this.runeState.pendingCandidate = null;
     this.runeState.backgroundLearningFrames = 0;
     this.runeState.backgroundCandidateTracks = [];
     this.runeState.backgroundCandidates = [];
@@ -99,6 +103,7 @@ class ImageAnalyzer {
 
     this.janusState.isBuffActive = false;
     this.janusState.alert10Triggered = false;
+    this.janusState.pendingTemplateMatch = null;
 
     this.expBuffState.isBuffActive = false;
     this.expBuffState.alert10Triggered = false;
@@ -396,18 +401,41 @@ class ImageAnalyzer {
     this.runeState.lastPixelCount = runeColorPixels;
     this.runeState.lastCandidateCount = candidates.length;
     this.runeState.lastCandidates = candidates.map((candidate) => ({ ...candidate }));
-    const isDetected = candidates.length > 0;
+    // 프레임마다 다른 보라 점을 이어 붙여 감지하지 않도록 같은 위치·크기의 후보만
+    // 연속 감지로 인정한다. 이동/깜빡임이 있는 캐릭터 표식과 전투 이펙트를 제외한다.
+    const previousCandidate = this.runeState.pendingCandidate;
+    const stableCandidate = previousCandidate
+      ? candidates.find((candidate) => {
+        const positionTolerance = Math.max(3, Math.max(candidate.width, candidate.height) * 0.45);
+        const sizeRatio = Math.max(
+          candidate.width / Math.max(1, previousCandidate.width),
+          previousCandidate.width / Math.max(1, candidate.width),
+          candidate.height / Math.max(1, previousCandidate.height),
+          previousCandidate.height / Math.max(1, candidate.height)
+        );
+        return (
+          Math.hypot(candidate.centerX - previousCandidate.centerX, candidate.centerY - previousCandidate.centerY) <= positionTolerance
+          && sizeRatio <= 1.35
+        );
+      })
+      : null;
+    const isDetected = Boolean(stableCandidate || (!previousCandidate && candidates.length > 0));
 
     const isLive = window.screenCaptureManager?.isStreaming;
 
     if (isDetected) {
-      this.runeState.consecutiveCount++;
+      const candidate = stableCandidate || candidates[0];
+      this.runeState.consecutiveCount = stableCandidate
+        ? this.runeState.consecutiveCount + 1
+        : 1;
+      this.runeState.pendingCandidate = { ...candidate };
 
       if (this.runeState.consecutiveCount >= this.runeState.REQUIRED_CONSECUTIVE && !this.runeState.isDetected && !this.runeState.cooldownActive) {
         this.triggerRuneAlert(runeColorPixels);
       }
     } else {
       this.runeState.consecutiveCount = 0;
+      this.runeState.pendingCandidate = null;
 
       if (this.runeState.cooldownActive) {
         this.runeState.normReturnFrames++;
@@ -1352,14 +1380,22 @@ class ImageAnalyzer {
 
     // 솔 야누스는 아이콘만이 아니라 그 위에 표시되는 노란 남은 시간까지 함께 있어야
     // 활성으로 확정한다. 다른 버프 아이콘의 보라색/어두운 영역만으로는 시작하지 않는다.
-    const hasVisibleJanusTimer = match.shape.yellowDigitPixels >= 10;
+    const hasVisibleJanusTimer = match.shape.yellowDigitPixels >= 15;
     const isConfirmedJanus = match.found && hasVisibleJanusTimer;
 
     if (isConfirmedJanus) {
-      this.janusState.consecutiveActiveCount++;
+      // 서로 다른 보라색 버프 칸이 프레임마다 번갈아 선택되어 누적되는 것을 막는다.
+      const previousMatch = this.janusState.pendingTemplateMatch;
+      const isSameSlot = previousMatch
+        && Math.hypot(match.x - previousMatch.x, match.y - previousMatch.y) <= 6;
+      this.janusState.consecutiveActiveCount = isSameSlot
+        ? this.janusState.consecutiveActiveCount + 1
+        : 1;
+      this.janusState.pendingTemplateMatch = { x: match.x, y: match.y };
       this.janusState.consecutiveInactiveCount = 0;
 
-      if (!this.janusState.isBuffActive && this.janusState.consecutiveActiveCount >= 5) {
+      // 약 4.5초 동안 같은 칸에서 아이콘과 시간 숫자가 함께 보여야 추적을 시작한다.
+      if (!this.janusState.isBuffActive && this.janusState.consecutiveActiveCount >= 30) {
         this.janusState.isBuffActive = true;
         this.janusState.alert10Triggered = false;
         this.janusState.alertExpiredTriggered = false;
@@ -1373,6 +1409,7 @@ class ImageAnalyzer {
     }
 
     this.janusState.consecutiveActiveCount = 0;
+    this.janusState.pendingTemplateMatch = null;
     this.janusState.consecutiveInactiveCount++;
 
     // 룬 미니게임, 이펙트, 숫자 갱신 중에는 일시적으로 아이콘 비교가 흔들릴 수 있다.
