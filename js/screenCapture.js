@@ -592,6 +592,29 @@ class ScreenCaptureManager {
       ctx.fillStyle = info.color;
       ctx.fillText(info.label, x + 10, labelY + Math.round(labelHeight * 0.72));
       ctx.restore();
+
+      if (category === 'rune') {
+        const candidates = window.imageAnalyzer?.runeState?.lastCandidates || [];
+        const sourceRoiWidth = Math.max(1, this.runeCanvas.width);
+        const sourceRoiHeight = Math.max(1, this.runeCanvas.height);
+        ctx.save();
+        ctx.strokeStyle = '#fff200';
+        ctx.lineWidth = Math.max(3, width / 450);
+        for (const candidate of candidates) {
+          const padding = Math.max(3, width / 500);
+          const candidateX = x + (candidate.x / sourceRoiWidth) * w;
+          const candidateY = y + (candidate.y / sourceRoiHeight) * h;
+          const candidateWidth = (candidate.width / sourceRoiWidth) * w;
+          const candidateHeight = (candidate.height / sourceRoiHeight) * h;
+          ctx.strokeRect(
+            candidateX - padding,
+            candidateY - padding,
+            candidateWidth + padding * 2,
+            candidateHeight + padding * 2
+          );
+        }
+        ctx.restore();
+      }
     }
 
     const capturedAt = new Date().toLocaleString('ko-KR', { hour12: false });

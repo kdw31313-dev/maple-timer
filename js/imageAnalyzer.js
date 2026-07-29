@@ -12,6 +12,7 @@ class ImageAnalyzer {
       normReturnFrames: 0,
       lastPixelCount: 0,
       lastCandidateCount: 0,
+      lastCandidates: [],
       backgroundLearningFrames: 0,
       BACKGROUND_LEARNING_REQUIRED: 12,
       backgroundCandidateTracks: [],
@@ -83,6 +84,7 @@ class ImageAnalyzer {
     this.runeState.normReturnFrames = 0;
     this.runeState.lastPixelCount = 0;
     this.runeState.lastCandidateCount = 0;
+    this.runeState.lastCandidates = [];
     this.runeState.backgroundLearningFrames = 0;
     this.runeState.backgroundCandidateTracks = [];
     this.runeState.backgroundCandidates = [];
@@ -362,6 +364,7 @@ class ImageAnalyzer {
       this.runeState.consecutiveCount = 0;
       this.runeState.lastPixelCount = 0;
       this.runeState.lastCandidateCount = 0;
+      this.runeState.lastCandidates = [];
       const isLive = window.screenCaptureManager?.isStreaming;
       if (this.onRuneStatusChange && isLive) {
         this.onRuneStatusChange('🟣 미니맵 고정 보라 표식 구분 중', false);
@@ -369,11 +372,18 @@ class ImageAnalyzer {
       return;
     }
 
-    const candidates = allCandidates.filter((candidate) => !this.isRuneBackgroundCandidate(candidate));
+    const candidates = allCandidates.filter((candidate) => {
+      // 아르테리아 미니맵 좌우 기둥의 보라 수정 장식은 룬과 비슷한 작은 마름모다.
+      // 실제 룬 표본은 내부 19.5~71.9%에 있었으므로 바깥 장식 띠만 보수적으로 제외한다.
+      const horizontalRatio = candidate.centerX / Math.max(1, runeImageData.width);
+      const isInsidePlayableMap = horizontalRatio >= 0.14 && horizontalRatio <= 0.82;
+      return isInsidePlayableMap && !this.isRuneBackgroundCandidate(candidate);
+    });
     const runeColorPixels = candidates.reduce((sum, candidate) => sum + candidate.pixelCount, 0);
 
     this.runeState.lastPixelCount = runeColorPixels;
     this.runeState.lastCandidateCount = candidates.length;
+    this.runeState.lastCandidates = candidates.map((candidate) => ({ ...candidate }));
     const isDetected = candidates.length > 0;
 
     const isLive = window.screenCaptureManager?.isStreaming;
