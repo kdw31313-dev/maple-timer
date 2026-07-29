@@ -85,6 +85,56 @@ class TelegramNotifier {
   }
 
   /**
+   * 탐지 순간의 화면을 사진으로 전송한다.
+   * 화면 캡처가 불가능하면 기존 문자 알림으로 자동 대체한다.
+   */
+  async sendAlert(text, category = 'chime', force = false) {
+    if (!this.config.enabled && !force) return;
+    if (!this.config.botToken || !this.config.chatId) return;
+
+    const now = Date.now();
+    const lastSent = this.lastSentTimeMap.get(text) || 0;
+    if (!force && now - lastSent < 3000) return;
+    this.lastSentTimeMap.set(text, now);
+
+    try {
+      const captureManager = window.screenCaptureManager;
+      const photoBlob = await captureManager?.captureAlertScreenshot?.(category, text);
+      if (!photoBlob) {
+        this.lastSentTimeMap.delete(text);
+        await this.send(text, force);
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('chat_id', this.config.chatId);
+      formData.append('caption', text.slice(0, 1024));
+      formData.append('photo', photoBlob, `메이플-탐지-${Date.now()}.jpg`);
+
+      if (this.config.threadId && this.config.threadId.trim() !== '') {
+        formData.append('message_thread_id', String(parseInt(this.config.threadId.trim(), 10)));
+      }
+
+      const response = await fetch(
+        `https://api.telegram.org/bot${this.config.botToken}/sendPhoto`,
+        { method: 'POST', body: formData }
+      );
+      const resData = await response.json();
+      if (!resData.ok) {
+        console.warn('Telegram photo send failed:', resData);
+        this.lastSentTimeMap.delete(text);
+        await this.send(text, force);
+      } else {
+        console.log('Telegram alert photo sent successfully:', text);
+      }
+    } catch (err) {
+      console.error('Telegram photo notification error:', err);
+      this.lastSentTimeMap.delete(text);
+      await this.send(text, force);
+    }
+  }
+
+  /**
    * 테스트 메세지 보내기
    */
   async sendTestMessage() {
