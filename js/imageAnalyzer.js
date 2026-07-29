@@ -42,6 +42,7 @@ class ImageAnalyzer {
       // 노란 숫자 카운트다운 추적 (Number Recognizer)
       lastYellowDigitCount: 0,
       peakYellowDigitCount: 0,  // 최초 감지 시 노란 픽셀 최대치 (1:20 = 많음)
+      peakYellowDigitSpan: 0,
       lowDigitFrames: 0,        // 노란 숫자 급감 연속 프레임 수 (10초 이하 감지용)
       startEvidenceHistory: [],
       lastTemplateMatch: null,
@@ -109,6 +110,10 @@ class ImageAnalyzer {
     this.janusState.consecutiveInactiveCount = 0;
     this.janusState.alert10Triggered = false;
     this.janusState.alertExpiredTriggered = false;
+    this.janusState.lastYellowDigitCount = 0;
+    this.janusState.peakYellowDigitCount = 0;
+    this.janusState.peakYellowDigitSpan = 0;
+    this.janusState.lowDigitFrames = 0;
     this.janusState.startEvidenceHistory = [];
     this.janusState.pendingTemplateMatch = null;
     this.janusState.lastTemplateMatch = null;
@@ -1307,36 +1312,44 @@ class ImageAnalyzer {
   findBuffTemplateMatch(imageData, templateName) {
     const template = window.BUFF_ICON_TEMPLATES?.[templateName];
     if (!imageData?.data || !template) return { found: false, score: Infinity, x: 0, y: 0 };
+    const templateCandidates = templateName === 'janus'
+      ? (window.BUFF_ICON_TEMPLATES.janusVariants || [template])
+      : [template];
 
     const { data, width, height } = imageData;
     const size = 33;
     if (width < size || height < size) return { found: false, score: Infinity, x: 0, y: 0 };
 
     const scoreAt = (left, top) => {
-      let difference = 0;
-      let compared = 0;
-      for (let gy = 0; gy < 8; gy++) {
-        for (let gx = 0; gx < 8; gx++) {
-          const t = (gy * 8 + gx) * 3;
-          if (template[t] < 0) continue;
+      let bestTemplateScore = Infinity;
+      for (const candidateTemplate of templateCandidates) {
+        let difference = 0;
+        let compared = 0;
+        for (let gy = 0; gy < 8; gy++) {
+          for (let gx = 0; gx < 8; gx++) {
+            const t = (gy * 8 + gx) * 3;
+            if (candidateTemplate[t] < 0) continue;
 
-          const px = Math.min(width - 1, left + Math.round((gx + 0.5) * size / 8));
-          const py = Math.min(height - 1, top + Math.round((gy + 0.5) * size / 8));
-          const idx = (py * width + px) * 4;
-          const r = data[idx];
-          const g = data[idx + 1];
-          const b = data[idx + 2];
+            const px = Math.min(width - 1, left + Math.round((gx + 0.5) * size / 8));
+            const py = Math.min(height - 1, top + Math.round((gy + 0.5) * size / 8));
+            const idx = (py * width + px) * 4;
+            const r = data[idx];
+            const g = data[idx + 1];
+            const b = data[idx + 2];
 
-          // 야누스 위에 겹쳐진 노란 시간 숫자는 프레임마다 바뀌므로 제외한다.
-          if (templateName === 'janus' && r >= 145 && g >= 135 && b <= 125) continue;
+            // 야누스 위에 겹쳐진 노란 시간 숫자는 프레임마다 바뀌므로 제외한다.
+            if (templateName === 'janus' && r >= 145 && g >= 135 && b <= 125) continue;
 
-          difference += Math.abs(r - template[t]);
-          difference += Math.abs(g - template[t + 1]);
-          difference += Math.abs(b - template[t + 2]);
-          compared += 3;
+            difference += Math.abs(r - candidateTemplate[t]);
+            difference += Math.abs(g - candidateTemplate[t + 1]);
+            difference += Math.abs(b - candidateTemplate[t + 2]);
+            compared += 3;
+          }
         }
+        const candidateScore = compared ? difference / compared : Infinity;
+        if (candidateScore < bestTemplateScore) bestTemplateScore = candidateScore;
       }
-      return compared ? difference / compared : Infinity;
+      return bestTemplateScore;
     };
 
     let best = { score: Infinity, x: 0, y: 0 };
@@ -1360,7 +1373,9 @@ class ImageAnalyzer {
     const isJanus = templateName === 'janus';
     // 야누스는 다른 보라/어두운 버프와 색이 겹치므로 아이콘 유사도를 더 엄격하게 본다.
     // 실제 야누스 사진 33장의 밝기·이펙트 편차(최대 오차 약 30.9)를 포함한다.
-    const threshold = isJanus ? 32 : 33;
+    // 실제 사냥 자료 82장으로 만든 외곽 템플릿을 사용한다.
+    // 야누스 없음 자료의 최저 점수(약 22.7)와 간격을 두어 15까지만 시작 증거로 인정한다.
+    const threshold = isJanus ? 15 : 33;
     const shapePassed = isJanus
       ? shape.violetPixels >= 26 && shape.darkPixels >= 45
       : shape.goldPixels >= 18 && shape.darkPixels >= 22;
@@ -1374,6 +1389,8 @@ class ImageAnalyzer {
     let violetPixels = 0;
     let darkPixels = 0;
     let yellowDigitPixels = 0;
+    let yellowMinX = size;
+    let yellowMaxX = -1;
     const yellowMask = new Uint8Array(size * size);
 
     for (let y = top; y < Math.min(height, top + size); y++) {
@@ -1391,6 +1408,8 @@ class ImageAnalyzer {
         if (isTimerBand && r >= 165 && g >= 150 && b <= 145 && r - b >= 25) {
           yellowDigitPixels++;
           yellowMask[localY * size + localX] = 1;
+          if (localX < yellowMinX) yellowMinX = localX;
+          if (localX > yellowMaxX) yellowMaxX = localX;
         }
       }
     }
@@ -1433,7 +1452,8 @@ class ImageAnalyzer {
       violetPixels,
       darkPixels,
       yellowDigitPixels,
-      largestYellowDigitComponent
+      largestYellowDigitComponent,
+      yellowDigitSpan: yellowMaxX >= yellowMinX ? yellowMaxX - yellowMinX + 1 : 0
     };
   }
 
@@ -1453,18 +1473,17 @@ class ImageAnalyzer {
       shape: { ...match.shape }
     };
 
-    // 시작할 때만 아이콘과 중앙의 연결된 노란 숫자 획을 함께 요구한다.
-    // 활성 이후에는 실제 사진처럼 숫자가 잠시 비어도 아이콘 외곽이 있으면 계속 유지한다.
+    // 시작은 숫자 모양이 아니라 외곽 아이콘으로 확정한다.
+    // 활성 이후에는 숫자가 잠시 비어도 아이콘 외곽이 있으면 계속 유지한다.
     const hasVisibleJanusTimer = (
-      match.shape.yellowDigitPixels >= 7 &&
-      match.shape.largestYellowDigitComponent >= 3
+      match.shape.yellowDigitPixels >= 3 &&
+      match.shape.largestYellowDigitComponent >= 2
     );
-    const hasStartEvidence = match.found && hasVisibleJanusTimer;
+    const hasStartEvidence = match.found;
     const hasProbableJanusEvidence = (
       match.found ||
       (
-        hasVisibleJanusTimer &&
-        match.score <= 36 &&
+        match.score <= 18 &&
         match.shape.violetPixels >= 20 &&
         match.shape.darkPixels >= 35
       )
@@ -1483,6 +1502,9 @@ class ImageAnalyzer {
         this.janusState.consecutiveInactiveCount = 0;
         this.janusState.alert10Triggered = false;
         this.janusState.alertExpiredTriggered = false;
+        this.janusState.peakYellowDigitCount = match.shape.yellowDigitPixels;
+        this.janusState.peakYellowDigitSpan = match.shape.yellowDigitSpan;
+        this.janusState.lowDigitFrames = 0;
         this.janusState.confirmedTemplateMatch = { ...this.janusState.lastTemplateMatch };
       } else if (this.janusState.consecutiveInactiveCount >= 14 && this.onJanusStatusChange) {
         this.onJanusStatusChange('⚪ 대기 중 (야누스 아이콘 없음)', false);
@@ -1494,6 +1516,28 @@ class ImageAnalyzer {
         this.janusState.consecutiveInactiveCount = 0;
         this.janusState.pendingTemplateMatch = { x: match.x, y: match.y };
         this.janusState.confirmedTemplateMatch = { ...this.janusState.lastTemplateMatch };
+
+        if (hasVisibleJanusTimer) {
+          const digitCount = match.shape.yellowDigitPixels;
+          const digitSpan = match.shape.yellowDigitSpan;
+          this.janusState.lastYellowDigitCount = digitCount;
+          this.janusState.peakYellowDigitCount = Math.max(this.janusState.peakYellowDigitCount, digitCount);
+          this.janusState.peakYellowDigitSpan = Math.max(this.janusState.peakYellowDigitSpan, digitSpan);
+
+          const countDropped = this.janusState.peakYellowDigitCount >= 12
+            && digitCount <= this.janusState.peakYellowDigitCount * 0.55;
+          const spanDropped = this.janusState.peakYellowDigitSpan >= 15
+            && digitSpan <= 11;
+          if (digitSpan > 0 && (spanDropped || (digitSpan <= 13 && countDropped))) {
+            this.janusState.lowDigitFrames++;
+          } else {
+            this.janusState.lowDigitFrames = 0;
+          }
+
+          if (this.janusState.lowDigitFrames >= 3 && !this.janusState.alert10Triggered) {
+            this.triggerJanus10sAlert();
+          }
+        }
 
         if (this.onJanusStatusChange) {
           const confidence = Math.max(0, Math.min(100, Math.round((1 - match.score / 45) * 100)));
@@ -1509,6 +1553,9 @@ class ImageAnalyzer {
         this.janusState.isBuffActive = false;
         this.janusState.startEvidenceHistory = [];
         this.janusState.pendingTemplateMatch = null;
+        this.janusState.peakYellowDigitCount = 0;
+        this.janusState.peakYellowDigitSpan = 0;
+        this.janusState.lowDigitFrames = 0;
         if (!this.janusState.alertExpiredTriggered) this.triggerJanusExpiredAlert();
       }
       return;
