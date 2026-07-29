@@ -376,8 +376,20 @@ class ImageAnalyzer {
       // 아르테리아 미니맵 좌우 기둥의 보라 수정 장식은 룬과 비슷한 작은 마름모다.
       // 실제 룬 표본은 내부 19.5~71.9%에 있었으므로 바깥 장식 띠만 보수적으로 제외한다.
       const horizontalRatio = candidate.centerX / Math.max(1, runeImageData.width);
+      const verticalRatio = candidate.centerY / Math.max(1, runeImageData.height);
       const isInsidePlayableMap = horizontalRatio >= 0.14 && horizontalRatio <= 0.82;
-      return isInsidePlayableMap && !this.isRuneBackgroundCandidate(candidate);
+      // 중앙 기둥의 고정 보라 수정도 y 약 38%에서 반복 검출된다. 사용자가 보낸
+      // 실제 룬 15개는 모두 이보다 아래(최소 y 약 42.5%)에 있었으므로, 해당 고정
+      // 장식 위치만 좁게 제외해 즉시 알림의 오탐을 줄인다.
+      const isStaticArteriaMiddleCrystal = (
+        horizontalRatio >= 0.41 && horizontalRatio <= 0.55
+        && verticalRatio >= 0.30 && verticalRatio <= 0.43
+      );
+      return (
+        isInsidePlayableMap
+        && !isStaticArteriaMiddleCrystal
+        && !this.isRuneBackgroundCandidate(candidate)
+      );
     });
     const runeColorPixels = candidates.reduce((sum, candidate) => sum + candidate.pixelCount, 0);
 
@@ -1297,9 +1309,10 @@ class ImageAnalyzer {
 
     const shape = this.measureBuffIconShape(imageData, best.x, best.y, size);
     const isJanus = templateName === 'janus';
-    const threshold = isJanus ? 35 : 33;
+    // 야누스는 다른 보라/어두운 버프와 색이 겹치므로 아이콘 유사도를 더 엄격하게 본다.
+    const threshold = isJanus ? 29 : 33;
     const shapePassed = isJanus
-      ? shape.violetPixels >= 18 && shape.darkPixels >= 35
+      ? shape.violetPixels >= 26 && shape.darkPixels >= 45
       : shape.goldPixels >= 18 && shape.darkPixels >= 22;
 
     return { ...best, found: best.score <= threshold && shapePassed, shape };
@@ -1337,11 +1350,16 @@ class ImageAnalyzer {
     const match = this.findBuffTemplateMatch(imageData, 'janus');
     this.janusState.lastTemplateScore = match.score;
 
-    if (match.found) {
+    // 솔 야누스는 아이콘만이 아니라 그 위에 표시되는 노란 남은 시간까지 함께 있어야
+    // 활성으로 확정한다. 다른 버프 아이콘의 보라색/어두운 영역만으로는 시작하지 않는다.
+    const hasVisibleJanusTimer = match.shape.yellowDigitPixels >= 10;
+    const isConfirmedJanus = match.found && hasVisibleJanusTimer;
+
+    if (isConfirmedJanus) {
       this.janusState.consecutiveActiveCount++;
       this.janusState.consecutiveInactiveCount = 0;
 
-      if (!this.janusState.isBuffActive && this.janusState.consecutiveActiveCount >= 3) {
+      if (!this.janusState.isBuffActive && this.janusState.consecutiveActiveCount >= 5) {
         this.janusState.isBuffActive = true;
         this.janusState.alert10Triggered = false;
         this.janusState.alertExpiredTriggered = false;
@@ -1357,11 +1375,12 @@ class ImageAnalyzer {
     this.janusState.consecutiveActiveCount = 0;
     this.janusState.consecutiveInactiveCount++;
 
-    // 전투 이펙트나 창이 잠깐 가린 경우를 종료로 오인하지 않도록 5프레임 확인한다.
-    if (this.janusState.isBuffActive && this.janusState.consecutiveInactiveCount >= 5) {
+    // 룬 미니게임, 이펙트, 숫자 갱신 중에는 일시적으로 아이콘 비교가 흔들릴 수 있다.
+    // 150ms 주기 기준 약 2초(14프레임) 동안 아이콘과 시간 표시가 모두 없을 때만 종료한다.
+    if (this.janusState.isBuffActive && this.janusState.consecutiveInactiveCount >= 14) {
       this.janusState.isBuffActive = false;
       if (!this.janusState.alertExpiredTriggered) this.triggerJanusExpiredAlert();
-    } else if (!this.janusState.isBuffActive && this.janusState.consecutiveInactiveCount >= 5) {
+    } else if (!this.janusState.isBuffActive && this.janusState.consecutiveInactiveCount >= 14) {
       if (this.onJanusStatusChange) this.onJanusStatusChange('⚪ 대기 중 (야누스 아이콘 없음)', false);
     }
   }
