@@ -561,10 +561,15 @@ class ScreenCaptureManager {
     if (!ctx) return Promise.resolve(null);
     ctx.drawImage(this.videoEl, 0, 0, width, height);
 
+    // 야누스는 최상단 두 줄에만 있으므로, 알림 캡처도 실제 판독 범위만 표시한다.
+    const janusTopRowsRoi = {
+      ...this.janusRoi,
+      h: Math.min(this.janusRoi.h, 9.2)
+    };
     const categoryInfo = {
       rune: { label: '룬 탐지 영역', color: '#ff2b86', roi: this.runeRoi },
       popup: { label: '거짓말 탐지기 전체 화면 분석', color: '#ff3b30', roi: this.popupRoi },
-      janus: { label: '솔 야누스 버프 분석 영역', color: '#9b59b6', roi: this.janusRoi },
+      janus: { label: '솔 야누스 버프 분석 영역', color: '#9b59b6', roi: janusTopRowsRoi },
       exp: { label: '익스트림 골드 버프 분석 영역', color: '#f1c40f', roi: this.janusRoi }
     };
     const info = categoryInfo[category];
@@ -614,6 +619,26 @@ class ScreenCaptureManager {
           );
         }
         ctx.restore();
+      }
+
+      if (category === 'janus') {
+        const match = window.imageAnalyzer?.janusState?.confirmedTemplateMatch
+          || window.imageAnalyzer?.janusState?.lastTemplateMatch;
+        const sourceRoiWidth = Math.max(1, this.janusCanvas.width);
+        const sourceRoiHeight = Math.max(1, this.janusCanvas.height);
+        if (match?.found && Number.isFinite(match.x) && Number.isFinite(match.y)) {
+          ctx.save();
+          ctx.strokeStyle = '#fff200';
+          ctx.lineWidth = Math.max(3, width / 450);
+          const iconX = (this.janusRoi.x / 100) * width
+            + (match.x / sourceRoiWidth) * ((this.janusRoi.w / 100) * width);
+          const iconY = (this.janusRoi.y / 100) * height
+            + (match.y / sourceRoiHeight) * ((this.janusRoi.h / 100) * height);
+          const iconW = (33 / sourceRoiWidth) * ((this.janusRoi.w / 100) * width);
+          const iconH = (33 / sourceRoiHeight) * ((this.janusRoi.h / 100) * height);
+          ctx.strokeRect(iconX - 3, iconY - 3, iconW + 6, iconH + 6);
+          ctx.restore();
+        }
       }
     }
 
