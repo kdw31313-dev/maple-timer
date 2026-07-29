@@ -34,6 +34,13 @@ class 야누스학습수집기 {
       alert('텔레그램 알림을 먼저 켜 주세요.');
       return false;
     }
+    if (
+      !window.telegramNotifier.config.botToken?.trim() ||
+      !window.telegramNotifier.config.chatId?.trim()
+    ) {
+      alert('이 컴퓨터에서 텔레그램 봇 토큰과 Chat ID를 입력하고 설정 저장을 먼저 눌러 주세요.');
+      return false;
+    }
 
     this.isRunning = true;
     this.queue = [];
