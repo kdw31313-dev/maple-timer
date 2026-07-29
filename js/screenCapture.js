@@ -632,8 +632,9 @@ class ScreenCaptureManager {
             + (match.x / sourceRoiWidth) * ((this.janusRoi.w / 100) * width);
           const iconY = (this.janusRoi.y / 100) * height
             + (match.y / sourceRoiHeight) * ((this.janusRoi.h / 100) * height);
-          const iconW = (33 / sourceRoiWidth) * ((this.janusRoi.w / 100) * width);
-          const iconH = (33 / sourceRoiHeight) * ((this.janusRoi.h / 100) * height);
+          const matchedIconSize = Number.isFinite(match.size) ? match.size : 33;
+          const iconW = (matchedIconSize / sourceRoiWidth) * ((this.janusRoi.w / 100) * width);
+          const iconH = (matchedIconSize / sourceRoiHeight) * ((this.janusRoi.h / 100) * height);
           ctx.strokeRect(iconX - 3, iconY - 3, iconW + 6, iconH + 6);
           ctx.restore();
         }
