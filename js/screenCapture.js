@@ -543,6 +543,67 @@ class ScreenCaptureManager {
   /**
    * ⚡ 100% 무설정 자동 1사분면 버프 파서 스캔 루프
    */
+  captureAlertScreenshot(category = 'chime', message = '') {
+    if (!this.isStreaming || !this.videoEl || this.videoEl.readyState < 2) {
+      return Promise.resolve(null);
+    }
+
+    const sourceWidth = this.videoEl.videoWidth || 1280;
+    const sourceHeight = this.videoEl.videoHeight || 720;
+    const scale = Math.min(1, 1600 / sourceWidth);
+    const width = Math.max(1, Math.round(sourceWidth * scale));
+    const height = Math.max(1, Math.round(sourceHeight * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return Promise.resolve(null);
+    ctx.drawImage(this.videoEl, 0, 0, width, height);
+
+    const categoryInfo = {
+      rune: { label: '룬 탐지 영역', color: '#ff2b86', roi: this.runeRoi },
+      popup: { label: '거짓말 탐지기 전체 화면 분석', color: '#ff3b30', roi: this.popupRoi },
+      janus: { label: '솔 야누스 버프 분석 영역', color: '#9b59b6', roi: this.janusRoi },
+      exp: { label: '익스트림 골드 버프 분석 영역', color: '#f1c40f', roi: this.janusRoi }
+    };
+    const info = categoryInfo[category];
+
+    if (info?.roi) {
+      const x = (info.roi.x / 100) * width;
+      const y = (info.roi.y / 100) * height;
+      const w = (info.roi.w / 100) * width;
+      const h = (info.roi.h / 100) * height;
+      ctx.save();
+      ctx.strokeStyle = info.color;
+      ctx.lineWidth = Math.max(4, width / 320);
+      ctx.setLineDash([14, 8]);
+      ctx.strokeRect(x, y, w, h);
+      ctx.setLineDash([]);
+      ctx.font = `bold ${Math.max(18, Math.round(width / 55))}px sans-serif`;
+      const labelWidth = ctx.measureText(info.label).width;
+      const labelHeight = Math.max(30, Math.round(width / 30));
+      const labelY = Math.max(0, y - labelHeight);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
+      ctx.fillRect(x, labelY, labelWidth + 20, labelHeight);
+      ctx.fillStyle = info.color;
+      ctx.fillText(info.label, x + 10, labelY + Math.round(labelHeight * 0.72));
+      ctx.restore();
+    }
+
+    const capturedAt = new Date().toLocaleString('ko-KR', { hour12: false });
+    const footerHeight = Math.max(50, Math.round(width / 22));
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
+    ctx.fillRect(0, height - footerHeight, width, footerHeight);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${Math.max(16, Math.round(width / 62))}px sans-serif`;
+    ctx.fillText(`${capturedAt} · ${message}`.slice(0, 100), 14, height - Math.round(footerHeight * 0.35));
+
+    return new Promise((resolve) => {
+      canvas.toBlob(resolve, 'image/jpeg', 0.88);
+    });
+  }
+
   startLoop() {
     if (this.loopIntervalId) {
       clearInterval(this.loopIntervalId);
