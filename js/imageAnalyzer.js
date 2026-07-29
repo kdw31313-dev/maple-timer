@@ -42,7 +42,9 @@ class ImageAnalyzer {
       // 노란 숫자 카운트다운 추적 (Number Recognizer)
       lastYellowDigitCount: 0,
       peakYellowDigitCount: 0,  // 최초 감지 시 노란 픽셀 최대치 (1:20 = 많음)
-      lowDigitFrames: 0         // 노란 숫자 급감 연속 프레임 수 (10초 이하 감지용)
+      lowDigitFrames: 0,        // 노란 숫자 급감 연속 프레임 수 (10초 이하 감지용)
+      lastTemplateMatch: null,
+      confirmedTemplateMatch: null
     };
 
     this.expBuffState = {
@@ -104,6 +106,8 @@ class ImageAnalyzer {
     this.janusState.isBuffActive = false;
     this.janusState.alert10Triggered = false;
     this.janusState.pendingTemplateMatch = null;
+    this.janusState.lastTemplateMatch = null;
+    this.janusState.confirmedTemplateMatch = null;
 
     this.expBuffState.isBuffActive = false;
     this.expBuffState.alert10Triggered = false;
@@ -272,14 +276,23 @@ class ImageAnalyzer {
       const marginX = boxWidth * 0.18;
       const marginY = boxHeight * 0.18;
       let hasLeft = false, hasRight = false, hasTop = false, hasBottom = false;
+      let diamondFitPixels = 0;
       for (const pixel of originalPixels) {
         if (pixel.x <= centerX - marginX) hasLeft = true;
         if (pixel.x >= centerX + marginX) hasRight = true;
         if (pixel.y <= centerY - marginY) hasTop = true;
         if (pixel.y >= centerY + marginY) hasBottom = true;
-      }
 
-      if (hasLeft && hasRight && hasTop && hasBottom) {
+        // 실제 룬은 대각선 네 변을 가진 마름모 내부에 색이 모인다.
+        // 원형/사각형 플레이어 표식과 전투 이펙트는 모서리 쪽 색이 많다.
+        const normalizedDistance =
+          Math.abs(pixel.x - centerX) / Math.max(1, boxWidth / 2) +
+          Math.abs(pixel.y - centerY) / Math.max(1, boxHeight / 2);
+        if (normalizedDistance <= 1.16) diamondFitPixels++;
+      }
+      const diamondFit = diamondFitPixels / Math.max(1, originalPixels.length);
+
+      if (hasLeft && hasRight && hasTop && hasBottom && diamondFit >= 0.76) {
         candidates.push({
           x: minX,
           y: minY,
@@ -289,7 +302,8 @@ class ImageAnalyzer {
           height: boxHeight,
           pixelCount: originalPixels.length,
           density,
-          averageRedGreenContrast
+          averageRedGreenContrast,
+          diamondFit
         });
       }
     }
@@ -1324,9 +1338,14 @@ class ImageAnalyzer {
 
     // 메이플 버프 슬롯은 우측 정렬 30px 격자다. 각 슬롯 주변 ±5px만
     // 정밀 탐색하여 전투 화면을 훑는 오인식과 연산량을 함께 줄인다.
-    for (let baseY = 0; baseY <= height - size; baseY += 30) {
+    // 솔 야누스는 사용자가 표시한 최상단 두 줄에만 존재한다.
+    // 아래 줄의 보라색 아이콘과 전투 UI는 야누스 후보에서 제외한다.
+    const maxIconTop = templateName === 'janus'
+      ? Math.min(height - size, 44)
+      : height - size;
+    for (let baseY = 0; baseY <= maxIconTop; baseY += 30) {
       for (let baseX = width - 40; baseX >= 0; baseX -= 30) {
-        for (let y = Math.max(0, baseY - 5); y <= Math.min(height - size, baseY + 5); y++) {
+        for (let y = Math.max(0, baseY - 5); y <= Math.min(maxIconTop, baseY + 5); y++) {
           for (let x = Math.max(0, baseX - 5); x <= Math.min(width - size, baseX + 5); x++) {
             const score = scoreAt(x, y);
             if (score < best.score) best = { score, x, y };
@@ -1377,6 +1396,13 @@ class ImageAnalyzer {
 
     const match = this.findBuffTemplateMatch(imageData, 'janus');
     this.janusState.lastTemplateScore = match.score;
+    this.janusState.lastTemplateMatch = {
+      x: match.x,
+      y: match.y,
+      score: match.score,
+      found: match.found,
+      shape: { ...match.shape }
+    };
 
     // 솔 야누스는 아이콘만이 아니라 그 위에 표시되는 노란 남은 시간까지 함께 있어야
     // 활성으로 확정한다. 다른 버프 아이콘의 보라색/어두운 영역만으로는 시작하지 않는다.
@@ -1399,6 +1425,7 @@ class ImageAnalyzer {
         this.janusState.isBuffActive = true;
         this.janusState.alert10Triggered = false;
         this.janusState.alertExpiredTriggered = false;
+        this.janusState.confirmedTemplateMatch = { ...this.janusState.lastTemplateMatch };
       }
 
       if (this.onJanusStatusChange) {
@@ -1501,7 +1528,9 @@ class ImageAnalyzer {
       const jh = Math.round((rois.janusRoi.h / 100) * height);
 
       const janusImageData = this.extractSubImageData(imageData, jx, jy, jw, jh);
-      this.processJanusFrame(janusImageData);
+      // 전체 프레임 경로도 색상만 세던 이전 감지기를 쓰지 않는다.
+      // 다른 보라색 버프가 야누스 상태를 덮어쓰는 것을 막는다.
+      this.processJanusTemplateFrame(janusImageData);
     }
   }
 
