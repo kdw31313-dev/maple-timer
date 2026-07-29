@@ -569,7 +569,7 @@ class ScreenCaptureManager {
     };
     const info = categoryInfo[category];
 
-    if (info?.roi) {
+    if (info?.roi && category !== 'popup') {
       const x = (info.roi.x / 100) * width;
       const y = (info.roi.y / 100) * height;
       const w = (info.roi.w / 100) * width;
@@ -583,7 +583,10 @@ class ScreenCaptureManager {
       ctx.font = `bold ${Math.max(18, Math.round(width / 55))}px sans-serif`;
       const labelWidth = ctx.measureText(info.label).width;
       const labelHeight = Math.max(30, Math.round(width / 30));
-      const labelY = Math.max(0, y - labelHeight);
+      const spaceBelow = height - (y + h);
+      const labelY = spaceBelow >= labelHeight + 4
+        ? y + h + 4
+        : Math.max(0, y - labelHeight - 4);
       ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
       ctx.fillRect(x, labelY, labelWidth + 20, labelHeight);
       ctx.fillStyle = info.color;
