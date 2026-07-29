@@ -11,7 +11,11 @@ class ImageAnalyzer {
       cooldownActive: false,
       normReturnFrames: 0,
       lastPixelCount: 0,
-      lastCandidateCount: 0
+      lastCandidateCount: 0,
+      backgroundLearningFrames: 0,
+      BACKGROUND_LEARNING_REQUIRED: 12,
+      backgroundCandidateTracks: [],
+      backgroundCandidates: []
     };
 
     this.popupState = {
@@ -76,6 +80,12 @@ class ImageAnalyzer {
     this.runeState.consecutiveCount = 0;
     this.runeState.isDetected = false;
     this.runeState.cooldownActive = false;
+    this.runeState.normReturnFrames = 0;
+    this.runeState.lastPixelCount = 0;
+    this.runeState.lastCandidateCount = 0;
+    this.runeState.backgroundLearningFrames = 0;
+    this.runeState.backgroundCandidateTracks = [];
+    this.runeState.backgroundCandidates = [];
 
     this.popupState.baselineData = null;
     this.popupState.consecutiveCount = 0;
@@ -266,6 +276,8 @@ class ImageAnalyzer {
         candidates.push({
           x: minX,
           y: minY,
+          centerX,
+          centerY,
           width: boxWidth,
           height: boxHeight,
           pixelCount: originalPixels.length,
@@ -278,8 +290,86 @@ class ImageAnalyzer {
     return candidates;
   }
 
+  /**
+   * 화면 공유를 시작했을 때부터 같은 위치에 반복되는 보라색 표식은
+   * 아르테리아 지형/포털 등 미니맵의 고정 장식으로 기록한다.
+   * 룬은 이후 새 좌표에 출현하므로 이 배경 목록과 겹치지 않는 후보만 사용한다.
+   */
+  learnRuneBackgroundCandidates(candidates) {
+    const state = this.runeState;
+    state.backgroundLearningFrames++;
+
+    for (const candidate of candidates) {
+      const radius = Math.max(4, Math.max(candidate.width, candidate.height) * 0.7);
+      let track = state.backgroundCandidateTracks.find((item) => (
+        Math.hypot(item.centerX - candidate.centerX, item.centerY - candidate.centerY) <= radius
+      ));
+
+      if (!track) {
+        track = {
+          centerX: candidate.centerX,
+          centerY: candidate.centerY,
+          width: candidate.width,
+          height: candidate.height,
+          seenFrames: 0
+        };
+        state.backgroundCandidateTracks.push(track);
+      }
+
+      track.seenFrames++;
+      const weight = 1 / track.seenFrames;
+      track.centerX += (candidate.centerX - track.centerX) * weight;
+      track.centerY += (candidate.centerY - track.centerY) * weight;
+      track.width += (candidate.width - track.width) * weight;
+      track.height += (candidate.height - track.height) * weight;
+    }
+
+    if (state.backgroundLearningFrames >= state.BACKGROUND_LEARNING_REQUIRED) {
+      // JPEG 흔들림 때문에 매 프레임 잡히지 않아도 절반 이상 반복되면 고정 표식이다.
+      const minimumSeenFrames = Math.ceil(state.BACKGROUND_LEARNING_REQUIRED * 0.5);
+      state.backgroundCandidates = state.backgroundCandidateTracks
+        .filter((item) => item.seenFrames >= minimumSeenFrames);
+    }
+  }
+
+  isRuneBackgroundCandidate(candidate) {
+    return this.runeState.backgroundCandidates.some((background) => {
+      const radius = Math.max(
+        5,
+        Math.max(candidate.width, candidate.height, background.width, background.height) * 0.8
+      );
+      const sizeRatio = Math.max(
+        candidate.width / Math.max(1, background.width),
+        background.width / Math.max(1, candidate.width),
+        candidate.height / Math.max(1, background.height),
+        background.height / Math.max(1, candidate.height)
+      );
+      return (
+        sizeRatio <= 1.8 &&
+        Math.hypot(background.centerX - candidate.centerX, background.centerY - candidate.centerY) <= radius
+      );
+    });
+  }
+
   processRuneFrame(runeImageData, fullImageData) {
-    const candidates = this.findRuneDiamondCandidates(runeImageData);
+    const allCandidates = this.findRuneDiamondCandidates(runeImageData);
+    const isLearningBackground = (
+      this.runeState.backgroundLearningFrames < this.runeState.BACKGROUND_LEARNING_REQUIRED
+    );
+
+    if (isLearningBackground) {
+      this.learnRuneBackgroundCandidates(allCandidates);
+      this.runeState.consecutiveCount = 0;
+      this.runeState.lastPixelCount = 0;
+      this.runeState.lastCandidateCount = 0;
+      const isLive = window.screenCaptureManager?.isStreaming;
+      if (this.onRuneStatusChange && isLive) {
+        this.onRuneStatusChange('🟣 미니맵 고정 보라 표식 구분 중', false);
+      }
+      return;
+    }
+
+    const candidates = allCandidates.filter((candidate) => !this.isRuneBackgroundCandidate(candidate));
     const runeColorPixels = candidates.reduce((sum, candidate) => sum + candidate.pixelCount, 0);
 
     this.runeState.lastPixelCount = runeColorPixels;
