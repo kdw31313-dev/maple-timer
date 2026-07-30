@@ -8,7 +8,7 @@ class ImageAnalyzer {
       consecutiveCount: 0,
       // 전투 이펙트와 캐릭터 표식은 짧게 룬과 비슷해질 수 있다.
       // 실제 룬은 같은 미니맵 좌표에 유지되므로 약 1.2초 동안 확인한다.
-      REQUIRED_CONSECUTIVE: 8,
+      REQUIRED_CONSECUTIVE: 3,
       isDetected: false,
       cooldownActive: false,
       normReturnFrames: 0,
@@ -16,8 +16,9 @@ class ImageAnalyzer {
       lastCandidateCount: 0,
       lastCandidates: [],
       pendingCandidate: null,
+      candidateMissFrames: 0,
       backgroundLearningFrames: 0,
-      BACKGROUND_LEARNING_REQUIRED: 12,
+      BACKGROUND_LEARNING_REQUIRED: 6,
       backgroundCandidateTracks: [],
       backgroundCandidates: []
     };
@@ -98,6 +99,7 @@ class ImageAnalyzer {
     this.runeState.lastCandidateCount = 0;
     this.runeState.lastCandidates = [];
     this.runeState.pendingCandidate = null;
+    this.runeState.candidateMissFrames = 0;
     this.runeState.backgroundLearningFrames = 0;
     this.runeState.backgroundCandidateTracks = [];
     this.runeState.backgroundCandidates = [];
@@ -464,6 +466,7 @@ class ImageAnalyzer {
 
     if (isDetected) {
       const candidate = stableCandidate || candidates[0];
+      this.runeState.candidateMissFrames = 0;
       this.runeState.consecutiveCount = stableCandidate
         ? this.runeState.consecutiveCount + 1
         : 1;
@@ -473,8 +476,15 @@ class ImageAnalyzer {
         this.triggerRuneAlert(runeColorPixels);
       }
     } else {
+      // 화면 공유 압축이나 순간 이펙트 때문에 한 프레임만 후보가 끊기는 경우에는
+      // 누적 판정을 보존한다. 두 프레임 연속 사라질 때만 처음부터 다시 확인한다.
+      if (this.runeState.pendingCandidate && this.runeState.candidateMissFrames < 1) {
+        this.runeState.candidateMissFrames++;
+        return;
+      }
       this.runeState.consecutiveCount = 0;
       this.runeState.pendingCandidate = null;
+      this.runeState.candidateMissFrames = 0;
 
       if (this.runeState.cooldownActive) {
         this.runeState.normReturnFrames++;
