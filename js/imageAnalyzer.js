@@ -1344,7 +1344,7 @@ class ImageAnalyzer {
    * 실제 사냥 화면에서 채집한 33px 버프 아이콘 표본을 찾는다.
    * 넓은 색상 픽셀 수가 아니라 아이콘 내부 8x8 RGB 배열을 비교한다.
    */
-  findBuffTemplateMatch(imageData, templateName) {
+  findBuffTemplateMatch(imageData, templateName, targetArrowNumber = null) {
     const template = window.BUFF_ICON_TEMPLATES?.[templateName];
     if (!imageData?.data || !template) return { found: false, score: Infinity, x: 0, y: 0 };
     const templateCandidates = templateName === 'janus'
@@ -1404,13 +1404,72 @@ class ImageAnalyzer {
 
     // 메이플 버프 슬롯은 우측 정렬 30px 격자다. 각 슬롯 주변 ±5px만
     // 정밀 탐색하여 전투 화면을 훑는 오인식과 연산량을 함께 줄인다.
-    // 버프 추가·삭제에 따라 야누스가 다른 줄로 이동하므로 지정 범위의 모든 줄을 검색한다.
+    // 화살표 하나에 버프가 한 줄 또는 두 줄로 배치될 수 있다.
+    // 화면 높이의 고정 비율을 사용하지 않고 오른쪽 화살표의 실제 Y 군집을 기준으로
+    // 해당 묶음의 두 줄까지 검색한다. 화살표 검출이 불확실하면 전체 범위로 복귀한다.
+    const arrowHitsByY = new Array(height).fill(0);
+    const arrowSearchLeft = Math.max(0, width - Math.max(28, Math.round(width * 0.08)));
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = arrowSearchLeft; x < width - 1; x++) {
+        const idx = (y * width + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+        if (r < 205 || g < 205 || b < 205) continue;
+
+        let darkNeighbors = 0;
+        for (let dy = -2; dy <= 2; dy++) {
+          for (let dx = -2; dx <= 2; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+            const n = (ny * width + nx) * 4;
+            if (data[n] < 75 && data[n + 1] < 75 && data[n + 2] < 75) darkNeighbors++;
+          }
+        }
+        if (darkNeighbors >= 3) arrowHitsByY[y]++;
+      }
+    }
+
+    const arrowRows = [];
+    let clusterStart = -1;
+    let weightedY = 0;
+    let clusterWeight = 0;
+    for (let y = 0; y <= height; y++) {
+      const weight = y < height ? arrowHitsByY[y] : 0;
+      if (weight > 0) {
+        if (clusterStart < 0) clusterStart = y;
+        weightedY += y * weight;
+        clusterWeight += weight;
+      } else if (clusterStart >= 0) {
+        if (clusterWeight >= 3) arrowRows.push(Math.round(weightedY / clusterWeight));
+        clusterStart = -1;
+        weightedY = 0;
+        clusterWeight = 0;
+      }
+    }
+
+    const distinctArrowRows = arrowRows.filter((rowY, index) => (
+      index === 0 || rowY - arrowRows[index - 1] >= 8
+    ));
+
     for (const size of usableSizes) {
       const maxIconTop = height - size;
+      const anchorY = targetArrowNumber
+        ? distinctArrowRows[targetArrowNumber - 1]
+        : undefined;
+      const hasReliableAnchor = Number.isFinite(anchorY);
+      // 화살표가 첫 줄 중앙에 붙는 경우와 두 줄 묶음 중앙에 붙는 경우를 모두 포함한다.
+      const searchTop = hasReliableAnchor
+        ? Math.max(0, Math.min(maxIconTop, Math.round(anchorY - size * 0.75)))
+        : 0;
+      const searchBottom = hasReliableAnchor
+        ? Math.max(searchTop, Math.min(maxIconTop, Math.round(anchorY + size * 1.35)))
+        : maxIconTop;
       const coarseStep = Math.max(4, Math.round(size / 9));
       let sizeBest = { score: Infinity, x: 0, y: 0, size };
 
-      for (let y = 0; y <= maxIconTop; y += coarseStep) {
+      for (let y = searchTop; y <= searchBottom; y += coarseStep) {
         for (let x = 0; x <= width - size; x += coarseStep) {
           const score = scoreAt(x, y, size);
           if (score < sizeBest.score) sizeBest = { score, x, y, size };
@@ -1418,8 +1477,8 @@ class ImageAnalyzer {
       }
 
       for (
-        let y = Math.max(0, sizeBest.y - coarseStep);
-        y <= Math.min(maxIconTop, sizeBest.y + coarseStep);
+        let y = Math.max(searchTop, sizeBest.y - coarseStep);
+        y <= Math.min(searchBottom, sizeBest.y + coarseStep);
         y++
       ) {
         for (
@@ -1432,7 +1491,18 @@ class ImageAnalyzer {
         }
       }
 
-      if (sizeBest.score < best.score) best = sizeBest;
+      if (sizeBest.score < best.score) {
+        best = {
+          ...sizeBest,
+          searchBand: {
+            top: searchTop,
+            bottom: Math.min(height, searchBottom + size),
+            anchored: hasReliableAnchor,
+            arrowY: hasReliableAnchor ? anchorY : null,
+            arrowNumber: targetArrowNumber
+          }
+        };
+      }
     }
 
     const shape = this.measureBuffIconShape(imageData, best.x, best.y, best.size);
@@ -1544,9 +1614,9 @@ class ImageAnalyzer {
   processJanusTemplateFrame(imageData) {
     if (!document.getElementById('toggle-janus-detection')?.checked) return;
 
-    const match = this.findBuffTemplateMatch(imageData, 'janus');
+    const match = this.findBuffTemplateMatch(imageData, 'janus', 1);
     const endingMatch = this.janusState.isBuffActive
-      ? this.findBuffTemplateMatch(imageData, 'janusEnding')
+      ? this.findBuffTemplateMatch(imageData, 'janusEnding', 1)
       : null;
     this.janusState.lastTemplateScore = match.score;
     this.janusState.lastTemplateMatch = {
@@ -1555,6 +1625,7 @@ class ImageAnalyzer {
       score: match.score,
       found: match.found,
       size: match.size,
+      searchBand: match.searchBand ? { ...match.searchBand } : null,
       shape: { ...match.shape }
     };
 
@@ -1623,6 +1694,7 @@ class ImageAnalyzer {
           size: endingMatch.size,
           score: endingMatch.score,
           found: true,
+          searchBand: endingMatch.searchBand ? { ...endingMatch.searchBand } : null,
           shape: { ...endingMatch.shape }
         };
         if (this.janusState.endingFrames >= 3 && !this.janusState.alert10Triggered) {
@@ -1701,7 +1773,7 @@ class ImageAnalyzer {
   processExpTemplateFrame(imageData) {
     if (!document.getElementById('toggle-exp-detection')?.checked) return;
 
-    const match = this.findBuffTemplateMatch(imageData, 'extremeGold');
+    const match = this.findBuffTemplateMatch(imageData, 'extremeGold', 3);
     this.expBuffState.lastTemplateScore = match.score;
     this.expBuffState.lastTemplateMatch = {
       x: match.x,
@@ -1709,6 +1781,7 @@ class ImageAnalyzer {
       size: match.size,
       score: match.score,
       found: match.found,
+      searchBand: match.searchBand ? { ...match.searchBand } : null,
       shape: { ...match.shape }
     };
 

@@ -627,6 +627,27 @@ class ScreenCaptureManager {
         const match = state?.confirmedTemplateMatch || state?.lastTemplateMatch;
         const sourceRoiWidth = Math.max(1, this.janusCanvas.width);
         const sourceRoiHeight = Math.max(1, this.janusCanvas.height);
+        const searchBand = match?.searchBand;
+        const rowY = searchBand?.anchored
+          ? y + (searchBand.top / sourceRoiHeight) * h
+          : y;
+        const rowH = searchBand?.anchored
+          ? ((searchBand.bottom - searchBand.top) / sourceRoiHeight) * h
+          : h;
+
+        // 사용자가 사진만 보고도 어느 화살표 행을 검사했는지 알 수 있도록
+        // 대상 버프줄 전체를 반투명 띠로 함께 표시한다.
+        ctx.save();
+        ctx.fillStyle = category === 'janus'
+          ? 'rgba(255, 43, 214, 0.12)'
+          : 'rgba(0, 229, 255, 0.12)';
+        ctx.strokeStyle = category === 'janus' ? '#ff2bd6' : '#00e5ff';
+        ctx.lineWidth = Math.max(2, width / 640);
+        ctx.setLineDash([8, 6]);
+        ctx.fillRect(x, rowY, w, rowH);
+        ctx.strokeRect(x, rowY, w, rowH);
+        ctx.restore();
+
         if (match?.found && Number.isFinite(match.x) && Number.isFinite(match.y)) {
           ctx.save();
           const detectionColor = category === 'janus' ? '#ff2bd6' : '#00e5ff';
