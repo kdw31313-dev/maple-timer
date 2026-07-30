@@ -2,6 +2,19 @@
  * App.js - 메인 애플리케이션 진입점 및 이벤트 바인딩
  */
 document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('btn-buff-video-start')?.addEventListener('click', () => {
+    window.버프영상수집기?.start();
+  });
+  document.getElementById('btn-buff-video-stop')?.addEventListener('click', () => {
+    window.버프영상수집기?.stop('사용자 종료');
+  });
+  document.getElementById('btn-buff-video-now')?.addEventListener('click', () => {
+    if (!window.버프영상수집기?.isRunning) {
+      window.버프영상수집기?.start();
+      return;
+    }
+    window.버프영상수집기.captureNow();
+  });
   // 1. 상단 탭 (Tab) 네비게이션 전환 이벤트
   const tabBtns = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');

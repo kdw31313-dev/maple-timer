@@ -1323,6 +1323,7 @@ class ImageAnalyzer {
 
   triggerJanus10sAlert() {
     this.janusState.alert10Triggered = true;
+    window.버프영상수집기?.captureEnding?.('janus');
     if (this.onJanusStatusChange) this.onJanusStatusChange('🚨 야누스 종료 임박! 재설치하세요!', true);
 
     if (window.audioNotifier) {
@@ -1332,6 +1333,7 @@ class ImageAnalyzer {
 
   triggerExtremeGoldEndingAlert() {
     this.expBuffState.alert10Triggered = true;
+    window.버프영상수집기?.captureEnding?.('gold');
     if (this.onExpBuffStatusChange) {
       this.onExpBuffStatusChange('🚨 익스트림 골드 종료 임박! 재사용하세요!', true);
     }
@@ -1691,6 +1693,7 @@ class ImageAnalyzer {
         this.janusState.peakYellowDigitSpan = match.shape.yellowDigitSpan;
         this.janusState.lowDigitFrames = 0;
         this.janusState.confirmedTemplateMatch = { ...this.janusState.lastTemplateMatch };
+        window.버프영상수집기?.startJanusCycle?.();
       } else if (this.janusState.consecutiveInactiveCount >= 14 && this.onJanusStatusChange) {
         this.onJanusStatusChange('⚪ 대기 중 (야누스 아이콘 없음)', false);
       }
@@ -1725,7 +1728,13 @@ class ImageAnalyzer {
         // 정상 야누스가 실제로 다시 확인됐을 때만 추적 좌표를 갱신한다.
         // 약한 유사 후보로 좌표를 옮기면 옆 아이콘을 종료 상태로 오인할 수 있다.
         if (match.found) {
+          const previousMatch = this.janusState.confirmedTemplateMatch;
+          const moved = previousMatch && Math.hypot(
+            match.x - previousMatch.x,
+            match.y - previousMatch.y
+          ) >= Math.max(12, match.size * 0.55);
           this.janusState.confirmedTemplateMatch = { ...this.janusState.lastTemplateMatch };
+          if (moved) window.버프영상수집기?.captureJanusMove?.();
         }
 
         if (hasVisibleJanusTimer) {
@@ -1833,7 +1842,13 @@ class ImageAnalyzer {
     if (match.found) {
       this.expBuffState.consecutiveActiveCount++;
       this.expBuffState.consecutiveInactiveCount = 0;
+      const previousMatch = this.expBuffState.confirmedTemplateMatch;
+      const moved = previousMatch && Math.hypot(
+        match.x - previousMatch.x,
+        match.y - previousMatch.y
+      ) >= Math.max(12, match.size * 0.55);
       this.expBuffState.confirmedTemplateMatch = { ...this.expBuffState.lastTemplateMatch };
+      if (moved) window.버프영상수집기?.captureExtremeGoldMove?.();
 
       if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveActiveCount >= 2) {
         this.expBuffState.isBuffActive = true;
@@ -1841,6 +1856,7 @@ class ImageAnalyzer {
         this.expBuffState.alertExpiredTriggered = false;
         this.expBuffState.endingFrames = 0;
         this.expBuffState.detectedBuffNames = ['익스트림 골드'];
+        window.버프영상수집기?.captureExtremeGoldStart?.();
       }
 
       if (this.onExpBuffStatusChange) {
