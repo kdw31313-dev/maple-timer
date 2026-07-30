@@ -1460,12 +1460,16 @@ class ImageAnalyzer {
         : undefined;
       const hasReliableAnchor = Number.isFinite(anchorY);
       // 화살표가 첫 줄 중앙에 붙는 경우와 두 줄 묶음 중앙에 붙는 경우를 모두 포함한다.
-      const searchTop = hasReliableAnchor
+      // 이 범위는 검색을 자르는 용도가 아니라 후보의 신뢰도를 보강하는 용도로만 쓴다.
+      // 아이콘은 버프 수 변화로 다른 줄/위치로 이동할 수 있으므로 항상 전체 ROI를 검색한다.
+      const preferredTop = hasReliableAnchor
         ? Math.max(0, Math.min(maxIconTop, Math.round(anchorY - size * 0.75)))
         : 0;
-      const searchBottom = hasReliableAnchor
-        ? Math.max(searchTop, Math.min(maxIconTop, Math.round(anchorY + size * 1.35)))
+      const preferredBottom = hasReliableAnchor
+        ? Math.max(preferredTop, Math.min(maxIconTop, Math.round(anchorY + size * 1.35)))
         : maxIconTop;
+      const searchTop = 0;
+      const searchBottom = maxIconTop;
       const coarseStep = Math.max(4, Math.round(size / 9));
       let sizeBest = { score: Infinity, x: 0, y: 0, size };
 
@@ -1495,12 +1499,15 @@ class ImageAnalyzer {
         best = {
           ...sizeBest,
           searchBand: {
-            top: searchTop,
-            bottom: Math.min(height, searchBottom + size),
+            top: preferredTop,
+            bottom: Math.min(height, preferredBottom + size),
             anchored: hasReliableAnchor,
             arrowY: hasReliableAnchor ? anchorY : null,
             arrowNumber: targetArrowNumber
-          }
+          },
+          inPreferredBand: !hasReliableAnchor || (
+            sizeBest.y >= preferredTop && sizeBest.y <= preferredBottom
+          )
         };
       }
     }
@@ -1512,7 +1519,12 @@ class ImageAnalyzer {
     // 실제 야누스 사진 33장의 밝기·이펙트 편차(최대 오차 약 30.9)를 포함한다.
     // 실제 사냥 자료 82장으로 만든 외곽 템플릿을 사용한다.
     // 야누스 없음 자료의 최저 점수(약 22.7)와 간격을 두어 15까지만 시작 증거로 인정한다.
-    const threshold = isJanus ? 18 : (isJanusEnding ? 20 : 34);
+    const preferredThreshold = isJanus ? 18 : (isJanusEnding ? 20 : 34);
+    // 화살표 묶음 밖에서도 아이콘 자체가 충분히 선명하면 이동한 정상 버프로 인정한다.
+    // 대신 다른 줄의 유사 아이콘 오탐을 막기 위해 묶음 밖 후보에는 더 엄격한 점수를 요구한다.
+    const threshold = best.inPreferredBand
+      ? preferredThreshold
+      : (isJanus ? 17 : (isJanusEnding ? 19 : 30));
     const areaScale = Math.pow(best.size / 33, 2);
     const shapePassed = isJanus
       ? shape.violetPixels >= 18 * areaScale && shape.darkPixels >= 30 * areaScale
