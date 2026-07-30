@@ -44,6 +44,7 @@ class ImageAnalyzer {
       peakYellowDigitCount: 0,  // 최초 감지 시 노란 픽셀 최대치 (1:20 = 많음)
       peakYellowDigitSpan: 0,
       lowDigitFrames: 0,        // 노란 숫자 급감 연속 프레임 수 (10초 이하 감지용)
+      endingFrames: 0,
       startEvidenceHistory: [],
       lastTemplateMatch: null,
       confirmedTemplateMatch: null
@@ -59,7 +60,11 @@ class ImageAnalyzer {
       lastDigitPixelCount: 0,
       peakDigitPixelCount: 0,   // 최초 감지 시 숫자 픽셀 최대치 ("13" = 2자리 = 많음)
       lowDigitFrames: 0,        // 숫자 급감 연속 프레임 수 (1자리 감지용)
-      detectedBuffNames: []     // 감지된 버프 이름 목록
+      detectedBuffNames: [],    // 감지된 버프 이름 목록
+      peakDigitSpan: 0,
+      endingFrames: 0,
+      lastTemplateMatch: null,
+      confirmedTemplateMatch: null
     };
 
     // 📸 버프 스크린샷 AI 학습 상태
@@ -114,6 +119,7 @@ class ImageAnalyzer {
     this.janusState.peakYellowDigitCount = 0;
     this.janusState.peakYellowDigitSpan = 0;
     this.janusState.lowDigitFrames = 0;
+    this.janusState.endingFrames = 0;
     this.janusState.startEvidenceHistory = [];
     this.janusState.pendingTemplateMatch = null;
     this.janusState.lastTemplateMatch = null;
@@ -121,6 +127,15 @@ class ImageAnalyzer {
 
     this.expBuffState.isBuffActive = false;
     this.expBuffState.alert10Triggered = false;
+    this.expBuffState.alertExpiredTriggered = false;
+    this.expBuffState.consecutiveActiveCount = 0;
+    this.expBuffState.consecutiveInactiveCount = 0;
+    this.expBuffState.peakDigitPixelCount = 0;
+    this.expBuffState.peakDigitSpan = 0;
+    this.expBuffState.lowDigitFrames = 0;
+    this.expBuffState.endingFrames = 0;
+    this.expBuffState.lastTemplateMatch = null;
+    this.expBuffState.confirmedTemplateMatch = null;
 
     this.learnedBuffState.isLearned = false;
     this.clusterState.activeBuffs.clear();
@@ -1298,10 +1313,20 @@ class ImageAnalyzer {
 
   triggerJanus10sAlert() {
     this.janusState.alert10Triggered = true;
-    if (this.onJanusStatusChange) this.onJanusStatusChange('🚨 야누스 10초 남음!', true);
+    if (this.onJanusStatusChange) this.onJanusStatusChange('🚨 야누스 종료 임박! 재설치하세요!', true);
 
     if (window.audioNotifier) {
-      window.audioNotifier.notify('솔 야누스 10초 남았습니다. 재사용을 준비하세요!', 'janus');
+      window.audioNotifier.notify('솔 야누스 종료가 임박했습니다. 지금 재설치하세요!', 'janus');
+    }
+  }
+
+  triggerExtremeGoldEndingAlert() {
+    this.expBuffState.alert10Triggered = true;
+    if (this.onExpBuffStatusChange) {
+      this.onExpBuffStatusChange('🚨 익스트림 골드 종료 임박! 재사용하세요!', true);
+    }
+    if (window.audioNotifier) {
+      window.audioNotifier.notify('익스트림 골드 종료가 임박했습니다. 지금 재사용하세요!', 'exp');
     }
   }
 
@@ -1314,13 +1339,16 @@ class ImageAnalyzer {
     if (!imageData?.data || !template) return { found: false, score: Infinity, x: 0, y: 0 };
     const templateCandidates = templateName === 'janus'
       ? (window.BUFF_ICON_TEMPLATES.janusVariants || [template])
-      : [template];
+      : templateName === 'extremeGold'
+        ? (window.BUFF_ICON_TEMPLATES.extremeGoldVariants || [template])
+        : [template];
 
     const { data, width, height } = imageData;
     // 화면 공유 원본 해상도와 메이플 UI 배율에 따라 같은 아이콘이
     // 약 33px 또는 2배인 66px 전후로 들어온다. 한 크기로 고정하면
     // 템플릿이 정확해도 전혀 다른 영역을 비교하게 되므로 여러 배율을 함께 찾는다.
-    const candidateSizes = templateName === 'janus'
+    const isJanusFamily = templateName === 'janus' || templateName === 'janusEnding';
+    const candidateSizes = (isJanusFamily || templateName === 'extremeGold')
       ? [33, 40, 48, 56, 60, 66]
       : [33];
     const usableSizes = candidateSizes.filter((candidateSize) => (
@@ -1348,7 +1376,7 @@ class ImageAnalyzer {
             const b = data[idx + 2];
 
             // 야누스 위에 겹쳐진 노란 시간 숫자는 프레임마다 바뀌므로 제외한다.
-            if (templateName === 'janus' && r >= 145 && g >= 135 && b <= 125) continue;
+            if (isJanusFamily && r >= 145 && g >= 135 && b <= 125) continue;
 
             difference += Math.abs(r - candidateTemplate[t]);
             difference += Math.abs(g - candidateTemplate[t + 1]);
@@ -1369,50 +1397,48 @@ class ImageAnalyzer {
     // 버프 추가·삭제에 따라 야누스가 다른 줄로 이동하므로 지정 범위의 모든 줄을 검색한다.
     for (const size of usableSizes) {
       const maxIconTop = height - size;
-      const spacing = Math.max(30, Math.round(size * 0.94));
-      const searchMargin = Math.max(5, Math.round(size * 0.13));
-      // 오른쪽 정렬 버프줄과 왼쪽부터 시작하는 버프줄을 모두 고려한다.
-      for (const startX of [0, Math.max(0, width - size)]) {
-        for (let baseY = 0; baseY <= maxIconTop; baseY += spacing) {
-          if (maxIconTop - baseY < spacing * 0.45 && baseY !== maxIconTop) {
-            baseY = maxIconTop;
-          }
-          const direction = startX === 0 ? 1 : -1;
-          for (
-            let baseX = startX;
-            baseX >= 0 && baseX <= width - size;
-            baseX += direction * spacing
-          ) {
-            for (
-              let y = Math.max(0, baseY - searchMargin);
-              y <= Math.min(maxIconTop, baseY + searchMargin);
-              y++
-            ) {
-              for (
-                let x = Math.max(0, baseX - searchMargin);
-                x <= Math.min(width - size, baseX + searchMargin);
-                x++
-              ) {
-                const score = scoreAt(x, y, size);
-                if (score < best.score) best = { score, x, y, size };
-              }
-            }
-          }
+      const coarseStep = Math.max(4, Math.round(size / 9));
+      let sizeBest = { score: Infinity, x: 0, y: 0, size };
+
+      for (let y = 0; y <= maxIconTop; y += coarseStep) {
+        for (let x = 0; x <= width - size; x += coarseStep) {
+          const score = scoreAt(x, y, size);
+          if (score < sizeBest.score) sizeBest = { score, x, y, size };
         }
       }
+
+      for (
+        let y = Math.max(0, sizeBest.y - coarseStep);
+        y <= Math.min(maxIconTop, sizeBest.y + coarseStep);
+        y++
+      ) {
+        for (
+          let x = Math.max(0, sizeBest.x - coarseStep);
+          x <= Math.min(width - size, sizeBest.x + coarseStep);
+          x++
+        ) {
+          const score = scoreAt(x, y, size);
+          if (score < sizeBest.score) sizeBest = { score, x, y, size };
+        }
+      }
+
+      if (sizeBest.score < best.score) best = sizeBest;
     }
 
     const shape = this.measureBuffIconShape(imageData, best.x, best.y, best.size);
     const isJanus = templateName === 'janus';
+    const isJanusEnding = templateName === 'janusEnding';
     // 야누스는 다른 보라/어두운 버프와 색이 겹치므로 아이콘 유사도를 더 엄격하게 본다.
     // 실제 야누스 사진 33장의 밝기·이펙트 편차(최대 오차 약 30.9)를 포함한다.
     // 실제 사냥 자료 82장으로 만든 외곽 템플릿을 사용한다.
     // 야누스 없음 자료의 최저 점수(약 22.7)와 간격을 두어 15까지만 시작 증거로 인정한다.
-    const threshold = isJanus ? 15 : 33;
+    const threshold = isJanus ? 18 : (isJanusEnding ? 20 : 34);
     const areaScale = Math.pow(best.size / 33, 2);
     const shapePassed = isJanus
       ? shape.violetPixels >= 18 * areaScale && shape.darkPixels >= 30 * areaScale
-      : shape.goldPixels >= 18 && shape.darkPixels >= 22;
+      : isJanusEnding
+        ? shape.grayBluePixels >= 90 * areaScale && shape.darkPixels >= 20 * areaScale
+        : shape.goldPixels >= 12 * areaScale && shape.darkPixels >= 15 * areaScale;
 
     return { ...best, found: best.score <= threshold && shapePassed, shape };
   }
@@ -1425,6 +1451,8 @@ class ImageAnalyzer {
     let yellowDigitPixels = 0;
     let yellowMinX = size;
     let yellowMaxX = -1;
+    let lowerLeftYellowPixels = 0;
+    let grayBluePixels = 0;
     const yellowMask = new Uint8Array(size * size);
 
     for (let y = top; y < Math.min(height, top + size); y++) {
@@ -1438,12 +1466,19 @@ class ImageAnalyzer {
         if (r <= 70 && g <= 70 && b <= 80) darkPixels++;
         const localX = x - left;
         const localY = y - top;
+        const saturation = Math.max(r, g, b) - Math.min(r, g, b);
+        if (saturation <= 55 && b >= r - 5 && b >= g - 8 && r >= 25 && r <= 175) {
+          grayBluePixels++;
+        }
         const isTimerBand = localY >= Math.floor(size * 0.2) && localY <= Math.ceil(size * 0.82);
         if (isTimerBand && r >= 165 && g >= 150 && b <= 145 && r - b >= 25) {
           yellowDigitPixels++;
           yellowMask[localY * size + localX] = 1;
           if (localX < yellowMinX) yellowMinX = localX;
           if (localX > yellowMaxX) yellowMaxX = localX;
+          if (localX <= Math.ceil(size * 0.48) && localY >= Math.floor(size * 0.52)) {
+            lowerLeftYellowPixels++;
+          }
         }
       }
     }
@@ -1486,6 +1521,8 @@ class ImageAnalyzer {
       violetPixels,
       darkPixels,
       yellowDigitPixels,
+      lowerLeftYellowPixels,
+      grayBluePixels,
       largestYellowDigitComponent,
       yellowDigitSpan: yellowMaxX >= yellowMinX ? yellowMaxX - yellowMinX + 1 : 0
     };
@@ -1498,6 +1535,9 @@ class ImageAnalyzer {
     if (!document.getElementById('toggle-janus-detection')?.checked) return;
 
     const match = this.findBuffTemplateMatch(imageData, 'janus');
+    const endingMatch = this.janusState.isBuffActive
+      ? this.findBuffTemplateMatch(imageData, 'janusEnding')
+      : null;
     this.janusState.lastTemplateScore = match.score;
     this.janusState.lastTemplateMatch = {
       x: match.x,
@@ -1523,6 +1563,10 @@ class ImageAnalyzer {
         match.shape.darkPixels >= 35
       )
     );
+    const hasJanusEndingEvidence = Boolean(
+      endingMatch?.found &&
+      endingMatch.shape.yellowDigitPixels <= Math.max(3, Math.round(Math.pow(endingMatch.size / 33, 2) * 3))
+    );
 
     if (!this.janusState.isBuffActive) {
       const history = this.janusState.startEvidenceHistory;
@@ -1547,6 +1591,27 @@ class ImageAnalyzer {
     }
 
     if (this.janusState.isBuffActive) {
+      if (hasJanusEndingEvidence) {
+        this.janusState.consecutiveInactiveCount = 0;
+        this.janusState.endingFrames = (this.janusState.endingFrames || 0) + 1;
+        this.janusState.confirmedTemplateMatch = {
+          x: endingMatch.x,
+          y: endingMatch.y,
+          size: endingMatch.size,
+          score: endingMatch.score,
+          found: true,
+          shape: { ...endingMatch.shape }
+        };
+        if (this.janusState.endingFrames >= 3 && !this.janusState.alert10Triggered) {
+          this.triggerJanus10sAlert();
+        }
+        if (this.onJanusStatusChange) {
+          this.onJanusStatusChange('⚠️ 솔 야누스 종료 임박 상태 감지', false);
+        }
+        return;
+      }
+      this.janusState.endingFrames = 0;
+
       if (hasProbableJanusEvidence) {
         this.janusState.consecutiveInactiveCount = 0;
         this.janusState.pendingTemplateMatch = { x: match.x, y: match.y };
@@ -1569,9 +1634,8 @@ class ImageAnalyzer {
             this.janusState.lowDigitFrames = 0;
           }
 
-          if (this.janusState.lowDigitFrames >= 3 && !this.janusState.alert10Triggered) {
-            this.triggerJanus10sAlert();
-          }
+          // 숫자 폭 변화만으로는 다른 타이머 숫자와 혼동될 수 있어 알리지 않는다.
+          // 실제 회색 종료 임박 아이콘이 확인될 때만 위에서 1회 알린다.
         }
 
         if (this.onJanusStatusChange) {
@@ -1591,7 +1655,8 @@ class ImageAnalyzer {
         this.janusState.peakYellowDigitCount = 0;
         this.janusState.peakYellowDigitSpan = 0;
         this.janusState.lowDigitFrames = 0;
-        if (!this.janusState.alertExpiredTriggered) this.triggerJanusExpiredAlert();
+        // 최종 설정: 완전 소멸 시에는 추가 알림을 보내지 않는다.
+        this.janusState.alertExpiredTriggered = true;
       }
       return;
     }
@@ -1611,15 +1676,56 @@ class ImageAnalyzer {
 
     const match = this.findBuffTemplateMatch(imageData, 'extremeGold');
     this.expBuffState.lastTemplateScore = match.score;
+    this.expBuffState.lastTemplateMatch = {
+      x: match.x,
+      y: match.y,
+      size: match.size,
+      score: match.score,
+      found: match.found,
+      shape: { ...match.shape }
+    };
+
+    // 익스트림 골드는 종료 약 5초 전에 숫자와 금색이 사라지고 회색 아이콘만 남는다.
+    // 직전까지 확정된 같은 칸을 추적해 이 전환을 3프레임 확인한 순간에만 알린다.
+    let hasExtremeGoldEndingEvidence = false;
+    const tracked = this.expBuffState.confirmedTemplateMatch;
+    if (this.expBuffState.isBuffActive && tracked) {
+      const trackedShape = this.measureBuffIconShape(
+        imageData,
+        tracked.x,
+        tracked.y,
+        tracked.size
+      );
+      const trackedScale = Math.pow(tracked.size / 33, 2);
+      const timerGone = trackedShape.lowerLeftYellowPixels <= Math.max(2, Math.round(2 * trackedScale));
+      const mostlyGray = trackedShape.grayBluePixels >= 70 * trackedScale;
+      const goldFaded = trackedShape.goldPixels <= 20 * trackedScale;
+      hasExtremeGoldEndingEvidence = timerGone && mostlyGray && goldFaded;
+    }
+
+    if (hasExtremeGoldEndingEvidence) {
+      this.expBuffState.consecutiveInactiveCount = 0;
+      this.expBuffState.endingFrames++;
+      if (this.expBuffState.endingFrames >= 3 && !this.expBuffState.alert10Triggered) {
+        this.triggerExtremeGoldEndingAlert();
+      }
+      if (this.onExpBuffStatusChange) {
+        this.onExpBuffStatusChange('⚠️ 익스트림 골드 종료 임박 상태 감지', false);
+      }
+      return;
+    }
+    this.expBuffState.endingFrames = 0;
 
     if (match.found) {
       this.expBuffState.consecutiveActiveCount++;
       this.expBuffState.consecutiveInactiveCount = 0;
+      this.expBuffState.confirmedTemplateMatch = { ...this.expBuffState.lastTemplateMatch };
 
-      if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveActiveCount >= 3) {
+      if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveActiveCount >= 2) {
         this.expBuffState.isBuffActive = true;
         this.expBuffState.alert10Triggered = false;
         this.expBuffState.alertExpiredTriggered = false;
+        this.expBuffState.endingFrames = 0;
         this.expBuffState.detectedBuffNames = ['익스트림 골드'];
       }
 
@@ -1633,10 +1739,13 @@ class ImageAnalyzer {
     this.expBuffState.consecutiveActiveCount = 0;
     this.expBuffState.consecutiveInactiveCount++;
 
-    if (this.expBuffState.isBuffActive && this.expBuffState.consecutiveInactiveCount >= 5) {
+    if (this.expBuffState.isBuffActive && this.expBuffState.consecutiveInactiveCount >= 14) {
       this.expBuffState.isBuffActive = false;
-      if (!this.expBuffState.alertExpiredTriggered) this.triggerExpBuffExpiredAlert();
-    } else if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveInactiveCount >= 5) {
+      this.expBuffState.confirmedTemplateMatch = null;
+      this.expBuffState.endingFrames = 0;
+      // 최종 설정: 완전 소멸 시에는 추가 알림을 보내지 않는다.
+      this.expBuffState.alertExpiredTriggered = true;
+    } else if (!this.expBuffState.isBuffActive && this.expBuffState.consecutiveInactiveCount >= 14) {
       if (this.onExpBuffStatusChange) this.onExpBuffStatusChange('⚪ 대기 중 (익스트림 골드 없음)', false);
     }
   }
