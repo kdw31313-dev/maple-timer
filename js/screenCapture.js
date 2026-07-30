@@ -620,15 +620,19 @@ class ScreenCaptureManager {
         ctx.restore();
       }
 
-      if (category === 'janus') {
-        const match = window.imageAnalyzer?.janusState?.confirmedTemplateMatch
-          || window.imageAnalyzer?.janusState?.lastTemplateMatch;
+      if (category === 'janus' || category === 'exp') {
+        const state = category === 'janus'
+          ? window.imageAnalyzer?.janusState
+          : window.imageAnalyzer?.expBuffState;
+        const match = state?.confirmedTemplateMatch || state?.lastTemplateMatch;
         const sourceRoiWidth = Math.max(1, this.janusCanvas.width);
         const sourceRoiHeight = Math.max(1, this.janusCanvas.height);
         if (match?.found && Number.isFinite(match.x) && Number.isFinite(match.y)) {
           ctx.save();
-          ctx.strokeStyle = '#fff200';
-          ctx.lineWidth = Math.max(3, width / 450);
+          const detectionColor = category === 'janus' ? '#ff2bd6' : '#00e5ff';
+          const detectionLabel = category === 'janus' ? '야누스 판정 위치' : '익스트림 골드 판정 위치';
+          ctx.strokeStyle = detectionColor;
+          ctx.lineWidth = Math.max(4, width / 400);
           const iconX = (this.janusRoi.x / 100) * width
             + (match.x / sourceRoiWidth) * ((this.janusRoi.w / 100) * width);
           const iconY = (this.janusRoi.y / 100) * height
@@ -637,6 +641,21 @@ class ScreenCaptureManager {
           const iconW = (matchedIconSize / sourceRoiWidth) * ((this.janusRoi.w / 100) * width);
           const iconH = (matchedIconSize / sourceRoiHeight) * ((this.janusRoi.h / 100) * height);
           ctx.strokeRect(iconX - 3, iconY - 3, iconW + 6, iconH + 6);
+
+          ctx.font = `bold ${Math.max(14, Math.round(width / 75))}px sans-serif`;
+          const detectionLabelWidth = ctx.measureText(detectionLabel).width;
+          const detectionLabelHeight = Math.max(24, Math.round(width / 42));
+          const detectionLabelY = iconY >= detectionLabelHeight + 6
+            ? iconY - detectionLabelHeight - 4
+            : iconY + iconH + 6;
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
+          ctx.fillRect(iconX - 3, detectionLabelY, detectionLabelWidth + 16, detectionLabelHeight);
+          ctx.fillStyle = detectionColor;
+          ctx.fillText(
+            detectionLabel,
+            iconX + 5,
+            detectionLabelY + Math.round(detectionLabelHeight * 0.72)
+          );
           ctx.restore();
         }
       }
