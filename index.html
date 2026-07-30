@@ -243,6 +243,22 @@
               <span id="janus-learning-count" style="font-size:0.78rem; color:var(--text-muted);">수집 0장 · 전송 0장</span>
             </div>
           </div>
+          <div class="roi-tool-item" style="border:1px solid rgba(231, 76, 60, 0.55); background:rgba(231, 76, 60, 0.10);">
+            <div class="tool-title">
+              <span class="color-badge" style="background:#e74c3c; width:12px; height:12px; border-radius:50%; display:inline-block;"></span>
+              <div>
+                <strong>🎥 버프 영상 자동 수집</strong>
+                <div style="font-size:0.75rem; color:var(--text-muted);">버튼 한 번으로 야누스 전체 주기와 익스트림 골드 시작·이동·종료 임박 영상을 자동 수집해 텔레그램으로 전송합니다.</div>
+              </div>
+            </div>
+            <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <button id="btn-buff-video-start" class="btn btn-small btn-primary">🎥 자동 영상 수집 시작</button>
+              <button id="btn-buff-video-stop" class="btn btn-small btn-secondary hidden">⏹ 영상 수집 종료</button>
+              <button id="btn-buff-video-now" class="btn btn-small btn-outline">📌 지금 장면 저장</button>
+              <span class="status-pill" id="buff-video-status">⚪ 수집 대기</span>
+              <span id="buff-video-count" style="font-size:0.78rem; color:var(--text-muted);">수집 0:00 · 전송 0개</span>
+            </div>
+          </div>
         </div>
 
         <!-- 📸 버프 스크린샷 AI 학습 미리보기 창 -->
@@ -680,18 +696,19 @@
 
   <!-- 스크립트 불러오기 모듈 -->
   <script src="js/storage.js"></script>
-  <script src="js/telegramNotifier.js"></script>
+  <script src="js/telegramNotifier.js?v=20260730-1"></script>
+  <script src="js/버프영상수집기.js?v=20260730-3"></script>
   <script src="js/audioNotifier.js"></script>
   <script src="js/timerModule.js"></script>
   <script src="js/버프인식기기준.js?v=20260730-1"></script>
   <script src="js/야누스인식기준.js?v=20260730-1"></script>
   <script src="js/익스트림골드인식기준.js?v=20260730-1"></script>
   <script src="js/거탐인식기기준.js"></script>
-  <script src="js/imageAnalyzer.js?v=20260730-5"></script>
-  <script src="js/screenCapture.js?v=20260730-5"></script>
+  <script src="js/imageAnalyzer.js?v=20260730-6"></script>
+  <script src="js/screenCapture.js?v=20260730-6"></script>
   <script src="js/야누스학습수집기.js?v=20260729-3"></script>
   <script src="js/pipController.js"></script>
   <script src="js/calculator.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=20260730-1"></script>
 </body>
 </html>

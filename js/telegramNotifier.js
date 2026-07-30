@@ -195,6 +195,46 @@ class TelegramNotifier {
     }
   }
 
+  async sendVideo(videoBlob, caption) {
+    if (!this.config.enabled || !this.config.botToken || !this.config.chatId) return false;
+    if (!videoBlob || videoBlob.size === 0) return false;
+
+    const makeFormData = (fieldName) => {
+      const formData = new FormData();
+      formData.append('chat_id', this.config.chatId);
+      formData.append('caption', String(caption || '').slice(0, 1024));
+      formData.append(fieldName, videoBlob, `메이플-버프-${Date.now()}.webm`);
+      if (fieldName === 'video') formData.append('supports_streaming', 'true');
+      if (this.config.threadId && this.config.threadId.trim() !== '') {
+        formData.append('message_thread_id', String(parseInt(this.config.threadId.trim(), 10)));
+      }
+      return formData;
+    };
+
+    try {
+      const response = await fetch(
+        `https://api.telegram.org/bot${this.config.botToken}/sendVideo`,
+        { method: 'POST', body: makeFormData('video') }
+      );
+      const result = await response.json();
+      if (result.ok) return true;
+
+      // Chrome의 MediaRecorder는 WebM을 생성한다. Telegram이 동영상으로
+      // 받지 않는 환경에서는 같은 파일을 문서로 다시 보내 수집물이 유실되지 않게 한다.
+      console.warn('Telegram buff video failed; retrying as document:', result);
+      const fallbackResponse = await fetch(
+        `https://api.telegram.org/bot${this.config.botToken}/sendDocument`,
+        { method: 'POST', body: makeFormData('document') }
+      );
+      const fallbackResult = await fallbackResponse.json();
+      if (!fallbackResult.ok) console.warn('Telegram buff document failed:', fallbackResult);
+      return Boolean(fallbackResult.ok);
+    } catch (error) {
+      console.error('Telegram buff video network error:', error);
+      return false;
+    }
+  }
+
   /**
    * 테스트 메세지 보내기
    */

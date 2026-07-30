@@ -372,6 +372,7 @@ class ScreenCaptureManager {
   }
 
   stopCapture() {
+    window.버프영상수집기?.stop('화면 공유 종료');
     if (window.야누스학습수집기?.isRunning) {
       window.야누스학습수집기.stop('화면 공유 종료');
     }
