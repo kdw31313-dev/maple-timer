@@ -1573,8 +1573,21 @@ class ImageAnalyzer {
         match.shape.darkPixels >= 35
       )
     );
+    const trackedJanus = this.janusState.confirmedTemplateMatch;
+    const endingIsSameJanusSlot = Boolean(
+      trackedJanus &&
+      endingMatch &&
+      Math.hypot(endingMatch.x - trackedJanus.x, endingMatch.y - trackedJanus.y)
+        <= Math.max(6, trackedJanus.size * 0.35) &&
+      Math.max(
+        endingMatch.size / Math.max(1, trackedJanus.size),
+        trackedJanus.size / Math.max(1, endingMatch.size)
+      ) <= 1.35
+    );
     const hasJanusEndingEvidence = Boolean(
+      !match.found &&
       endingMatch?.found &&
+      endingIsSameJanusSlot &&
       endingMatch.shape.yellowDigitPixels <= Math.max(3, Math.round(Math.pow(endingMatch.size / 33, 2) * 3))
     );
 
@@ -1625,7 +1638,11 @@ class ImageAnalyzer {
       if (hasProbableJanusEvidence) {
         this.janusState.consecutiveInactiveCount = 0;
         this.janusState.pendingTemplateMatch = { x: match.x, y: match.y };
-        this.janusState.confirmedTemplateMatch = { ...this.janusState.lastTemplateMatch };
+        // 정상 야누스가 실제로 다시 확인됐을 때만 추적 좌표를 갱신한다.
+        // 약한 유사 후보로 좌표를 옮기면 옆 아이콘을 종료 상태로 오인할 수 있다.
+        if (match.found) {
+          this.janusState.confirmedTemplateMatch = { ...this.janusState.lastTemplateMatch };
+        }
 
         if (hasVisibleJanusTimer) {
           const digitCount = match.shape.yellowDigitPixels;
@@ -1699,7 +1716,9 @@ class ImageAnalyzer {
     // 직전까지 확정된 같은 칸을 추적해 이 전환을 3프레임 확인한 순간에만 알린다.
     let hasExtremeGoldEndingEvidence = false;
     const tracked = this.expBuffState.confirmedTemplateMatch;
-    if (this.expBuffState.isBuffActive && tracked) {
+    // 현재 범위 어디에서든 정상 금색 병이 다시 검색되면 버프줄이 이동한 것이다.
+    // 이 경우 이전 좌표의 회색/청록 아이콘을 종료 상태로 판단하지 않는다.
+    if (this.expBuffState.isBuffActive && tracked && !match.found) {
       const trackedShape = this.measureBuffIconShape(
         imageData,
         tracked.x,
