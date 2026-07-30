@@ -1346,11 +1346,13 @@ class ImageAnalyzer {
    * 실제 사냥 화면에서 채집한 33px 버프 아이콘 표본을 찾는다.
    * 넓은 색상 픽셀 수가 아니라 아이콘 내부 8x8 RGB 배열을 비교한다.
    */
-  findBuffTemplateMatch(imageData, templateName, targetArrowNumber = null) {
+  findBuffTemplateMatch(imageData, templateName, targetArrowNumber = null, preferredLocation = null) {
     const template = window.BUFF_ICON_TEMPLATES?.[templateName];
     if (!imageData?.data || !template) return { found: false, score: Infinity, x: 0, y: 0 };
     const templateCandidates = templateName === 'janus'
       ? (window.BUFF_ICON_TEMPLATES.janusVariants || [template])
+      : templateName === 'janusEnding'
+        ? (window.BUFF_ICON_TEMPLATES.janusEndingVariants || [template])
       : templateName === 'extremeGold'
         ? (window.BUFF_ICON_TEMPLATES.extremeGoldVariants || [template])
         : [template];
@@ -1361,7 +1363,7 @@ class ImageAnalyzer {
     // 템플릿이 정확해도 전혀 다른 영역을 비교하게 되므로 여러 배율을 함께 찾는다.
     const isJanusFamily = templateName === 'janus' || templateName === 'janusEnding';
     const candidateSizes = (isJanusFamily || templateName === 'extremeGold')
-      ? [33, 40, 48, 56, 60, 66]
+      ? [33, 40, 44, 48, 56, 60, 66]
       : [33];
     const usableSizes = candidateSizes.filter((candidateSize) => (
       width >= candidateSize && height >= candidateSize
@@ -1402,7 +1404,87 @@ class ImageAnalyzer {
       return bestTemplateScore;
     };
 
+    // 이미 확인한 아이콘은 직전 칸 주변을 먼저 정밀 추적한다.
+    // 버프 줄이 그대로인 대부분의 프레임에서 전체 ROI 탐색을 생략해 룬 판정을 막지 않는다.
+    if (
+      preferredLocation &&
+      Number.isFinite(preferredLocation.x) &&
+      Number.isFinite(preferredLocation.y) &&
+      usableSizes.includes(preferredLocation.size)
+    ) {
+      const size = preferredLocation.size;
+      const areaScale = Math.pow(size / 33, 2);
+      const isJanus = templateName === 'janus';
+      const isJanusEnding = templateName === 'janusEnding';
+      const threshold = isJanus
+        ? 18
+        : (isJanusEnding ? 20 : 50);
+      const localCandidates = [];
+      const rememberLocalCandidate = (candidate) => {
+        localCandidates.push(candidate);
+        localCandidates.sort((a, b) => a.score - b.score);
+        if (localCandidates.length > 12) localCandidates.length = 12;
+      };
+      const radiusX = Math.max(5, Math.round(size * 0.22));
+      // 한 화살표 묶음이 1줄↔2줄로 바뀌면 같은 아이콘의 Y가 정확히 한 칸가량 이동한다.
+      const radiusY = templateName === 'extremeGold'
+        ? Math.max(radiusX, Math.round(size * 1.25))
+        : radiusX;
+      const minX = Math.max(0, Math.round(preferredLocation.x) - radiusX);
+      const maxX = Math.min(width - size, Math.round(preferredLocation.x) + radiusX);
+      const minY = Math.max(0, Math.round(preferredLocation.y) - radiusY);
+      const maxY = Math.min(height - size, Math.round(preferredLocation.y) + radiusY);
+
+      for (let y = minY; y <= maxY; y++) {
+        for (let x = minX; x <= maxX; x++) {
+          const score = scoreAt(x, y, size);
+          if (
+            localCandidates.length < 12 ||
+            score < localCandidates[localCandidates.length - 1].score
+          ) {
+            rememberLocalCandidate({ score, x, y, size });
+          }
+        }
+      }
+
+      for (const localBest of localCandidates) {
+        const shape = this.measureBuffIconShape(
+          imageData,
+          localBest.x,
+          localBest.y,
+          localBest.size
+        );
+        const shapePassed = isJanus
+          ? shape.violetPixels >= 18 * areaScale && shape.darkPixels >= 30 * areaScale
+          : isJanusEnding
+            ? shape.grayBluePixels >= 90 * areaScale && shape.darkPixels >= 20 * areaScale
+            : (
+              shape.goldPixels >= 35 * areaScale &&
+              shape.goldPixels <= 400 * areaScale &&
+              shape.darkPixels >= 140 * areaScale
+            );
+        if (localBest.score <= threshold && shapePassed) {
+          return {
+            ...localBest,
+            found: true,
+            shape,
+            threshold,
+            normalizedScore: localBest.score / threshold,
+            searchBand: {
+              top: minY,
+              bottom: maxY + size,
+              anchored: true,
+              tracked: true,
+              arrowNumber: targetArrowNumber
+            },
+            inPreferredBand: true
+          };
+        }
+      }
+    }
+
     let best = { score: Infinity, x: 0, y: 0, size: usableSizes[0] };
+    const refinedCandidates = [];
 
     // 메이플 버프 슬롯은 우측 정렬 30px 격자다. 각 슬롯 주변 ±5px만
     // 정밀 탐색하여 전투 화면을 훑는 오인식과 연산량을 함께 줄인다.
@@ -1472,34 +1554,47 @@ class ImageAnalyzer {
         : maxIconTop;
       const searchTop = 0;
       const searchBottom = maxIconTop;
-      const coarseStep = Math.max(4, Math.round(size / 9));
-      let sizeBest = { score: Infinity, x: 0, y: 0, size };
+      // 이번 1920×1080 사냥 영상의 실제 아이콘은 44px였다.
+      // 이 배율은 2px만 어긋나도 외곽 동심원 점수가 크게 변하므로 더 촘촘히 찾는다.
+      const coarseStep = size === 44 ? 2 : Math.max(4, Math.round(size / 9));
+      const coarseCandidates = [];
+      const rememberCoarseCandidate = (candidate) => {
+        coarseCandidates.push(candidate);
+        coarseCandidates.sort((a, b) => a.score - b.score);
+        if (coarseCandidates.length > 10) coarseCandidates.length = 10;
+      };
 
       for (let y = searchTop; y <= searchBottom; y += coarseStep) {
         for (let x = 0; x <= width - size; x += coarseStep) {
           const score = scoreAt(x, y, size);
-          if (score < sizeBest.score) sizeBest = { score, x, y, size };
+          if (
+            coarseCandidates.length < 10 ||
+            score < coarseCandidates[coarseCandidates.length - 1].score
+          ) {
+            rememberCoarseCandidate({ score, x, y, size });
+          }
         }
       }
 
-      for (
-        let y = Math.max(searchTop, sizeBest.y - coarseStep);
-        y <= Math.min(searchBottom, sizeBest.y + coarseStep);
-        y++
-      ) {
+      for (const seed of coarseCandidates) {
+        let refined = { ...seed };
         for (
-          let x = Math.max(0, sizeBest.x - coarseStep);
-          x <= Math.min(width - size, sizeBest.x + coarseStep);
-          x++
+          let y = Math.max(searchTop, seed.y - coarseStep);
+          y <= Math.min(searchBottom, seed.y + coarseStep);
+          y++
         ) {
-          const score = scoreAt(x, y, size);
-          if (score < sizeBest.score) sizeBest = { score, x, y, size };
+          for (
+            let x = Math.max(0, seed.x - coarseStep);
+            x <= Math.min(width - size, seed.x + coarseStep);
+            x++
+          ) {
+            const score = scoreAt(x, y, size);
+            if (score < refined.score) refined = { score, x, y, size };
+          }
         }
-      }
 
-      if (sizeBest.score < best.score) {
-        best = {
-          ...sizeBest,
+        const candidate = {
+          ...refined,
           searchBand: {
             top: preferredTop,
             bottom: Math.min(height, preferredBottom + size),
@@ -1508,33 +1603,67 @@ class ImageAnalyzer {
             arrowNumber: targetArrowNumber
           },
           inPreferredBand: !hasReliableAnchor || (
-            sizeBest.y >= preferredTop && sizeBest.y <= preferredBottom
+            refined.y >= preferredTop && refined.y <= preferredBottom
           )
         };
+        refinedCandidates.push(candidate);
+        if (candidate.score < best.score) best = candidate;
       }
     }
 
-    const shape = this.measureBuffIconShape(imageData, best.x, best.y, best.size);
     const isJanus = templateName === 'janus';
     const isJanusEnding = templateName === 'janusEnding';
     // 야누스는 다른 보라/어두운 버프와 색이 겹치므로 아이콘 유사도를 더 엄격하게 본다.
     // 실제 야누스 사진 33장의 밝기·이펙트 편차(최대 오차 약 30.9)를 포함한다.
     // 실제 사냥 자료 82장으로 만든 외곽 템플릿을 사용한다.
     // 야누스 없음 자료의 최저 점수(약 22.7)와 간격을 두어 15까지만 시작 증거로 인정한다.
-    const preferredThreshold = isJanus ? 18 : (isJanusEnding ? 20 : 34);
+    const preferredThreshold = isJanus
+      ? 18
+      : (isJanusEnding ? 20 : 26);
     // 화살표 묶음 밖에서도 아이콘 자체가 충분히 선명하면 이동한 정상 버프로 인정한다.
     // 대신 다른 줄의 유사 아이콘 오탐을 막기 위해 묶음 밖 후보에는 더 엄격한 점수를 요구한다.
-    const threshold = best.inPreferredBand
-      ? preferredThreshold
-      : (isJanus ? 17 : (isJanusEnding ? 19 : 30));
-    const areaScale = Math.pow(best.size / 33, 2);
-    const shapePassed = isJanus
-      ? shape.violetPixels >= 18 * areaScale && shape.darkPixels >= 30 * areaScale
-      : isJanusEnding
-        ? shape.grayBluePixels >= 90 * areaScale && shape.darkPixels >= 20 * areaScale
-        : shape.goldPixels >= 12 * areaScale && shape.darkPixels >= 15 * areaScale;
+    const assessCandidate = (candidate) => {
+      const shape = this.measureBuffIconShape(
+        imageData,
+        candidate.x,
+        candidate.y,
+        candidate.size
+      );
+      const threshold = candidate.size === 44 && templateName === 'extremeGold'
+        ? (candidate.inPreferredBand ? 32 : 29)
+        : (
+          candidate.inPreferredBand
+            ? preferredThreshold
+            : (isJanus ? 17 : (isJanusEnding ? 19 : 24))
+        );
+      const areaScale = Math.pow(candidate.size / 33, 2);
+      const shapePassed = isJanus
+        ? shape.violetPixels >= 18 * areaScale && shape.darkPixels >= 30 * areaScale
+        : isJanusEnding
+          ? shape.grayBluePixels >= 90 * areaScale && shape.darkPixels >= 20 * areaScale
+          : (
+            shape.goldPixels >= 35 * areaScale &&
+            shape.goldPixels <= 400 * areaScale &&
+            shape.darkPixels >= 140 * areaScale
+          );
+      return {
+        ...candidate,
+        found: candidate.score <= threshold && shapePassed,
+        shape,
+        threshold,
+        normalizedScore: candidate.score / Math.max(1, threshold)
+      };
+    };
 
-    return { ...best, found: best.score <= threshold && shapePassed, shape };
+    const assessedCandidates = refinedCandidates.map(assessCandidate);
+    const foundCandidates = assessedCandidates
+      .filter(candidate => candidate.found)
+      .sort((a, b) => a.normalizedScore - b.normalizedScore);
+    if (foundCandidates.length) return foundCandidates[0];
+
+    const fallback = assessedCandidates
+      .sort((a, b) => a.score - b.score)[0] || assessCandidate(best);
+    return fallback;
   }
 
   measureBuffIconShape(imageData, left, top, size) {
@@ -1628,9 +1757,10 @@ class ImageAnalyzer {
   processJanusTemplateFrame(imageData) {
     if (!document.getElementById('toggle-janus-detection')?.checked) return;
 
-    const match = this.findBuffTemplateMatch(imageData, 'janus', 1);
+    const trackedJanus = this.janusState.confirmedTemplateMatch;
+    const match = this.findBuffTemplateMatch(imageData, 'janus', 1, trackedJanus);
     const endingMatch = this.janusState.isBuffActive
-      ? this.findBuffTemplateMatch(imageData, 'janusEnding', 1)
+      ? this.findBuffTemplateMatch(imageData, 'janusEnding', 1, trackedJanus)
       : null;
     this.janusState.lastTemplateScore = match.score;
     this.janusState.lastTemplateMatch = {
@@ -1649,7 +1779,9 @@ class ImageAnalyzer {
       match.shape.yellowDigitPixels >= 3 &&
       match.shape.largestYellowDigitComponent >= 2
     );
-    const hasStartEvidence = match.found;
+    // 실제 영상에서 활성 직후에는 항상 노란 시간이 함께 표시되고,
+    // 종료 약 5초 전 회색 위상에서는 숫자가 완전히 사라졌다.
+    const hasStartEvidence = match.found && hasVisibleJanusTimer;
     const hasProbableJanusEvidence = (
       match.found ||
       (
@@ -1658,7 +1790,6 @@ class ImageAnalyzer {
         match.shape.darkPixels >= 35
       )
     );
-    const trackedJanus = this.janusState.confirmedTemplateMatch;
     const endingIsSameJanusSlot = Boolean(
       trackedJanus &&
       endingMatch &&
@@ -1670,7 +1801,6 @@ class ImageAnalyzer {
       ) <= 1.35
     );
     const hasJanusEndingEvidence = Boolean(
-      !match.found &&
       endingMatch?.found &&
       endingIsSameJanusSlot &&
       endingMatch.shape.yellowDigitPixels <= Math.max(3, Math.round(Math.pow(endingMatch.size / 33, 2) * 3))
@@ -1794,7 +1924,12 @@ class ImageAnalyzer {
   processExpTemplateFrame(imageData) {
     if (!document.getElementById('toggle-exp-detection')?.checked) return;
 
-    const match = this.findBuffTemplateMatch(imageData, 'extremeGold', 3);
+    const match = this.findBuffTemplateMatch(
+      imageData,
+      'extremeGold',
+      3,
+      this.expBuffState.confirmedTemplateMatch
+    );
     this.expBuffState.lastTemplateScore = match.score;
     this.expBuffState.lastTemplateMatch = {
       x: match.x,
