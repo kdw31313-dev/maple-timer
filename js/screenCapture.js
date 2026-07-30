@@ -27,6 +27,7 @@ class ScreenCaptureManager {
 
     this.isStreaming = false;
     this.loopIntervalId = null;
+    this.analysisTick = 0;
 
     // ⚡ 1사분면 무설정 자동 캡처 범위 (% 비율 단위 - 1사분면 최상단 1줄 제외)
     // 실제 1280x720 사냥 화면 기준 미니맵 내부 전체(제목줄 제외).
@@ -723,7 +724,20 @@ class ScreenCaptureManager {
         const popupImageData = this.popupCtx.getImageData(0, 0, 240, 135);
 
         if (window.imageAnalyzer) {
-          window.imageAnalyzer.analyze4MicroFrames(runeImageData, janusImageData, janusImageData, popupImageData);
+          // 룬은 가장 먼저 매 프레임 처리한다. 전체 버프 범위의 다중 크기 탐색은
+          // 한 프레임씩 건너뛰어 느린 컴퓨터에서도 룬 판정 주기가 밀리지 않게 한다.
+          if (document.getElementById('toggle-rune-detection')?.checked) {
+            window.imageAnalyzer.processRuneFrame(runeImageData, null);
+          }
+          if (document.getElementById('toggle-popup-detection')?.checked) {
+            window.imageAnalyzer.processPopupStructureFrame(popupImageData);
+          }
+
+          this.analysisTick = (this.analysisTick + 1) % 2;
+          if (this.analysisTick === 0) {
+            window.imageAnalyzer.processJanusTemplateFrame(janusImageData);
+            window.imageAnalyzer.processExpTemplateFrame(janusImageData);
+          }
         }
       }
     }, 150);
