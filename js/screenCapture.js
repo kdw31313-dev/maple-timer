@@ -28,6 +28,7 @@ class ScreenCaptureManager {
     this.isStreaming = false;
     this.loopIntervalId = null;
     this.analysisTick = 0;
+    this.buffAnalysisPhase = 0;
 
     // ⚡ 1사분면 무설정 자동 캡처 범위 (% 비율 단위 - 1사분면 최상단 1줄 제외)
     // 실제 1280x720 사냥 화면 기준 미니맵 내부 전체(제목줄 제외).
@@ -774,10 +775,16 @@ class ScreenCaptureManager {
             window.imageAnalyzer.processPopupStructureFrame(popupImageData);
           }
 
-          this.analysisTick = (this.analysisTick + 1) % 2;
+          // 룬은 매 프레임 먼저 처리하고, 비용이 큰 버프 검색은 600ms마다 하나씩만 실행한다.
+          // 두 버프를 연속 검색해 룬과 알림까지 늦어지던 메인 스레드 정체를 방지한다.
+          this.analysisTick = (this.analysisTick + 1) % 4;
           if (this.analysisTick === 0) {
-            window.imageAnalyzer.processJanusTemplateFrame(janusImageData);
-            window.imageAnalyzer.processExpTemplateFrame(janusImageData);
+            if (this.buffAnalysisPhase === 0) {
+              window.imageAnalyzer.processJanusTemplateFrame(janusImageData);
+            } else {
+              window.imageAnalyzer.processExpTemplateFrame(janusImageData);
+            }
+            this.buffAnalysisPhase = (this.buffAnalysisPhase + 1) % 2;
           }
         }
       }
