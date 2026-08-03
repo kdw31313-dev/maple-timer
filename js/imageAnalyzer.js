@@ -7,8 +7,9 @@ class ImageAnalyzer {
       baselineData: null,
       consecutiveCount: 0,
       // 전투 이펙트와 캐릭터 표식은 짧게 룬과 비슷해질 수 있다.
-      // 실제 룬은 같은 미니맵 좌표에 유지되므로 약 1.2초 동안 확인한다.
+      // 실제 룬은 같은 미니맵 좌표에 유지되므로 프레임 수가 아닌 실제 시간으로 확인한다.
       REQUIRED_CONSECUTIVE: 3,
+      REQUIRED_STABLE_MS: 1200,
       isDetected: false,
       cooldownActive: false,
       normReturnFrames: 0,
@@ -17,6 +18,7 @@ class ImageAnalyzer {
       lastCandidates: [],
       pendingCandidate: null,
       candidateMissFrames: 0,
+      candidateStableSince: 0,
       backgroundLearningFrames: 0,
       BACKGROUND_LEARNING_REQUIRED: 6,
       backgroundCandidateTracks: [],
@@ -100,6 +102,7 @@ class ImageAnalyzer {
     this.runeState.lastCandidates = [];
     this.runeState.pendingCandidate = null;
     this.runeState.candidateMissFrames = 0;
+    this.runeState.candidateStableSince = 0;
     this.runeState.backgroundLearningFrames = 0;
     this.runeState.backgroundCandidateTracks = [];
     this.runeState.backgroundCandidates = [];
@@ -411,6 +414,7 @@ class ImageAnalyzer {
       this.runeState.lastPixelCount = 0;
       this.runeState.lastCandidateCount = 0;
       this.runeState.lastCandidates = [];
+      this.runeState.candidateStableSince = 0;
       const isLive = window.screenCaptureManager?.isStreaming;
       if (this.onRuneStatusChange && isLive) {
         this.onRuneStatusChange('🟣 미니맵 고정 보라 표식 구분 중', false);
@@ -466,13 +470,23 @@ class ImageAnalyzer {
 
     if (isDetected) {
       const candidate = stableCandidate || candidates[0];
+      const now = Date.now();
       this.runeState.candidateMissFrames = 0;
       this.runeState.consecutiveCount = stableCandidate
         ? this.runeState.consecutiveCount + 1
         : 1;
+      if (!stableCandidate || !this.runeState.candidateStableSince) {
+        this.runeState.candidateStableSince = now;
+      }
       this.runeState.pendingCandidate = { ...candidate };
+      const stableDuration = now - this.runeState.candidateStableSince;
 
-      if (this.runeState.consecutiveCount >= this.runeState.REQUIRED_CONSECUTIVE && !this.runeState.isDetected && !this.runeState.cooldownActive) {
+      if (
+        this.runeState.consecutiveCount >= this.runeState.REQUIRED_CONSECUTIVE
+        && stableDuration >= this.runeState.REQUIRED_STABLE_MS
+        && !this.runeState.isDetected
+        && !this.runeState.cooldownActive
+      ) {
         this.triggerRuneAlert(runeColorPixels);
       }
     } else {
@@ -485,6 +499,7 @@ class ImageAnalyzer {
       this.runeState.consecutiveCount = 0;
       this.runeState.pendingCandidate = null;
       this.runeState.candidateMissFrames = 0;
+      this.runeState.candidateStableSince = 0;
 
       if (this.runeState.cooldownActive) {
         this.runeState.normReturnFrames++;
@@ -1461,7 +1476,10 @@ class ImageAnalyzer {
             : (
               shape.goldPixels >= 35 * areaScale &&
               shape.goldPixels <= 400 * areaScale &&
-              shape.darkPixels >= 140 * areaScale
+              shape.darkPixels >= 140 * areaScale &&
+              shape.centerGoldPixels >= 16 * areaScale &&
+              shape.upperCenterGoldPixels >= 4 * areaScale &&
+              shape.centerGoldVerticalSpan >= size * 0.2
             );
         if (localBest.score <= threshold && shapePassed) {
           return {
@@ -1644,7 +1662,10 @@ class ImageAnalyzer {
           : (
             shape.goldPixels >= 35 * areaScale &&
             shape.goldPixels <= 400 * areaScale &&
-            shape.darkPixels >= 140 * areaScale
+            shape.darkPixels >= 140 * areaScale &&
+            shape.centerGoldPixels >= 16 * areaScale &&
+            shape.upperCenterGoldPixels >= 4 * areaScale &&
+            shape.centerGoldVerticalSpan >= candidate.size * 0.2
           );
       return {
         ...candidate,
@@ -1658,7 +1679,14 @@ class ImageAnalyzer {
     const assessedCandidates = refinedCandidates.map(assessCandidate);
     const foundCandidates = assessedCandidates
       .filter(candidate => candidate.found)
-      .sort((a, b) => a.normalizedScore - b.normalizedScore);
+      .sort((a, b) => {
+        if (templateName === 'extremeGold') {
+          const aTrustedRow = Boolean(a.searchBand?.anchored && a.inPreferredBand);
+          const bTrustedRow = Boolean(b.searchBand?.anchored && b.inPreferredBand);
+          if (aTrustedRow !== bTrustedRow) return aTrustedRow ? -1 : 1;
+        }
+        return a.normalizedScore - b.normalizedScore;
+      });
     if (foundCandidates.length) return foundCandidates[0];
 
     const fallback = assessedCandidates
@@ -1676,6 +1704,10 @@ class ImageAnalyzer {
     let yellowMaxX = -1;
     let lowerLeftYellowPixels = 0;
     let grayBluePixels = 0;
+    let centerGoldPixels = 0;
+    let upperCenterGoldPixels = 0;
+    let centerGoldMinY = size;
+    let centerGoldMaxY = -1;
     const yellowMask = new Uint8Array(size * size);
 
     for (let y = top; y < Math.min(height, top + size); y++) {
@@ -1684,11 +1716,26 @@ class ImageAnalyzer {
         const r = data[idx];
         const g = data[idx + 1];
         const b = data[idx + 2];
-        if (r >= 165 && g >= 120 && b <= 125 && r - b >= 55) goldPixels++;
-        if (b >= 75 && b - g >= 16 && b - r >= 8 && r <= 175) violetPixels++;
-        if (r <= 70 && g <= 70 && b <= 80) darkPixels++;
         const localX = x - left;
         const localY = y - top;
+        const isGoldPixel = r >= 165 && g >= 120 && b <= 125 && r - b >= 55;
+        if (isGoldPixel) {
+          goldPixels++;
+          const isBottleCenter = (
+            localX >= Math.floor(size * 0.24)
+            && localX <= Math.ceil(size * 0.78)
+            && localY >= Math.floor(size * 0.06)
+            && localY <= Math.ceil(size * 0.9)
+          );
+          if (isBottleCenter) {
+            centerGoldPixels++;
+            if (localY < centerGoldMinY) centerGoldMinY = localY;
+            if (localY > centerGoldMaxY) centerGoldMaxY = localY;
+            if (localY <= Math.ceil(size * 0.42)) upperCenterGoldPixels++;
+          }
+        }
+        if (b >= 75 && b - g >= 16 && b - r >= 8 && r <= 175) violetPixels++;
+        if (r <= 70 && g <= 70 && b <= 80) darkPixels++;
         const saturation = Math.max(r, g, b) - Math.min(r, g, b);
         if (saturation <= 55 && b >= r - 5 && b >= g - 8 && r >= 25 && r <= 175) {
           grayBluePixels++;
@@ -1746,6 +1793,11 @@ class ImageAnalyzer {
       yellowDigitPixels,
       lowerLeftYellowPixels,
       grayBluePixels,
+      centerGoldPixels,
+      upperCenterGoldPixels,
+      centerGoldVerticalSpan: centerGoldMaxY >= centerGoldMinY
+        ? centerGoldMaxY - centerGoldMinY + 1
+        : 0,
       largestYellowDigitComponent,
       yellowDigitSpan: yellowMaxX >= yellowMinX ? yellowMaxX - yellowMinX + 1 : 0
     };
@@ -1802,6 +1854,7 @@ class ImageAnalyzer {
     );
     const hasJanusEndingEvidence = Boolean(
       endingMatch?.found &&
+      !match.found &&
       endingIsSameJanusSlot &&
       endingMatch.shape.yellowDigitPixels <= Math.max(3, Math.round(Math.pow(endingMatch.size / 33, 2) * 3))
     );
@@ -1940,6 +1993,25 @@ class ImageAnalyzer {
       searchBand: match.searchBand ? { ...match.searchBand } : null,
       shape: { ...match.shape }
     };
+    const goldTrustScale = Math.pow((match.size || 33) / 33, 2);
+    // 화살표가 이펙트에 가려진 프레임도 놓치지 않되, 다른 줄의 파란 버프는
+    // 금색 병으로 승격하지 않는다. 줄 기준이 없거나 어긋났을 때는 템플릿 점수와
+    // 병 몸통 특징이 모두 매우 선명한 후보만 예외적으로 허용한다.
+    const hasExceptionalBottleEvidence = Boolean(
+      match.found
+      && match.score <= (match.size === 44 ? 26 : 22)
+      && match.shape?.centerGoldPixels >= 16 * goldTrustScale
+      && match.shape?.upperCenterGoldPixels >= 4 * goldTrustScale
+      && match.shape?.centerGoldVerticalSpan >= (match.size || 33) * 0.2
+    );
+    const isTrustedGoldMatch = Boolean(
+      match.found
+      && (
+        match.searchBand?.tracked
+        || (match.searchBand?.anchored && match.inPreferredBand)
+        || hasExceptionalBottleEvidence
+      )
+    );
 
     // 익스트림 골드는 종료 약 5초 전에 숫자와 금색이 사라지고 회색 아이콘만 남는다.
     // 직전까지 확정된 같은 칸을 추적해 이 전환을 3프레임 확인한 순간에만 알린다.
@@ -1947,7 +2019,7 @@ class ImageAnalyzer {
     const tracked = this.expBuffState.confirmedTemplateMatch;
     // 현재 범위 어디에서든 정상 금색 병이 다시 검색되면 버프줄이 이동한 것이다.
     // 이 경우 이전 좌표의 회색/청록 아이콘을 종료 상태로 판단하지 않는다.
-    if (this.expBuffState.isBuffActive && tracked && !match.found) {
+    if (this.expBuffState.isBuffActive && tracked && !isTrustedGoldMatch) {
       const trackedShape = this.measureBuffIconShape(
         imageData,
         tracked.x,
@@ -1974,7 +2046,7 @@ class ImageAnalyzer {
     }
     this.expBuffState.endingFrames = 0;
 
-    if (match.found) {
+    if (isTrustedGoldMatch) {
       this.expBuffState.consecutiveActiveCount++;
       this.expBuffState.consecutiveInactiveCount = 0;
       const previousMatch = this.expBuffState.confirmedTemplateMatch;
