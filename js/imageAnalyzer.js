@@ -424,10 +424,12 @@ class ImageAnalyzer {
 
     const candidates = allCandidates.filter((candidate) => {
       // 아르테리아 미니맵 좌우 기둥의 보라 수정 장식은 룬과 비슷한 작은 마름모다.
-      // 실제 룬 표본은 내부 19.5~71.9%에 있었으므로 바깥 장식 띠만 보수적으로 제외한다.
+      // 2026-08-04 오탐 사진 2장은 오른쪽 약 79%의 동일한 고정 구조물을 가리켰다.
+      // 실제 룬 표본은 내부 19.5~71.9%에 있었으므로 3%의 여유를 둔 75%까지만
+      // 플레이 영역으로 인정해, ROI 폭이 달라져도 오른쪽 구조물 띠를 제외한다.
       const horizontalRatio = candidate.centerX / Math.max(1, runeImageData.width);
       const verticalRatio = candidate.centerY / Math.max(1, runeImageData.height);
-      const isInsidePlayableMap = horizontalRatio >= 0.14 && horizontalRatio <= 0.82;
+      const isInsidePlayableMap = horizontalRatio >= 0.14 && horizontalRatio <= 0.75;
       // 중앙 기둥의 고정 보라 수정도 y 약 38%에서 반복 검출된다. 사용자가 보낸
       // 실제 룬 15개는 모두 이보다 아래(최소 y 약 42.5%)에 있었으므로, 해당 고정
       // 장식 위치만 좁게 제외해 즉시 알림의 오탐을 줄인다.
