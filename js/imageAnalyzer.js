@@ -20,9 +20,17 @@ class ImageAnalyzer {
       candidateMissFrames: 0,
       candidateStableSince: 0,
       backgroundLearningFrames: 0,
-      BACKGROUND_LEARNING_REQUIRED: 6,
+      // 미니맵의 장식은 색이 미세하게 움직여 도형 후보로 매번 잡히지 않을 수 있다.
+      // 충분히 여러 프레임을 합쳐 고정 보라색 위치를 배경으로 기억한다.
+      BACKGROUND_LEARNING_REQUIRED: 20,
       backgroundCandidateTracks: [],
-      backgroundCandidates: []
+      backgroundCandidates: [],
+      backgroundColorMask: null,
+      backgroundMaskWidth: 0,
+      backgroundMaskHeight: 0,
+      mapReferenceData: null,
+      mapTransitionFrames: 0,
+      MAP_TRANSITION_REQUIRED: 3
     };
 
     this.popupState = {
@@ -106,6 +114,11 @@ class ImageAnalyzer {
     this.runeState.backgroundLearningFrames = 0;
     this.runeState.backgroundCandidateTracks = [];
     this.runeState.backgroundCandidates = [];
+    this.runeState.backgroundColorMask = null;
+    this.runeState.backgroundMaskWidth = 0;
+    this.runeState.backgroundMaskHeight = 0;
+    this.runeState.mapReferenceData = null;
+    this.runeState.mapTransitionFrames = 0;
 
     this.popupState.baselineData = null;
     this.popupState.consecutiveCount = 0;
@@ -341,14 +354,44 @@ class ImageAnalyzer {
     return candidates;
   }
 
+  isRuneMagentaPixel(r, g, b) {
+    return (
+      r >= 135 &&
+      b >= 145 &&
+      g <= 165 &&
+      r - g >= 22 &&
+      b - g >= 28 &&
+      Math.abs(r - b) <= 105
+    );
+  }
+
   /**
    * 화면 공유를 시작했을 때부터 같은 위치에 반복되는 보라색 표식은
    * 아르테리아 지형/포털 등 미니맵의 고정 장식으로 기록한다.
    * 룬은 이후 새 좌표에 출현하므로 이 배경 목록과 겹치지 않는 후보만 사용한다.
    */
-  learnRuneBackgroundCandidates(candidates) {
+  learnRuneBackgroundCandidates(candidates, imageData) {
     const state = this.runeState;
     state.backgroundLearningFrames++;
+
+    // 도형 후보 여부와 별개로, 학습 중 보였던 보라색 위치를 모두 배경으로 기록한다.
+    // 그러면 맵 구조물이 프레임마다 조금씩 다른 연결 덩어리로 분리되어도 룬으로 바뀌지 않는다.
+    const { data, width, height } = imageData;
+    if (
+      !state.backgroundColorMask ||
+      state.backgroundMaskWidth !== width ||
+      state.backgroundMaskHeight !== height
+    ) {
+      state.backgroundColorMask = new Uint8Array(width * height);
+      state.backgroundMaskWidth = width;
+      state.backgroundMaskHeight = height;
+    }
+    for (let p = 0; p < width * height; p++) {
+      const index = p * 4;
+      if (this.isRuneMagentaPixel(data[index], data[index + 1], data[index + 2])) {
+        state.backgroundColorMask[p] = 1;
+      }
+    }
 
     for (const candidate of candidates) {
       const radius = Math.max(4, Math.max(candidate.width, candidate.height) * 0.7);
@@ -380,7 +423,45 @@ class ImageAnalyzer {
       const minimumSeenFrames = Math.ceil(state.BACKGROUND_LEARNING_REQUIRED * 0.5);
       state.backgroundCandidates = state.backgroundCandidateTracks
         .filter((item) => item.seenFrames >= minimumSeenFrames);
+      // 학습이 끝난 시점의 미니맵을 저장해, 다른 맵 이동 시 자동으로 재학습한다.
+      state.mapReferenceData = new Uint8ClampedArray(imageData.data);
+      state.mapTransitionFrames = 0;
     }
+  }
+
+  hasRuneMapChanged(imageData) {
+    const state = this.runeState;
+    const reference = state.mapReferenceData;
+    if (!reference || reference.length !== imageData.data.length) return false;
+
+    const { data } = imageData;
+    let sampledPixels = 0;
+    let changedPixels = 0;
+    // 미니맵의 캐릭터/몹 표시 변화는 작다. 일정 간격으로 샘플링해 맵 윤곽 자체가
+    // 바뀌었을 때만 재학습하도록 한다.
+    for (let index = 0; index < data.length; index += 4 * 4) {
+      const difference = Math.abs(data[index] - reference[index])
+        + Math.abs(data[index + 1] - reference[index + 1])
+        + Math.abs(data[index + 2] - reference[index + 2]);
+      if (difference >= 105) changedPixels++;
+      sampledPixels++;
+    }
+    return changedPixels / Math.max(1, sampledPixels) >= 0.22;
+  }
+
+  restartRuneBackgroundLearning() {
+    const state = this.runeState;
+    state.backgroundLearningFrames = 0;
+    state.backgroundCandidateTracks = [];
+    state.backgroundCandidates = [];
+    state.backgroundColorMask = null;
+    state.backgroundMaskWidth = 0;
+    state.backgroundMaskHeight = 0;
+    state.mapReferenceData = null;
+    state.mapTransitionFrames = 0;
+    state.pendingCandidate = null;
+    state.consecutiveCount = 0;
+    state.candidateStableSince = 0;
   }
 
   isRuneBackgroundCandidate(candidate) {
@@ -402,14 +483,56 @@ class ImageAnalyzer {
     });
   }
 
+  isRuneNovelCandidate(candidate, imageData) {
+    const state = this.runeState;
+    const baseline = state.backgroundColorMask;
+    if (
+      !baseline ||
+      state.backgroundMaskWidth !== imageData.width ||
+      state.backgroundMaskHeight !== imageData.height
+    ) return true;
+
+    const { data, width, height } = imageData;
+    const xStart = Math.max(0, Math.floor(candidate.x));
+    const yStart = Math.max(0, Math.floor(candidate.y));
+    const xEnd = Math.min(width, Math.ceil(candidate.x + candidate.width));
+    const yEnd = Math.min(height, Math.ceil(candidate.y + candidate.height));
+    let coloredPixels = 0;
+    let newPixels = 0;
+
+    for (let y = yStart; y < yEnd; y++) {
+      for (let x = xStart; x < xEnd; x++) {
+        const p = y * width + x;
+        const index = p * 4;
+        if (!this.isRuneMagentaPixel(data[index], data[index + 1], data[index + 2])) continue;
+        coloredPixels++;
+        if (!baseline[p]) newPixels++;
+      }
+    }
+
+    // 기존 구조물의 색조 변화나 가장자리 흔들림은 일부 새 픽셀만 만든다.
+    // 룬은 비어 있던 좌표에 표식 전체가 추가되므로 충분한 신규 비율을 요구한다.
+    return newPixels >= 6 && newPixels / Math.max(1, coloredPixels) >= 0.32;
+  }
+
   processRuneFrame(runeImageData, fullImageData) {
+    const state = this.runeState;
+    if (state.backgroundLearningFrames >= state.BACKGROUND_LEARNING_REQUIRED) {
+      state.mapTransitionFrames = this.hasRuneMapChanged(runeImageData)
+        ? state.mapTransitionFrames + 1
+        : 0;
+      if (state.mapTransitionFrames >= state.MAP_TRANSITION_REQUIRED) {
+        this.restartRuneBackgroundLearning();
+      }
+    }
+
     const allCandidates = this.findRuneDiamondCandidates(runeImageData);
     const isLearningBackground = (
       this.runeState.backgroundLearningFrames < this.runeState.BACKGROUND_LEARNING_REQUIRED
     );
 
     if (isLearningBackground) {
-      this.learnRuneBackgroundCandidates(allCandidates);
+      this.learnRuneBackgroundCandidates(allCandidates, runeImageData);
       this.runeState.consecutiveCount = 0;
       this.runeState.lastPixelCount = 0;
       this.runeState.lastCandidateCount = 0;
@@ -441,6 +564,7 @@ class ImageAnalyzer {
         isInsidePlayableMap
         && !isStaticArteriaMiddleCrystal
         && !this.isRuneBackgroundCandidate(candidate)
+        && this.isRuneNovelCandidate(candidate, runeImageData)
       );
     });
     const runeColorPixels = candidates.reduce((sum, candidate) => sum + candidate.pixelCount, 0);
