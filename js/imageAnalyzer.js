@@ -8,8 +8,8 @@ class ImageAnalyzer {
       consecutiveCount: 0,
       // 전투 이펙트와 캐릭터 표식은 짧게 룬과 비슷해질 수 있다.
       // 실제 룬은 같은 미니맵 좌표에 유지되므로 프레임 수가 아닌 실제 시간으로 확인한다.
-      REQUIRED_CONSECUTIVE: 3,
-      REQUIRED_STABLE_MS: 1200,
+      REQUIRED_CONSECUTIVE: 2,
+      REQUIRED_STABLE_MS: 600,
       isDetected: false,
       cooldownActive: false,
       normReturnFrames: 0,
@@ -30,7 +30,15 @@ class ImageAnalyzer {
       backgroundMaskHeight: 0,
       mapReferenceData: null,
       mapTransitionFrames: 0,
-      MAP_TRANSITION_REQUIRED: 3
+      MAP_TRANSITION_REQUIRED: 6,
+      // 이전 아르테리아 표본과 카르시온 '거대 산호 군락 2' 오탐 사진 4장에서
+      // 반복된 위치다. 위치만으로 차단하지 않고 형태 점수가 낮은 후보에만 적용한다.
+      KNOWN_FALSE_ZONES: [
+        { x: 0.22, y: 0.27, radiusX: 0.08, radiusY: 0.16 },
+        { x: 0.32, y: 0.65, radiusX: 0.08, radiusY: 0.16 },
+        { x: 0.48, y: 0.37, radiusX: 0.09, radiusY: 0.08 },
+        { x: 0.79, y: 0.50, radiusX: 0.08, radiusY: 0.48 }
+      ]
     };
 
     this.popupState = {
@@ -219,14 +227,7 @@ class ImageAnalyzer {
       const r = data[idx];
       const g = data[idx + 1];
       const b = data[idx + 2];
-      const isRuneMagenta = (
-        r >= 135 &&
-        b >= 145 &&
-        g <= 165 &&
-        r - g >= 22 &&
-        b - g >= 28 &&
-        Math.abs(r - b) <= 105
-      );
+      const isRuneMagenta = this.isRuneMagentaPixel(r, g, b);
       if (isRuneMagenta) colorMask[p] = 1;
     }
 
@@ -292,10 +293,14 @@ class ImageAnalyzer {
       const density = originalPixels.length / Math.max(1, boxWidth * boxHeight);
       let redSum = 0;
       let greenSum = 0;
+      let pinkCorePixels = 0;
       for (const pixel of originalPixels) {
         const idx = (pixel.y * width + pixel.x) * 4;
         redSum += data[idx];
         greenSum += data[idx + 1];
+        if (this.isRunePinkCorePixel(data[idx], data[idx + 1], data[idx + 2])) {
+          pinkCorePixels++;
+        }
       }
       const averageRedGreenContrast = originalPixels.length > 0
         ? (redSum - greenSum) / originalPixels.length
@@ -320,11 +325,25 @@ class ImageAnalyzer {
       const marginY = boxHeight * 0.18;
       let hasLeft = false, hasRight = false, hasTop = false, hasBottom = false;
       let diamondFitPixels = 0;
+      let leftPixels = 0, rightPixels = 0, topPixels = 0, bottomPixels = 0;
+      const rowMin = new Array(boxHeight).fill(Infinity);
+      const rowMax = new Array(boxHeight).fill(-Infinity);
+      const columnMin = new Array(boxWidth).fill(Infinity);
+      const columnMax = new Array(boxWidth).fill(-Infinity);
       for (const pixel of originalPixels) {
         if (pixel.x <= centerX - marginX) hasLeft = true;
         if (pixel.x >= centerX + marginX) hasRight = true;
         if (pixel.y <= centerY - marginY) hasTop = true;
         if (pixel.y >= centerY + marginY) hasBottom = true;
+        if (pixel.x < centerX) leftPixels++; else rightPixels++;
+        if (pixel.y < centerY) topPixels++; else bottomPixels++;
+
+        const row = pixel.y - minY;
+        const column = pixel.x - minX;
+        rowMin[row] = Math.min(rowMin[row], pixel.x);
+        rowMax[row] = Math.max(rowMax[row], pixel.x);
+        columnMin[column] = Math.min(columnMin[column], pixel.y);
+        columnMax[column] = Math.max(columnMax[column], pixel.y);
 
         // 실제 룬은 대각선 네 변을 가진 마름모 내부에 색이 모인다.
         // 원형/사각형 플레이어 표식과 전투 이펙트는 모서리 쪽 색이 많다.
@@ -334,6 +353,52 @@ class ImageAnalyzer {
         if (normalizedDistance <= 1.16) diamondFitPixels++;
       }
       const diamondFit = diamondFitPixels / Math.max(1, originalPixels.length);
+
+      const rowSpans = rowMin.map((value, index) => (
+        Number.isFinite(value) ? rowMax[index] - value + 1 : 0
+      ));
+      const columnSpans = columnMin.map((value, index) => (
+        Number.isFinite(value) ? columnMax[index] - value + 1 : 0
+      ));
+      const nonEmptyRowIndexes = rowSpans
+        .map((span, index) => span > 0 ? index : -1)
+        .filter((index) => index >= 0);
+      const nonEmptyColumnIndexes = columnSpans
+        .map((span, index) => span > 0 ? index : -1)
+        .filter((index) => index >= 0);
+      const firstRow = nonEmptyRowIndexes[0] ?? 0;
+      const lastRow = nonEmptyRowIndexes[nonEmptyRowIndexes.length - 1] ?? firstRow;
+      const firstColumn = nonEmptyColumnIndexes[0] ?? 0;
+      const lastColumn = nonEmptyColumnIndexes[nonEmptyColumnIndexes.length - 1] ?? firstColumn;
+      const middleRowSpan = Math.max(1, ...rowSpans.slice(
+        Math.floor(boxHeight * 0.25),
+        Math.max(Math.floor(boxHeight * 0.25) + 1, Math.ceil(boxHeight * 0.75))
+      ));
+      const middleColumnSpan = Math.max(1, ...columnSpans.slice(
+        Math.floor(boxWidth * 0.25),
+        Math.max(Math.floor(boxWidth * 0.25) + 1, Math.ceil(boxWidth * 0.75))
+      ));
+      const verticalTipRatio = (rowSpans[firstRow] + rowSpans[lastRow]) / (2 * middleRowSpan);
+      const horizontalTipRatio = (columnSpans[firstColumn] + columnSpans[lastColumn]) / (2 * middleColumnSpan);
+      const tipSharpness = Math.max(0, Math.min(1,
+        1 - (verticalTipRatio + horizontalTipRatio) / 2
+      ));
+      const horizontalBalance = Math.min(leftPixels, rightPixels) / Math.max(1, Math.max(leftPixels, rightPixels));
+      const verticalBalance = Math.min(topPixels, bottomPixels) / Math.max(1, Math.max(topPixels, bottomPixels));
+      const axisBalance = (horizontalBalance + verticalBalance) / 2;
+      const aspectScore = Math.max(0, 1 - Math.abs(1 - aspect) / 0.38);
+      const pinkCoreRatio = pinkCorePixels / Math.max(1, originalPixels.length);
+      const densityScore = density <= 0.55
+        ? Math.max(0, Math.min(1, (density - 0.10) / 0.14))
+        : Math.max(0, Math.min(1, (0.72 - density) / 0.17));
+      const shapeConfidence = (
+        aspectScore * 0.23
+        + diamondFit * 0.20
+        + axisBalance * 0.18
+        + tipSharpness * 0.17
+        + densityScore * 0.15
+        + pinkCoreRatio * 0.07
+      );
 
       if (hasLeft && hasRight && hasTop && hasBottom && diamondFit >= 0.76) {
         candidates.push({
@@ -346,7 +411,14 @@ class ImageAnalyzer {
           pixelCount: originalPixels.length,
           density,
           averageRedGreenContrast,
-          diamondFit
+          diamondFit,
+          pinkCoreRatio,
+          densityScore,
+          axisBalance,
+          tipSharpness,
+          shapeConfidence,
+          isStrongRuneShape: shapeConfidence >= 0.74,
+          isCertainRuneShape: shapeConfidence >= 0.82
         });
       }
     }
@@ -365,12 +437,23 @@ class ImageAnalyzer {
     );
   }
 
+  isRunePinkCorePixel(r, g, b) {
+    return (
+      r >= 150 &&
+      b >= 145 &&
+      g <= 155 &&
+      r - g >= 35 &&
+      b - g >= 32 &&
+      Math.abs(r - b) <= 78
+    );
+  }
+
   /**
    * 화면 공유를 시작했을 때부터 같은 위치에 반복되는 보라색 표식은
    * 아르테리아 지형/포털 등 미니맵의 고정 장식으로 기록한다.
    * 룬은 이후 새 좌표에 출현하므로 이 배경 목록과 겹치지 않는 후보만 사용한다.
    */
-  learnRuneBackgroundCandidates(candidates, imageData) {
+  learnRuneBackgroundCandidates(candidates, imageData, protectedCandidates = []) {
     const state = this.runeState;
     state.backgroundLearningFrames++;
 
@@ -388,6 +471,15 @@ class ImageAnalyzer {
     }
     for (let p = 0; p < width * height; p++) {
       const index = p * 4;
+      const x = p % width;
+      const y = Math.floor(p / width);
+      const isProtected = protectedCandidates.some((candidate) => (
+        x >= candidate.x - 2
+        && x <= candidate.x + candidate.width + 2
+        && y >= candidate.y - 2
+        && y <= candidate.y + candidate.height + 2
+      ));
+      if (isProtected) continue;
       if (this.isRuneMagentaPixel(data[index], data[index + 1], data[index + 2])) {
         state.backgroundColorMask[p] = 1;
       }
@@ -446,7 +538,7 @@ class ImageAnalyzer {
       if (difference >= 105) changedPixels++;
       sampledPixels++;
     }
-    return changedPixels / Math.max(1, sampledPixels) >= 0.22;
+    return changedPixels / Math.max(1, sampledPixels) >= 0.34;
   }
 
   restartRuneBackgroundLearning() {
@@ -515,6 +607,49 @@ class ImageAnalyzer {
     return newPixels >= 6 && newPixels / Math.max(1, coloredPixels) >= 0.32;
   }
 
+  isKnownRuneFalseZone(candidate, imageData) {
+    const horizontalRatio = candidate.centerX / Math.max(1, imageData.width);
+    const verticalRatio = candidate.centerY / Math.max(1, imageData.height);
+    return this.runeState.KNOWN_FALSE_ZONES.some((zone) => {
+      const normalizedX = (horizontalRatio - zone.x) / zone.radiusX;
+      const normalizedY = (verticalRatio - zone.y) / zone.radiusY;
+      return normalizedX * normalizedX + normalizedY * normalizedY <= 1;
+    });
+  }
+
+  isRuneCandidateAccepted(candidate, imageData, isLearningBackground = false) {
+    const horizontalRatio = candidate.centerX / Math.max(1, imageData.width);
+    const verticalRatio = candidate.centerY / Math.max(1, imageData.height);
+    const isKnownFalseZone = this.isKnownRuneFalseZone(candidate, imageData);
+
+    // 핑크 마름모 형태가 확실하면 기존 배경 마스크나 오른쪽 75% 제한을 우회한다.
+    // 실제 룬이 보라색 지형 위나 오른쪽에 생성되어도 놓치지 않기 위한 우선 경로다.
+    if (candidate.isStrongRuneShape) {
+      const isInsideExpandedMap = (
+        horizontalRatio >= 0.08 && horizontalRatio <= 0.92
+        && verticalRatio >= 0.08 && verticalRatio <= 0.94
+      );
+      if (!isInsideExpandedMap) return false;
+      // 네 장에서 반복된 두 위치는 아주 확실한 마름모만 통과시킨다.
+      return !isKnownFalseZone || candidate.isCertainRuneShape;
+    }
+
+    // 배경 학습 중 약한 후보는 고정 구조물로만 학습하고 알림에는 사용하지 않는다.
+    if (isLearningBackground || isKnownFalseZone) return false;
+
+    const isInsideLegacyMap = horizontalRatio >= 0.14 && horizontalRatio <= 0.75;
+    const isStaticArteriaMiddleCrystal = (
+      horizontalRatio >= 0.41 && horizontalRatio <= 0.55
+      && verticalRatio >= 0.30 && verticalRatio <= 0.43
+    );
+    return (
+      isInsideLegacyMap
+      && !isStaticArteriaMiddleCrystal
+      && !this.isRuneBackgroundCandidate(candidate)
+      && this.isRuneNovelCandidate(candidate, imageData)
+    );
+  }
+
   processRuneFrame(runeImageData, fullImageData) {
     const state = this.runeState;
     if (state.backgroundLearningFrames >= state.BACKGROUND_LEARNING_REQUIRED) {
@@ -532,41 +667,26 @@ class ImageAnalyzer {
     );
 
     if (isLearningBackground) {
-      this.learnRuneBackgroundCandidates(allCandidates, runeImageData);
-      this.runeState.consecutiveCount = 0;
-      this.runeState.lastPixelCount = 0;
-      this.runeState.lastCandidateCount = 0;
-      this.runeState.lastCandidates = [];
-      this.runeState.candidateStableSince = 0;
+      const protectedCandidates = allCandidates.filter((candidate) => candidate.isStrongRuneShape);
+      const backgroundCandidates = allCandidates.filter((candidate) => !candidate.isStrongRuneShape);
+      this.learnRuneBackgroundCandidates(backgroundCandidates, runeImageData, protectedCandidates);
+      if (protectedCandidates.length === 0) {
+        this.runeState.consecutiveCount = 0;
+        this.runeState.lastPixelCount = 0;
+        this.runeState.lastCandidateCount = 0;
+        this.runeState.lastCandidates = [];
+        this.runeState.candidateStableSince = 0;
+      }
       const isLive = window.screenCaptureManager?.isStreaming;
-      if (this.onRuneStatusChange && isLive) {
+      if (this.onRuneStatusChange && isLive && protectedCandidates.length === 0) {
         this.onRuneStatusChange('🟣 미니맵 고정 보라 표식 구분 중', false);
       }
-      return;
+      if (protectedCandidates.length === 0) return;
     }
 
-    const candidates = allCandidates.filter((candidate) => {
-      // 아르테리아 미니맵 좌우 기둥의 보라 수정 장식은 룬과 비슷한 작은 마름모다.
-      // 2026-08-04 오탐 사진 2장은 오른쪽 약 79%의 동일한 고정 구조물을 가리켰다.
-      // 실제 룬 표본은 내부 19.5~71.9%에 있었으므로 3%의 여유를 둔 75%까지만
-      // 플레이 영역으로 인정해, ROI 폭이 달라져도 오른쪽 구조물 띠를 제외한다.
-      const horizontalRatio = candidate.centerX / Math.max(1, runeImageData.width);
-      const verticalRatio = candidate.centerY / Math.max(1, runeImageData.height);
-      const isInsidePlayableMap = horizontalRatio >= 0.14 && horizontalRatio <= 0.75;
-      // 중앙 기둥의 고정 보라 수정도 y 약 38%에서 반복 검출된다. 사용자가 보낸
-      // 실제 룬 15개는 모두 이보다 아래(최소 y 약 42.5%)에 있었으므로, 해당 고정
-      // 장식 위치만 좁게 제외해 즉시 알림의 오탐을 줄인다.
-      const isStaticArteriaMiddleCrystal = (
-        horizontalRatio >= 0.41 && horizontalRatio <= 0.55
-        && verticalRatio >= 0.30 && verticalRatio <= 0.43
-      );
-      return (
-        isInsidePlayableMap
-        && !isStaticArteriaMiddleCrystal
-        && !this.isRuneBackgroundCandidate(candidate)
-        && this.isRuneNovelCandidate(candidate, runeImageData)
-      );
-    });
+    const candidates = allCandidates.filter((candidate) => (
+      this.isRuneCandidateAccepted(candidate, runeImageData, isLearningBackground)
+    ));
     const runeColorPixels = candidates.reduce((sum, candidate) => sum + candidate.pixelCount, 0);
 
     this.runeState.lastPixelCount = runeColorPixels;
@@ -617,8 +737,8 @@ class ImageAnalyzer {
       }
     } else {
       // 화면 공유 압축이나 순간 이펙트 때문에 한 프레임만 후보가 끊기는 경우에는
-      // 누적 판정을 보존한다. 두 프레임 연속 사라질 때만 처음부터 다시 확인한다.
-      if (this.runeState.pendingCandidate && this.runeState.candidateMissFrames < 1) {
+      // 누적 판정을 보존한다. 네 프레임 연속 사라질 때만 처음부터 다시 확인한다.
+      if (this.runeState.pendingCandidate && this.runeState.candidateMissFrames < 3) {
         this.runeState.candidateMissFrames++;
         return;
       }
