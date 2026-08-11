@@ -19,6 +19,7 @@ class StorageManager {
       runeDetectionEnabled: true,
       popupDetectionEnabled: true,
       janusAutoDetectionEnabled: true,
+      expAutoDetectionEnabled: false,
       // 항목별 커스텀 효과음
       customSounds: {
         rune: 'rune',

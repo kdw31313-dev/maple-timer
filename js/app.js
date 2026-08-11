@@ -628,6 +628,18 @@ function applyConfigToUI(cfg) {
   if (ttsToggle) ttsToggle.checked = cfg.ttsVoice;
   if (flashToggle) flashToggle.checked = cfg.visualFlash;
 
+  const expDetectionToggle = document.getElementById('toggle-exp-detection');
+  const expStatusPill = document.getElementById('exp-status-pill');
+  if (expDetectionToggle) {
+    expDetectionToggle.checked = false;
+    expDetectionToggle.disabled = true;
+    expDetectionToggle.title = '익스트림 골드 자동 감지는 현재 비활성화됨';
+  }
+  if (expStatusPill) {
+    expStatusPill.textContent = '비활성화';
+    expStatusPill.className = 'status-pill';
+  }
+
   window.audioNotifier.setPreset(cfg.soundPreset);
   window.audioNotifier.setVolume(cfg.volume);
   window.audioNotifier.setTTS(cfg.ttsVoice);
@@ -733,6 +745,7 @@ function saveCurrentConfig() {
     janusEndAlert: document.getElementById('chk-janus-endalert')?.checked ?? true,
     dopingAlert10: document.getElementById('chk-doping-10s')?.checked ?? true,
     dopingAlertEnd: document.getElementById('chk-doping-end')?.checked ?? true,
+    expAutoDetectionEnabled: false,
     customSounds: customSounds,
     runeRoi: window.screenCaptureManager ? window.screenCaptureManager.runeRoi : { x: 0.3, y: 8.3, w: 14.5, h: 13 },
     popupRoi: window.screenCaptureManager ? window.screenCaptureManager.popupRoi : { x: 0, y: 0, w: 100, h: 100 },

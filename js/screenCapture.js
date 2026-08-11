@@ -28,7 +28,7 @@ class ScreenCaptureManager {
     this.isStreaming = false;
     this.loopIntervalId = null;
     this.analysisTick = 0;
-    this.buffAnalysisPhase = 0;
+    this.buffAnalysisModulo = 8;
 
     // ⚡ 1사분면 무설정 자동 캡처 범위 (% 비율 단위 - 1사분면 최상단 1줄 제외)
     // 실제 1280x720 사냥 화면 기준 미니맵 내부 전체(제목줄 제외).
@@ -428,7 +428,10 @@ class ScreenCaptureManager {
         janusPill.textContent = '⚪ 대기 중 (인식되지 않음)';
         janusPill.className = 'status-pill';
       }
-      if (expPill && !window.imageAnalyzer?.expBuffState.isBuffActive) {
+      if (expPill && window.imageAnalyzer?.expBuffState.disabled) {
+        expPill.textContent = '비활성화';
+        expPill.className = 'status-pill';
+      } else if (expPill && !window.imageAnalyzer?.expBuffState.isBuffActive) {
         expPill.textContent = '⚪ 대기 중 (인식되지 않음)';
         expPill.className = 'status-pill';
       }
@@ -436,7 +439,7 @@ class ScreenCaptureManager {
       if (runePill) { runePill.textContent = '⚪ 대기 중 (연결 안 됨)'; runePill.className = 'status-pill'; }
       if (popupPill) { popupPill.textContent = '⚪ 대기 중 (연결 안 됨)'; popupPill.className = 'status-pill'; }
       if (janusPill) { janusPill.textContent = '⚪ 대기 중 (인식되지 않음)'; janusPill.className = 'status-pill'; }
-      if (expPill) { expPill.textContent = '⚪ 대기 중 (인식되지 않음)'; expPill.className = 'status-pill'; }
+      if (expPill) { expPill.textContent = window.imageAnalyzer?.expBuffState.disabled ? '비활성화' : '⚪ 대기 중 (인식되지 않음)'; expPill.className = 'status-pill'; }
     }
 
     if (startBtn) startBtn.classList.toggle('hidden', isConnected);
@@ -775,16 +778,11 @@ class ScreenCaptureManager {
             window.imageAnalyzer.processPopupStructureFrame(popupImageData);
           }
 
-          // 룬은 매 프레임 먼저 처리하고, 비용이 큰 버프 검색은 600ms마다 하나씩만 실행한다.
-          // 두 버프를 연속 검색해 룬과 알림까지 늦어지던 메인 스레드 정체를 방지한다.
-          this.analysisTick = (this.analysisTick + 1) % 4;
+          // 룬은 매 프레임 먼저 처리하고, 야누스 버프 검색은 약 1.2초마다 실행한다.
+          // 익스트림 골드 자동 감지는 잠시 꺼서 같은 ROI를 번갈아 보느라 야누스를 놓치지 않게 한다.
+          this.analysisTick = (this.analysisTick + 1) % this.buffAnalysisModulo;
           if (this.analysisTick === 0) {
-            if (this.buffAnalysisPhase === 0) {
-              window.imageAnalyzer.processJanusTemplateFrame(janusImageData);
-            } else {
-              window.imageAnalyzer.processExpTemplateFrame(janusImageData);
-            }
-            this.buffAnalysisPhase = (this.buffAnalysisPhase + 1) % 2;
+            window.imageAnalyzer.processJanusTemplateFrame(janusImageData);
           }
         }
       }
