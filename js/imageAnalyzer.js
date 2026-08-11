@@ -954,7 +954,11 @@ class ImageAnalyzer {
                 type: template.type,
                 score,
                 normalizedScore,
-                confidence: Math.max(0, 1 - normalizedScore)
+                confidence: Math.max(0, 1 - normalizedScore),
+                x,
+                y,
+                width: w,
+                height: h
               };
             }
           }
@@ -964,19 +968,79 @@ class ImageAnalyzer {
     return best;
   }
 
+  findLieDetectorTitleEvidence(imageData, match) {
+    if (!imageData?.data?.length || !Number.isFinite(match?.x)) {
+      return { found: false, pixelCount: 0, columnSpan: 0, rowCount: 0 };
+    }
+
+    const { data, width, height } = imageData;
+    // 템플릿은 팝업 일부만 잡을 수 있으므로 위쪽 제목 영역을 좌우로 조금 넓혀 검사한다.
+    const startX = Math.max(0, Math.floor(match.x - match.width * 0.15));
+    const endX = Math.min(width, Math.ceil(match.x + match.width * 1.15));
+    const startY = Math.max(0, Math.floor(match.y - match.height * 0.15));
+    const endY = Math.min(height, Math.ceil(match.y + match.height * 0.55));
+    const rows = new Set();
+    const columns = new Set();
+    let pixelCount = 0;
+    let minX = width;
+    let maxX = -1;
+
+    for (let y = startY; y < endY; y++) {
+      for (let x = startX; x < endX; x++) {
+        const index = (y * width + x) * 4;
+        const r = data[index];
+        const g = data[index + 1];
+        const b = data[index + 2];
+        // 축소 화면에서도 남는 LIE DETECTOR의 붉은 글자 성분. 분홍/갈색 UI는 제외한다.
+        const isTitleRed = r >= 145 && r - g >= 60 && r - b >= 40
+          && r >= g * 1.55 && r >= b * 1.25;
+        if (!isTitleRed) continue;
+        pixelCount++;
+        rows.add(y);
+        columns.add(x);
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+      }
+    }
+
+    const columnSpan = maxX >= minX ? maxX - minX + 1 : 0;
+    const minimumSpan = Math.max(6, Math.round(match.width * 0.16));
+    return {
+      found: pixelCount >= 5 && rows.size >= 2 && columns.size >= 4 && columnSpan >= minimumSpan,
+      pixelCount,
+      columnSpan,
+      rowCount: rows.size
+    };
+  }
+
+  verifyPopupTemplateMatch(imageData, match) {
+    if (!match?.found) return { ...match, verified: false, titleEvidence: false };
+    const title = this.findLieDetectorTitleEvidence(imageData, match);
+    // 글자가 이펙트에 잠깐 가려져도 실제 템플릿과 거의 동일하면 놓치지 않는다.
+    const isVeryStrongTemplate = match.normalizedScore <= 0.45;
+    return {
+      ...match,
+      verified: title.found || isVeryStrongTemplate,
+      titleEvidence: title.found,
+      titlePixelCount: title.pixelCount,
+      titleColumnSpan: title.columnSpan,
+      isVeryStrongTemplate
+    };
+  }
+
   processPopupStructureFrame(imageData) {
     if (!imageData?.data?.length) return;
-    const match = this.findPopupTemplateMatch(imageData);
+    const match = this.verifyPopupTemplateMatch(imageData, this.findPopupTemplateMatch(imageData));
     this.popupState.lastConfidence = match.confidence;
 
-    if (match.found) {
+    if (match.verified) {
       this.popupState.missedCount = 0;
       this.popupState.consecutiveCount = this.popupState.lastType === match.type
         ? this.popupState.consecutiveCount + 1
         : 1;
       this.popupState.lastType = match.type;
 
-      if (this.popupState.consecutiveCount >= 3 &&
+      if (this.popupState.consecutiveCount >= this.popupState.REQUIRED_CONSECUTIVE &&
           !this.popupState.isDetected && !this.popupState.cooldownActive) {
         this.triggerPopupStructureAlert(match.type);
       }
