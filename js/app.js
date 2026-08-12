@@ -340,6 +340,31 @@ function bindEvents() {
     saveCurrentConfig();
   });
 
+  const expDetectionToggle = document.getElementById('toggle-exp-detection');
+  expDetectionToggle?.addEventListener('change', (e) => {
+    const state = window.imageAnalyzer?.expBuffState;
+    if (state) {
+      Object.assign(state, {
+        isBuffActive: false,
+        consecutiveActiveCount: 0,
+        consecutiveInactiveCount: 0,
+        alert10Triggered: false,
+        alertExpiredTriggered: false,
+        endingFrames: 0,
+        startEvidenceHistory: [],
+        moveEvidenceHistory: [],
+        lastTemplateMatch: null,
+        confirmedTemplateMatch: null
+      });
+    }
+    const pill = document.getElementById('exp-status-pill');
+    if (pill) {
+      pill.textContent = e.target.checked ? '⚪ 대기 중 (인식되지 않음)' : '알림 끔';
+      pill.className = 'status-pill';
+    }
+    saveCurrentConfig();
+  });
+
   // 메인 소리 테스트 버튼 (상단/설정 탭)
   document.getElementById('btn-test-sound')?.addEventListener('click', () => {
     if (window.audioNotifier) {
@@ -631,12 +656,12 @@ function applyConfigToUI(cfg) {
   const expDetectionToggle = document.getElementById('toggle-exp-detection');
   const expStatusPill = document.getElementById('exp-status-pill');
   if (expDetectionToggle) {
-    expDetectionToggle.checked = false;
-    expDetectionToggle.disabled = true;
-    expDetectionToggle.title = '익스트림 골드 검출 검증 완료 · 운영 자동 알림은 요청대로 비활성화됨';
+    expDetectionToggle.checked = cfg.expAutoDetectionEnabled !== false;
+    expDetectionToggle.disabled = false;
+    expDetectionToggle.title = '익스트림 골드 병 아이콘 시작·종료 자동 알림';
   }
   if (expStatusPill) {
-    expStatusPill.textContent = '비활성화';
+    expStatusPill.textContent = expDetectionToggle?.checked ? '대기 중' : '알림 끔';
     expStatusPill.className = 'status-pill';
   }
 
@@ -745,7 +770,7 @@ function saveCurrentConfig() {
     janusEndAlert: document.getElementById('chk-janus-endalert')?.checked ?? true,
     dopingAlert10: document.getElementById('chk-doping-10s')?.checked ?? true,
     dopingAlertEnd: document.getElementById('chk-doping-end')?.checked ?? true,
-    expAutoDetectionEnabled: false,
+    expAutoDetectionEnabled: document.getElementById('toggle-exp-detection')?.checked ?? true,
     customSounds: customSounds,
     runeRoi: window.screenCaptureManager ? window.screenCaptureManager.runeRoi : { x: 0.3, y: 8.3, w: 14.5, h: 13 },
     popupRoi: window.screenCaptureManager ? window.screenCaptureManager.popupRoi : { x: 0, y: 0, w: 100, h: 100 },

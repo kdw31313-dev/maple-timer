@@ -321,9 +321,6 @@ function 빈영상(기준영상) {
 function 새분석기() {
   현재알림 = [];
   const 분석기 = new ImageAnalyzer();
-  // 운영 UI에서는 골드를 비활성화하지만, 회귀 테스트는 검출 알고리즘 자체를
-  // 계속 검증해야 하므로 테스트 인스턴스에서만 명시적으로 켠다.
-  분석기.expBuffState.disabled = false;
   분석기.onRuneStatusChange = () => {};
   분석기.onPopupStatusChange = () => {};
   분석기.onJanusStatusChange = () => {};
@@ -626,8 +623,6 @@ async function 골드양성검사(파일) {
     true,
     `익스트림 골드 홀드아웃을 찾지 못했습니다. 점수 ${점수표시(단일.score)}, 임계값 ${단일.threshold}`
   );
-
-  분석기.expBuffState.disabled = false;
   for (let 프레임 = 0; 프레임 < 2; 프레임++) {
     분석기.processExpTemplateFrame(영상);
   }
@@ -639,7 +634,6 @@ async function 골드양성검사(파일) {
 async function 골드오탐음성검사(하드음성파일) {
   const 하드음성영상 = await 버프영상읽기(하드음성파일);
   const 분석기 = 새분석기();
-  분석기.expBuffState.disabled = false;
 
   // 사용자가 직접 "오탐"으로 분류한 자료다. 일부는 파란 원으로 당시 골드
   // 위치를 설명한 화면이지만, 주어진 한 장만으로 시작/이동의 시간 순서를
@@ -693,7 +687,7 @@ async function 실행() {
   console.log(`운영 ROI: 룬 ${JSON.stringify(룬ROI)}, 버프 ${JSON.stringify(버프ROI)}, 팝업 ${팝업크기.width}x${팝업크기.height}`);
   console.log('');
 
-  await 검사('운영 로드 순서와 골드 비활성화 설정', async () => {
+  await 검사('운영 로드 순서와 골드 활성화 설정', async () => {
     const html = fs.readFileSync(path.join(프로젝트폴더, 'index.html'), 'utf8');
     const 로드순서 = [
       'js/imageAnalyzer.js',
@@ -711,11 +705,16 @@ async function 실행() {
     }
     assert.match(
       html,
-      /<input\s+type="checkbox"\s+id="toggle-exp-detection"\s+disabled>/,
-      '익스트림 골드 운영 토글이 비활성화 상태가 아닙니다.'
+      /<input\s+type="checkbox"\s+id="toggle-exp-detection"\s+checked>/,
+      '익스트림 골드 운영 토글이 기본 활성화 상태가 아닙니다.'
     );
-    assert.equal(window.imageAnalyzer.expBuffState.disabled, true, '운영 골드 분석 상태가 비활성화가 아닙니다.');
-    return '정확도 모듈 3개 순서 정상, 익스트림 골드 운영 비활성화';
+    const storageSource = fs.readFileSync(path.join(프로젝트폴더, 'js', 'storage.js'), 'utf8');
+    const appSource = fs.readFileSync(path.join(프로젝트폴더, 'js', 'app.js'), 'utf8');
+    assert.match(storageSource, /expAutoDetectionEnabled:\s*true/, '골드 저장 기본값이 활성화가 아닙니다.');
+    assert.match(storageSource, /EXP_ALERT_ACTIVATION_KEY/, '기존 꺼짐 설정의 1회 활성화 이전이 없습니다.');
+    assert.match(appSource, /expAutoDetectionEnabled:\s*document\.getElementById\('toggle-exp-detection'\)/, '골드 토글 선택이 저장되지 않습니다.');
+    assert.equal(window.imageAnalyzer.expBuffState.disabled, false, '운영 골드 분석 상태가 활성화가 아닙니다.');
+    return '정확도 모듈 3개 순서 정상, 기본 활성화와 사용자 토글 저장 정상';
   });
 
   await 검사('룬 배경 기억 초기화', async () => {
@@ -1074,8 +1073,6 @@ async function 실행() {
 
   await 검사('익스트림 골드 양성 연속 상태 전이', async () => {
     const 분석기 = 새분석기();
-    // 운영 기능은 현재 비활성화 상태이므로, 검출 알고리즘만 검증하도록 이 인스턴스에서 해제한다.
-    분석기.expBuffState.disabled = false;
     for (const 번호 of [1, 2]) {
       분석기.processExpTemplateFrame(양성프레임.get(번호));
     }
@@ -1089,7 +1086,6 @@ async function 실행() {
     const 회색영상 = await 양성프레임읽기(238);
     const 소멸영상 = await 양성프레임읽기(240);
     const 분석기 = 새분석기();
-    분석기.expBuffState.disabled = false;
 
     // 프레임 3의 숫자가 남은 금색 병은 종료 영상의 슬롯과 같은 3열에 있다.
     for (let 프레임 = 0; 프레임 < 2; 프레임++) 분석기.processExpTemplateFrame(활성영상);
@@ -1122,7 +1118,6 @@ async function 실행() {
 
   await 검사('익스트림 골드 종료 위상 가림 뒤 완전 소멸 알림', async () => {
     const 분석기 = 새분석기();
-    분석기.expBuffState.disabled = false;
     for (const 번호 of [1, 2]) 분석기.processExpTemplateFrame(양성프레임.get(번호));
     assert.equal(분석기.expBuffState.isBuffActive, true, '완전 소멸 검증 전 골드가 활성화되지 않았습니다.');
     const 소멸영상 = 빈영상(양성프레임.get(2));

@@ -70,7 +70,7 @@ class ImageAnalyzer {
     };
 
     this.expBuffState = {
-      disabled: true,
+      disabled: false,
       isBuffActive: false,
       consecutiveActiveCount: 0,
       consecutiveInactiveCount: 0,
