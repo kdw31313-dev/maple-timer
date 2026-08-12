@@ -633,7 +633,7 @@ function applyConfigToUI(cfg) {
   if (expDetectionToggle) {
     expDetectionToggle.checked = false;
     expDetectionToggle.disabled = true;
-    expDetectionToggle.title = '익스트림 골드 자동 감지는 현재 비활성화됨';
+    expDetectionToggle.title = '익스트림 골드 검출 검증 완료 · 운영 자동 알림은 요청대로 비활성화됨';
   }
   if (expStatusPill) {
     expStatusPill.textContent = '비활성화';
