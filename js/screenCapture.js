@@ -409,6 +409,8 @@ class ScreenCaptureManager {
     const popupPill = document.getElementById('popup-status-pill');
     const janusPill = document.getElementById('janus-status-pill');
     const expPill = document.getElementById('exp-status-pill');
+    const expEnabled = !window.imageAnalyzer?.expBuffState.disabled
+      && document.getElementById('toggle-exp-detection')?.checked;
 
     if (badge) {
       badge.className = isConnected ? 'status-badge live' : 'status-badge disconnected';
@@ -430,8 +432,8 @@ class ScreenCaptureManager {
         janusPill.textContent = '⚪ 대기 중 (인식되지 않음)';
         janusPill.className = 'status-pill';
       }
-      if (expPill && window.imageAnalyzer?.expBuffState.disabled) {
-        expPill.textContent = '비활성화';
+      if (expPill && !expEnabled) {
+        expPill.textContent = '알림 끔';
         expPill.className = 'status-pill';
       } else if (expPill && !window.imageAnalyzer?.expBuffState.isBuffActive) {
         expPill.textContent = '⚪ 대기 중 (인식되지 않음)';
@@ -441,7 +443,7 @@ class ScreenCaptureManager {
       if (runePill) { runePill.textContent = '⚪ 대기 중 (연결 안 됨)'; runePill.className = 'status-pill'; }
       if (popupPill) { popupPill.textContent = '⚪ 대기 중 (연결 안 됨)'; popupPill.className = 'status-pill'; }
       if (janusPill) { janusPill.textContent = '⚪ 대기 중 (인식되지 않음)'; janusPill.className = 'status-pill'; }
-      if (expPill) { expPill.textContent = window.imageAnalyzer?.expBuffState.disabled ? '비활성화' : '⚪ 대기 중 (인식되지 않음)'; expPill.className = 'status-pill'; }
+      if (expPill) { expPill.textContent = expEnabled ? '⚪ 대기 중 (인식되지 않음)' : '알림 끔'; expPill.className = 'status-pill'; }
     }
 
     if (startBtn) startBtn.classList.toggle('hidden', isConnected);

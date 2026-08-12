@@ -4,6 +4,7 @@
 class StorageManager {
   constructor() {
     this.STORAGE_KEY = 'maple_hunter_timer_config_v1';
+    this.EXP_ALERT_ACTIVATION_KEY = 'maple_hunter_extreme_gold_alert_activation_20260812';
     this.defaultConfig = {
       volume: 80,
       soundPreset: 'chime',
@@ -19,7 +20,7 @@ class StorageManager {
       runeDetectionEnabled: true,
       popupDetectionEnabled: true,
       janusAutoDetectionEnabled: true,
-      expAutoDetectionEnabled: false,
+      expAutoDetectionEnabled: true,
       // 항목별 커스텀 효과음
       customSounds: {
         rune: 'rune',
@@ -37,9 +38,18 @@ class StorageManager {
   loadConfig() {
     try {
       const raw = localStorage.getItem(this.STORAGE_KEY);
-      if (!raw) return { ...this.defaultConfig };
-      const parsed = JSON.parse(raw);
-      return { ...this.defaultConfig, ...parsed };
+      const parsed = raw ? JSON.parse(raw) : {};
+      const config = { ...this.defaultConfig, ...parsed };
+
+      // 기존 배포가 골드 자동 감지를 강제로 꺼 저장했으므로, 활성화 배포를
+      // 처음 여는 한 번만 켠다. 이후 사용자가 직접 끈 선택은 그대로 보존한다.
+      if (localStorage.getItem(this.EXP_ALERT_ACTIVATION_KEY) !== 'enabled') {
+        config.expAutoDetectionEnabled = true;
+        this.saveConfig(config);
+        localStorage.setItem(this.EXP_ALERT_ACTIVATION_KEY, 'enabled');
+      }
+
+      return config;
     } catch (e) {
       console.warn('설정 불러오기 실패, 기본값 사용:', e);
       return { ...this.defaultConfig };
