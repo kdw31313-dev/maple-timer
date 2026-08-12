@@ -1743,7 +1743,7 @@ class ImageAnalyzer {
       const isJanus = templateName === 'janus';
       const isJanusEnding = templateName === 'janusEnding';
       const threshold = isJanus
-        ? 20
+        ? 18
         : (isJanusEnding ? 30 : 50);
       const localCandidates = [];
       const rememberLocalCandidate = (candidate) => {
@@ -1952,7 +1952,7 @@ class ImageAnalyzer {
     // 실제 사냥 자료 82장으로 만든 외곽 템플릿을 사용한다.
     // 야누스 없음 자료의 최저 점수(약 22.7)보다 낮은 범위에서만 시작 증거로 인정한다.
     const preferredThreshold = isJanus
-      ? 21
+      ? 18
       : (isJanusEnding ? 30 : 26);
     // 화살표 묶음 밖에서도 아이콘 자체가 충분히 선명하면 이동한 정상 버프로 인정한다.
     // 대신 다른 줄의 유사 아이콘 오탐을 막기 위해 묶음 밖 후보에는 더 엄격한 점수를 요구한다.
@@ -1968,7 +1968,7 @@ class ImageAnalyzer {
         : (
           candidate.inPreferredBand
             ? preferredThreshold
-            : (isJanus ? 19 : (isJanusEnding ? 27 : 24))
+            : (isJanus ? 17 : (isJanusEnding ? 27 : 24))
         );
       const areaScale = Math.pow(candidate.size / 33, 2);
       const shapePassed = isJanus
@@ -2145,18 +2145,9 @@ class ImageAnalyzer {
       matchShape.yellowDigitPixels >= 3 &&
       matchShape.largestYellowDigitComponent >= 2
     );
-    const janusScale = Math.pow((match.size || 33) / 33, 2);
-    const hasStrongJanusIconEvidence = Boolean(
-      match.found &&
-      match.score <= Math.min(15, Math.max(1, match.threshold || 21) * 0.75) &&
-      matchShape.violetPixels >= 22 * janusScale &&
-      matchShape.darkPixels >= 38 * janusScale
-    );
     // 실제 영상에서 활성 직후에는 항상 노란 시간이 함께 표시되고,
     // 종료 약 5초 전 회색 위상에서는 숫자가 완전히 사라졌다.
-    // 최근 화면에서는 숫자가 이펙트/압축에 잠깐 약해지는 일이 있어,
-    // 아이콘 외곽이 아주 강한 프레임도 시작 증거로 인정한다.
-    const hasStartEvidence = match.found && (hasVisibleJanusTimer || hasStrongJanusIconEvidence);
+    const hasStartEvidence = match.found && hasVisibleJanusTimer;
     const hasProbableJanusEvidence = (
       match.found ||
       (
@@ -2165,7 +2156,7 @@ class ImageAnalyzer {
         matchShape.darkPixels >= 35
       )
     );
-    const shouldScanEnding = this.janusState.isBuffActive || !hasProbableJanusEvidence;
+    const shouldScanEnding = this.janusState.isBuffActive;
     const endingMatch = shouldScanEnding
       ? this.findBuffTemplateMatch(imageData, 'janusEnding', 1, trackedJanus)
       : null;
@@ -2180,39 +2171,15 @@ class ImageAnalyzer {
         trackedJanus.size / Math.max(1, endingMatch.size)
       ) <= 1.35
     );
-    const endingIsTrustedRow = Boolean(
-      endingMatch?.searchBand?.anchored &&
-      endingMatch?.inPreferredBand
-    );
     const hasJanusEndingEvidence = Boolean(
       endingMatch?.found &&
       !match.found &&
-      (endingIsSameJanusSlot || (!trackedJanus && endingIsTrustedRow)) &&
+      trackedJanus &&
+      endingIsSameJanusSlot &&
       endingShape.yellowDigitPixels <= Math.max(3, Math.round(Math.pow(endingMatch.size / 33, 2) * 3))
     );
 
     if (!this.janusState.isBuffActive) {
-      if (hasJanusEndingEvidence) {
-        this.janusState.endingFrames = (this.janusState.endingFrames || 0) + 1;
-        this.janusState.consecutiveInactiveCount = 0;
-        this.janusState.confirmedTemplateMatch = {
-          x: endingMatch.x,
-          y: endingMatch.y,
-          size: endingMatch.size,
-          score: endingMatch.score,
-          found: true,
-          searchBand: endingMatch.searchBand ? { ...endingMatch.searchBand } : null,
-          shape: { ...endingShape }
-        };
-        if (this.janusState.endingFrames >= 2 && !this.janusState.alert10Triggered) {
-          this.janusState.isBuffActive = true;
-          this.janusState.alertExpiredTriggered = true;
-          this.triggerJanus10sAlert();
-        } else if (this.onJanusStatusChange) {
-          this.onJanusStatusChange('야누스 종료 임박 후보 확인 중', false);
-        }
-        return;
-      }
       const history = this.janusState.startEvidenceHistory;
       history.push(hasStartEvidence ? 1 : 0);
       if (history.length > 3) history.shift();

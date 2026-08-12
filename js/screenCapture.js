@@ -28,7 +28,9 @@ class ScreenCaptureManager {
     this.isStreaming = false;
     this.loopIntervalId = null;
     this.analysisTick = 0;
-    this.buffAnalysisModulo = 8;
+    // 무거운 전체화면 탐색은 서로 다른 틱에 나눠 룬 검사를 막지 않는다.
+    // 룬은 150ms, 거탐/야누스는 300ms, 골드는 600ms 간격으로 검사한다.
+    this.buffAnalysisModulo = 4;
 
     // ⚡ 1사분면 무설정 자동 캡처 범위 (% 비율 단위 - 1사분면 최상단 1줄 제외)
     // 실제 1280x720 사냥 화면 기준 미니맵 내부 전체(제목줄 제외).
@@ -733,7 +735,6 @@ class ScreenCaptureManager {
 
     this.loopIntervalId = setInterval(() => {
       if (!this.isStreaming || !this.videoEl) return;
-
       if (this.videoEl.readyState === this.videoEl.HAVE_ENOUGH_DATA) {
         const vWidth = this.videoEl.videoWidth || 1280;
         const vHeight = this.videoEl.videoHeight || 720;
@@ -764,25 +765,65 @@ class ScreenCaptureManager {
         this.janusCtx.drawImage(this.videoEl, jx, jy, jw, jh, 0, 0, jw, jh);
         const janusImageData = this.janusCtx.getImageData(0, 0, jw, jh);
 
-        // 3) 🚨 거탐 전체 화면 240x135 다운샘플링 스캔
-        this.popupCtx.drawImage(this.videoEl, 0, 0, vWidth, vHeight, 0, 0, 240, 135);
-        const popupImageData = this.popupCtx.getImageData(0, 0, 240, 135);
+        // 3) 🚨 거탐 전체 화면 다운샘플링 스캔
+        // 세로 135px을 기준으로 원본 화면비를 유지한다. 고정 240x135 강제 변환은
+        // 16:10/울트라와이드에서 원형 거탐을 타원으로 만들고 템플릿 비율도 깨뜨린다.
+        // 비정상 메타데이터나 극단적으로 넓은 화면은 메인 스레드 부하를 막기 위해
+        // 360px에서 안전하게 제한한다.
+        const popupHeight = 135;
+        const popupWidth = Math.max(
+          180,
+          Math.min(360, Math.round((vWidth / Math.max(1, vHeight)) * popupHeight))
+        );
+        if (this.popupCanvas.width !== popupWidth || this.popupCanvas.height !== popupHeight) {
+          this.popupCanvas.width = popupWidth;
+          this.popupCanvas.height = popupHeight;
+        }
+        this.popupCtx.drawImage(
+          this.videoEl,
+          0,
+          0,
+          vWidth,
+          vHeight,
+          0,
+          0,
+          popupWidth,
+          popupHeight
+        );
+        const popupImageData = this.popupCtx.getImageData(0, 0, popupWidth, popupHeight);
 
         if (window.imageAnalyzer) {
           // 룬은 가장 먼저 매 프레임 처리한다. 전체 버프 범위의 다중 크기 탐색은
           // 한 프레임씩 건너뛰어 느린 컴퓨터에서도 룬 판정 주기가 밀리지 않게 한다.
+          const safelyAnalyze = (label, analyze) => {
+            try {
+              analyze();
+            } catch (error) {
+              console.error(`[${label}] 프레임 분석 실패`, error);
+            }
+          };
+
           if (document.getElementById('toggle-rune-detection')?.checked) {
-            window.imageAnalyzer.processRuneFrame(runeImageData, null);
-          }
-          if (document.getElementById('toggle-popup-detection')?.checked) {
-            window.imageAnalyzer.processPopupStructureFrame(popupImageData);
+            safelyAnalyze('룬', () => window.imageAnalyzer.processRuneFrame(runeImageData, null));
           }
 
-          // 룬은 매 프레임 먼저 처리하고, 야누스 버프 검색은 약 1.2초마다 실행한다.
-          // 익스트림 골드 자동 감지는 잠시 꺼서 같은 ROI를 번갈아 보느라 야누스를 놓치지 않게 한다.
           this.analysisTick = (this.analysisTick + 1) % this.buffAnalysisModulo;
-          if (this.analysisTick === 0) {
-            window.imageAnalyzer.processJanusTemplateFrame(janusImageData);
+          // 팝업 전수 탐색과 버프 전수 탐색을 같은 150ms 틱에서 실행하지 않는다.
+          if (this.analysisTick % 2 === 1
+              && document.getElementById('toggle-popup-detection')?.checked) {
+            safelyAnalyze('거짓말 탐지기', () => (
+              window.imageAnalyzer.processPopupStructureFrame(popupImageData)
+            ));
+          } else if (this.analysisTick % 2 === 0) {
+            safelyAnalyze('솔 야누스', () => (
+              window.imageAnalyzer.processJanusTemplateFrame(janusImageData)
+            ));
+            if (this.analysisTick === 2
+                && document.getElementById('toggle-exp-detection')?.checked) {
+              safelyAnalyze('익스트림 골드', () => (
+                window.imageAnalyzer.processExpTemplateFrame(janusImageData)
+              ));
+            }
           }
         }
       }
