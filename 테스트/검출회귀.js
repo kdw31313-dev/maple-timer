@@ -24,11 +24,20 @@ const 스크린샷코퍼스폴더 = path.join(
 
 // 과거 대화의 원본 첨부 UUID와 사진 번호다. 원본을 복사하지 않고 직접 읽는다.
 const 실제거탐양성명세 = [
-  ['272fb1f2', 2], ['a482c19f', 1], ['52d4c11f', 4], ['77cb6d4e', 5],
-  ['508dc128', 1], ['52d4c11f', 2], ['508dc128', 5], ['508dc128', 3],
-  ['056f22fa', 2], ['77cb6d4e', 1], ['77cb6d4e', 3], ['a482c19f', 3],
-  ['056f22fa', 3], ['056f22fa', 4], ['272fb1f2', 3], ['272fb1f2', 4],
-  ['272fb1f2', 5]
+  ...[1, 2].map((번호) => ['272fb1f2', 번호, '발동 안내형']),
+  ...[3, 4].map((번호) => ['272fb1f2', 번호, '원형 클릭형']),
+  ['272fb1f2', 5, '버섯 안내창형'],
+  ...[1, 2].map((번호) => ['a482c19f', 번호, '버섯 안내창형']),
+  ...[3, 4].map((번호) => ['a482c19f', 번호, '도형 선택형']),
+  ...[1, 2, 3, 4].map((번호) => ['52d4c11f', 번호, '버섯 안내창형']),
+  ['52d4c11f', 5, '도형 선택형'],
+  ...[1, 2, 3].map((번호) => ['77cb6d4e', 번호, '도형 선택형']),
+  ...[4, 5].map((번호) => ['77cb6d4e', 번호, '버섯 안내창형']),
+  ['508dc128', 1, '반투명 숫자형'],
+  ...[2, 3].map((번호) => ['508dc128', 번호, '버섯 안내창형']),
+  ...[4, 5].map((번호) => ['508dc128', 번호, '파란 이미지 선택형']),
+  ...[1, 2, 3, 4].map((번호) => ['056f22fa', 번호, '버섯 안내창형']),
+  ['056f22fa', 5, '반투명 숫자형']
 ];
 const 야누스양성홀드아웃명세 = [
   ['662d925c', 2], ['1382e968', 3], ['aae7822e', 2],
@@ -234,6 +243,16 @@ async function 이미지데이터읽기(파일, 옵션 = {}) {
     height: 결과.info.height,
     data: new Uint8ClampedArray(결과.data)
   };
+}
+
+async function 거탐영상읽기(파일) {
+  const 메타 = await sharp(파일).metadata();
+  const height = 135;
+  const width = Math.max(
+    180,
+    Math.min(360, Math.round((메타.width / Math.max(1, 메타.height)) * height))
+  );
+  return 이미지데이터읽기(파일, { resize: { width, height } });
 }
 
 async function 버프영상읽기(파일) {
@@ -516,7 +535,7 @@ async function 룬시작양성검사(파일) {
 }
 
 async function 거탐오탐검사(파일) {
-  const 영상 = await 이미지데이터읽기(파일, { resize: 팝업크기 });
+  const 영상 = await 거탐영상읽기(파일);
   const 분석기 = 새분석기();
   const 단일 = 분석기.verifyPopupTemplateMatch(영상, 분석기.findPopupTemplateMatch(영상));
 
@@ -530,14 +549,19 @@ async function 거탐오탐검사(파일) {
   return `최저점수 ${점수표시(단일.score)}, 템플릿 ${단일.type || '없음'}, 제목근거 ${Boolean(단일.titleEvidence)}`;
 }
 
-async function 거탐양성검사(파일) {
-  const 영상 = await 이미지데이터읽기(파일, { resize: 팝업크기 });
+async function 거탐양성검사(파일, 예상유형) {
+  const 영상 = await 거탐영상읽기(파일);
   const 분석기 = 새분석기();
   const 단일 = 분석기.verifyPopupTemplateMatch(영상, 분석기.findPopupTemplateMatch(영상));
   assert.equal(
     단일.verified,
     true,
-    `실제 거탐 단일 프레임을 검증하지 못했습니다. 후보 ${단일.type || '없음'}, 점수 ${점수표시(단일.score)}, 제목근거 ${Boolean(단일.titleEvidence)}`
+    `실제 거탐 단일 프레임을 검증하지 못했습니다. 후보 ${단일.detectedType || 단일.type || '없음'}, 점수 ${점수표시(단일.score)}, 정규점수 ${점수표시(단일.normalizedScore)}, 제목근거 ${Boolean(단일.titleEvidence)}, 색근거 ${JSON.stringify(단일.colorEvidence)}`
+  );
+  assert.equal(
+    단일.detectedType,
+    `${예상유형} 거짓말 탐지기`,
+    `거탐 유형이 다릅니다. 예상 ${예상유형}, 실제 ${단일.detectedType || 단일.type || '없음'}`
   );
 
   for (let 프레임 = 0; 프레임 < 2; 프레임++) {
@@ -545,7 +569,7 @@ async function 거탐양성검사(파일) {
   }
   assert.equal(분석기.popupState.isDetected, true, '실제 거탐 2프레임 뒤에도 감지 상태가 켜지지 않았습니다.');
   assert.equal(범주알림('popup').length, 1, `실제 거탐 알림이 ${범주알림('popup').length}회입니다.`);
-  return `판정 ${단일.type}, 점수 ${점수표시(단일.score)}, 제목근거 ${Boolean(단일.titleEvidence)}`;
+  return `판정 ${단일.detectedType || 단일.type}, 점수 ${점수표시(단일.score)}, 제목근거 ${Boolean(단일.titleEvidence)}`;
 }
 
 async function 야누스오탐검사(파일) {
@@ -757,7 +781,7 @@ async function 실행() {
   const 실제거탐양성사진 = 코퍼스목록(
     이전양성기준폴더,
     실제거탐양성명세,
-    17,
+    29,
     '실제 거짓말탐지기 양성'
   );
   const 야누스양성홀드아웃사진 = 코퍼스목록(
@@ -845,7 +869,8 @@ async function 실행() {
     await 검사(`이벤트창 거탐 오탐 방지 ${순번 + 1}/4`, () => 거탐오탐검사(파일));
   }
   for (const [순번, 파일] of 실제거탐양성사진.entries()) {
-    await 검사(`실제 거탐 양성 ${순번 + 1}/17`, () => 거탐양성검사(파일));
+    const 예상유형 = 실제거탐양성명세[순번][2];
+    await 검사(`실제 거탐 양성 ${순번 + 1}/29 · ${예상유형}`, () => 거탐양성검사(파일, 예상유형));
   }
   for (const [순번, 파일] of 거탐교차음성사진.entries()) {
     await 검사(

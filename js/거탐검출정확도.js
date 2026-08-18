@@ -1,5 +1,5 @@
 /**
- * 실제 거짓말 탐지기 17장과 이벤트 장비 합성창 음성 4장을 기준으로 한
+ * 사용자가 제공한 실제 거짓말 탐지기 29장과 이벤트 장비 합성창 음성 4장을 기준으로 한
  * 거탐 전용 구조 검증기다. 색상 템플릿 한 점수만으로 확정하지 않고,
  * 팝업 유형별 색 구조 또는 고유 미니게임 구조가 함께 보일 때만 확정한다.
  */
@@ -501,7 +501,7 @@
       : banner;
   };
 
-  const verifyTemplateCandidate = (imageData, candidate) => {
+  const verifyTemplateCandidate = (analyzerInstance, imageData, candidate) => {
     if (!candidate?.found) return null;
     const normalizedScore = Number.isFinite(candidate.normalizedScore)
       ? candidate.normalizedScore
@@ -522,15 +522,30 @@
       && colors.yellow >= 0.025) {
       templateEvidence = 'shape-panel-layout';
     } else if (colors && candidate.type === '파란 이미지 선택형 거짓말 탐지기'
-      && normalizedScore <= 0.90
+      && normalizedScore <= 0.99
       && colors.cyan >= 0.50
-      && colors.blue >= 0.55) {
+      && colors.blue >= 0.55
+      // 세로가 긴 1280x790 원본은 운영 화면비(219x135)로 축소하면 점수가
+      // 높아진다. 완화 구간에서는 청색 면적과 붉은 제목을 모두 확인한다.
+      && (normalizedScore <= 0.90 || (
+        colors.cyan >= 0.58
+        && colors.blue >= 0.68
+        && analyzerInstance.findLieDetectorTitleEvidence(imageData, candidate).found
+      ))) {
       templateEvidence = 'blue-panel-layout';
     } else if (colors && candidate.type === '반투명 숫자형 거짓말 탐지기'
-      && normalizedScore <= 0.90
+      && normalizedScore <= 0.94
       && colors.yellow >= 0.07
       && colors.green >= 0.14
-      && colors.red >= 0.04) {
+      && colors.red >= 0.04
+      // 29장 중 경계 사진 한 장은 붉은 제목이 선명하지만 압축·주석 때문에
+      // 템플릿 점수만 0.90을 살짝 넘는다. 완화 구간은 제목과 더 강한 색 구조를
+      // 동시에 요구해 일반 사냥 이펙트가 숫자형으로 들어오는 것을 차단한다.
+      && (normalizedScore <= 0.90 || (
+        colors.red >= 0.12
+        && colors.yellow >= 0.085
+        && analyzerInstance.findLieDetectorTitleEvidence(imageData, candidate).found
+      ))) {
       templateEvidence = 'number-overlay-layout';
     }
 
@@ -591,7 +606,7 @@
       ? match.templateCandidates
       : [match];
     const verifiedTemplates = candidates
-      .map((candidate) => verifyTemplateCandidate(imageData, candidate))
+      .map((candidate) => verifyTemplateCandidate(this, imageData, candidate))
       .filter(Boolean)
       .sort((left, right) => right.evidenceStrength - left.evidenceStrength);
 
