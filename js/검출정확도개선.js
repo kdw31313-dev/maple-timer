@@ -394,7 +394,7 @@
       state.isDetected = false;
       state.lastType = '';
       if (this.onPopupStatusChange && window.screenCaptureManager?.isStreaming) {
-        this.onPopupStatusChange('🟢 거탐 감시 중 (4종 위치·형태 교차 확인)', false);
+        this.onPopupStatusChange('🟢 거탐 감시 중 (6개 유형 위치·형태 교차 확인)', false);
       }
     }
   };

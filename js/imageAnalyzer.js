@@ -781,7 +781,7 @@ class ImageAnalyzer {
   }
 
   /**
-   * 🚨 유저 첨부 실제 스크린샷 20장 기반: 메이플 5대 거짓말 탐지기 전종 정밀 매처
+   * 🚨 유저 첨부 실제 스크린샷 29장 기반: 메이플 거짓말 탐지기 6개 판정 경로 정밀 매처
    *
    * 🅰️ 도형 찾기: 연회색 팝업 + 빨간 "LIE DETECTOR" + 초록 조준점 + 황금 별
    * 🅱️ 비올레타 찾기: 검은 팝업 + 빨간 "LIE DETECTOR" + 핑크 버섯 + 파란 카운트다운
@@ -1054,7 +1054,7 @@ class ImageAnalyzer {
       this.popupState.isDetected = false;
       this.popupState.lastType = '';
       if (this.onPopupStatusChange && window.screenCaptureManager?.isStreaming) {
-        this.onPopupStatusChange('🟢 거탐 감시 중 (4종 정밀 인식)', false);
+        this.onPopupStatusChange('🟢 거탐 감시 중 (6개 유형 정밀 인식)', false);
       }
     }
   }

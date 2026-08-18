@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pill.className = 'status-pill detected';
       } else {
         const isLive = window.screenCaptureManager?.isStreaming;
-        pill.textContent = isLive ? '🟢 거탐 감시 중 (4종 정밀 인식)' : statusText;
+        pill.textContent = isLive ? '🟢 거탐 감시 중 (6개 유형 정밀 인식)' : statusText;
         pill.className = isLive ? 'status-pill active' : 'status-pill';
       }
     }
