@@ -20,6 +20,9 @@
     threshold: match.threshold,
     found: Boolean(match.found),
     type: match.type,
+    detectedType: match.detectedType,
+    structuralEvidence: match.structuralEvidence,
+    structure: match.structure ? { ...match.structure } : null,
     confidence: match.confidence,
     normalizedScore: match.normalizedScore,
     inPreferredBand: match.inPreferredBand,
@@ -38,6 +41,11 @@
 
   const samePopup = (left, right) => {
     if (!left || !right || left.type !== right.type) return false;
+    // 안정 추적용 type은 모든 거탐을 같은 이름으로 정규화하므로 실제 하위 유형도
+    // 반드시 같아야 한다. 몬스터 사망 모션의 색 덩어리와 원형 잔상이 번갈아
+    // 잡혀도 한 거탐의 연속 프레임으로 합산하지 않는다.
+    if ((left.detectedType || right.detectedType)
+      && left.detectedType !== right.detectedType) return false;
     const width = Math.max(1, left.width || 1, right.width || 1);
     const height = Math.max(1, left.height || 1, right.height || 1);
     const sizeRatio = Math.max(
@@ -46,8 +54,30 @@
       (left.height || 1) / Math.max(1, right.height || 1),
       (right.height || 1) / Math.max(1, left.height || 1)
     );
+    const positionDistance = Math.hypot(left.x - right.x, left.y - right.y);
+    if (left.structuralEvidence === 'circular-click-game'
+      || right.structuralEvidence === 'circular-click-game') {
+      const leftCircle = left.structure;
+      const rightCircle = right.structure;
+      if (!leftCircle || !rightCircle) return false;
+      const radiusRatio = Math.max(
+        (leftCircle.radius || 1) / Math.max(1, rightCircle.radius || 1),
+        (rightCircle.radius || 1) / Math.max(1, leftCircle.radius || 1)
+      );
+      const centerDistance = Math.hypot(
+        (leftCircle.centerX || 0) - (rightCircle.centerX || 0),
+        (leftCircle.centerY || 0) - (rightCircle.centerY || 0)
+      );
+      return sizeRatio <= 1.12
+        && radiusRatio <= 1.12
+        && positionDistance <= Math.max(4, Math.min(width, height) * 0.12)
+        && centerDistance <= Math.max(4, Math.min(
+          leftCircle.radius || 1,
+          rightCircle.radius || 1
+        ) * 0.14);
+    }
     return sizeRatio <= 1.25
-      && Math.hypot(left.x - right.x, left.y - right.y) <= Math.max(6, Math.min(width, height) * 0.22);
+      && positionDistance <= Math.max(6, Math.min(width, height) * 0.22);
   };
 
   const pushHistory = (history, evidence, limit = 3) => {
@@ -380,7 +410,13 @@
       state.consecutiveCount = isSame ? state.consecutiveCount + 1 : 1;
       state.lastType = match.type;
       state.lastMatch = copyMatch(match);
-      if (state.consecutiveCount >= state.REQUIRED_CONSECUTIVE
+      // 원형 몬스터 사망 잔상은 약 0.3~0.6초 동안 실제 클릭판과 비슷해질 수 있다.
+      // 원형 클릭형만 3회(약 0.9초) 같은 중심·반지름을 확인하고, 나머지 유형은
+      // 기존 2회 확인을 유지해 알림 반응성을 보존한다.
+      const requiredConsecutive = match.structuralEvidence === 'circular-click-game'
+        ? Math.max(3, state.REQUIRED_CONSECUTIVE)
+        : state.REQUIRED_CONSECUTIVE;
+      if (state.consecutiveCount >= requiredConsecutive
         && !state.isDetected && !state.cooldownActive) {
         this.triggerPopupStructureAlert(match.type);
       }

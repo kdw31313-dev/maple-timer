@@ -154,7 +154,8 @@ const 첨부기준폴더 = path.join(
 const 오탐그룹 = {
   룬: path.join(첨부기준폴더, '37ed626e-d315-4fb0-bc0a-4f9bd0de2363'),
   거짓말탐지기: path.join(첨부기준폴더, '13a52311-b6a9-4f69-b355-d29c2ef7977a'),
-  야누스: path.join(첨부기준폴더, 'f1a9ddba-40dc-433e-bb99-4947595bc0b4')
+  야누스: path.join(첨부기준폴더, 'f1a9ddba-40dc-433e-bb99-4947595bc0b4'),
+  몬스터사망: path.join(첨부기준폴더, '878f9bf0-0b83-4db0-818e-2e4e52442597')
 };
 const 룬양성폴더 = path.join(이전양성기준폴더, '2d8badfd-8104-4f88-9f09-56da17e2d003');
 
@@ -544,7 +545,11 @@ async function 거탐오탐검사(파일) {
   }
 
   const 알림수 = 범주알림('popup').length;
-  assert.equal(알림수, 0, `거탐 알림 ${알림수}회, 판정 ${단일.type}, 점수 ${점수표시(단일.score)}`);
+  assert.equal(
+    알림수,
+    0,
+    `거탐 알림 ${알림수}회, 판정 ${단일.detectedType || 단일.type}, 구조 ${단일.structuralEvidence || '없음'}, 점수 ${점수표시(단일.score)}, 구조근거 ${JSON.stringify(단일.structure || {})}`
+  );
   assert.equal(분석기.popupState.isDetected, false, '거탐 감지 상태가 켜졌습니다.');
   return `최저점수 ${점수표시(단일.score)}, 템플릿 ${단일.type || '없음'}, 제목근거 ${Boolean(단일.titleEvidence)}`;
 }
@@ -564,12 +569,17 @@ async function 거탐양성검사(파일, 예상유형) {
     `거탐 유형이 다릅니다. 예상 ${예상유형}, 실제 ${단일.detectedType || 단일.type || '없음'}`
   );
 
-  for (let 프레임 = 0; 프레임 < 2; 프레임++) {
+  const 필요프레임 = 예상유형 === '원형 클릭형' ? 3 : 2;
+  for (let 프레임 = 0; 프레임 < 필요프레임; 프레임++) {
     분석기.processPopupStructureFrame(영상);
   }
-  assert.equal(분석기.popupState.isDetected, true, '실제 거탐 2프레임 뒤에도 감지 상태가 켜지지 않았습니다.');
+  assert.equal(
+    분석기.popupState.isDetected,
+    true,
+    `실제 거탐 ${필요프레임}프레임 뒤에도 감지 상태가 켜지지 않았습니다.`
+  );
   assert.equal(범주알림('popup').length, 1, `실제 거탐 알림이 ${범주알림('popup').length}회입니다.`);
-  return `판정 ${단일.detectedType || 단일.type}, 점수 ${점수표시(단일.score)}, 제목근거 ${Boolean(단일.titleEvidence)}`;
+  return `판정 ${단일.detectedType || 단일.type}, ${필요프레임}회 확인, 점수 ${점수표시(단일.score)}, 제목근거 ${Boolean(단일.titleEvidence)}`;
 }
 
 async function 야누스오탐검사(파일) {
@@ -774,9 +784,48 @@ async function 실행() {
     return '거탐·야누스·골드의 이전 화면 공유 이력 제거 완료';
   });
 
+  await 검사('거탐 하위 유형 전환과 원형 사망 모션 누적 차단', async () => {
+    const 분석기 = 새분석기();
+    const 공통 = {
+      found: true,
+      verified: true,
+      type: '거짓말 탐지기 팝업',
+      x: 90,
+      y: 40,
+      width: 57,
+      height: 57,
+      confidence: 0.9
+    };
+    const 원형 = {
+      ...공통,
+      detectedType: '원형 클릭형 거짓말 탐지기',
+      structuralEvidence: 'circular-click-game',
+      structure: { centerX: 118, centerY: 68, radius: 42 }
+    };
+    const 판정열 = [
+      { ...공통, detectedType: '버섯 안내창형 거짓말 탐지기' },
+      { ...원형 },
+      { ...원형 },
+      { ...원형 }
+    ];
+    분석기.findPopupTemplateMatch = () => ({});
+    분석기.verifyPopupTemplateMatch = () => 판정열.shift();
+    const 빈영상 = { width: 240, height: 135, data: new Uint8ClampedArray(240 * 135 * 4) };
+
+    분석기.processPopupStructureFrame(빈영상);
+    분석기.processPopupStructureFrame(빈영상);
+    assert.equal(범주알림('popup').length, 0, '다른 하위 유형 2개를 연속 거탐으로 합산했습니다.');
+    분석기.processPopupStructureFrame(빈영상);
+    assert.equal(범주알림('popup').length, 0, '원형형을 2회만 보고 알렸습니다.');
+    분석기.processPopupStructureFrame(빈영상);
+    assert.equal(범주알림('popup').length, 1, '안정된 실제 원형형을 3회 확인하고도 알리지 않았습니다.');
+    return '하위 유형 일치 필수, 원형형 동일 중심·반지름 3회 확인';
+  });
+
   const 룬사진 = 사진목록(오탐그룹.룬, 4);
   const 거탐사진 = 사진목록(오탐그룹.거짓말탐지기, 4);
   const 야누스사진 = 사진목록(오탐그룹.야누스, 3);
+  const 몬스터사망사진 = 사진목록(오탐그룹.몬스터사망, 4);
   const 룬양성사진 = 사진목록(룬양성폴더, 5);
   const 실제거탐양성사진 = 코퍼스목록(
     이전양성기준폴더,
@@ -867,6 +916,9 @@ async function 실행() {
   }
   for (const [순번, 파일] of 거탐사진.entries()) {
     await 검사(`이벤트창 거탐 오탐 방지 ${순번 + 1}/4`, () => 거탐오탐검사(파일));
+  }
+  for (const [순번, 파일] of 몬스터사망사진.entries()) {
+    await 검사(`몬스터 사망 모션 거탐 오탐 방지 ${순번 + 1}/4`, () => 거탐오탐검사(파일));
   }
   for (const [순번, 파일] of 실제거탐양성사진.entries()) {
     const 예상유형 = 실제거탐양성명세[순번][2];
