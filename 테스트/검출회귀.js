@@ -140,7 +140,9 @@ window.screenCaptureManager.isStreaming = true;
 
 const ImageAnalyzer = window.imageAnalyzer.constructor;
 const 룬ROI = { ...window.screenCaptureManager.runeRoi };
-const 버프ROI = { ...window.screenCaptureManager.janusRoi };
+const 버프ROI = window.screenCaptureManager.janusRoi
+  ? { ...window.screenCaptureManager.janusRoi }
+  : { x: 55, y: 0, w: 44, h: 24 };
 const 팝업크기 = {
   width: window.screenCaptureManager.popupCanvas.width,
   height: window.screenCaptureManager.popupCanvas.height
@@ -558,6 +560,16 @@ async function 거탐양성검사(파일, 예상유형) {
   const 영상 = await 거탐영상읽기(파일);
   const 분석기 = 새분석기();
   const 단일 = 분석기.verifyPopupTemplateMatch(영상, 분석기.findPopupTemplateMatch(영상));
+  if (원시후보진단) {
+    console.log(JSON.stringify({
+      진단: '거탐 양성 구조',
+      파일: path.relative(프로젝트폴더, 파일),
+      예상유형,
+      판정유형: 단일.detectedType || 단일.type || null,
+      구조근거: 단일.structuralEvidence || null,
+      구조: 단일.structure || null
+    }, null, 2));
+  }
   assert.equal(
     단일.verified,
     true,
@@ -580,6 +592,31 @@ async function 거탐양성검사(파일, 예상유형) {
   );
   assert.equal(범주알림('popup').length, 1, `실제 거탐 알림이 ${범주알림('popup').length}회입니다.`);
   return `판정 ${단일.detectedType || 단일.type}, ${필요프레임}회 확인, 점수 ${점수표시(단일.score)}, 제목근거 ${Boolean(단일.titleEvidence)}`;
+}
+
+async function 이동원형거탐양성검사(파일들) {
+  const 영상들 = await Promise.all(파일들.map((파일) => 거탐영상읽기(파일)));
+  const 분석기 = 새분석기();
+  const 판정들 = 영상들.map((영상) => (
+    분석기.verifyPopupTemplateMatch(영상, 분석기.findPopupTemplateMatch(영상))
+  ));
+  for (const 판정 of 판정들) {
+    assert.equal(판정.verified, true, '이동 원형 거탐의 실제 프레임을 검증하지 못했습니다.');
+    assert.equal(
+      판정.detectedType,
+      '원형 클릭형 거짓말 탐지기',
+      `이동 원형 거탐 유형이 다릅니다: ${판정.detectedType || 판정.type || '없음'}`
+    );
+  }
+
+  // 서로 다른 시점의 실제 사진을 번갈아 넣어 원형 판이 화면을 이동해도
+  // 위치 때문에 연속 판정이 초기화되지 않는지 확인한다.
+  for (const 영상 of [영상들[0], 영상들[1], 영상들[0]]) {
+    분석기.processPopupStructureFrame(영상);
+  }
+  assert.equal(분석기.popupState.isDetected, true, '움직이는 실제 원형 거탐을 3회 보고도 감지하지 못했습니다.');
+  assert.equal(범주알림('popup').length, 1, `움직이는 실제 원형 거탐 알림이 ${범주알림('popup').length}회입니다.`);
+  return `실제 위치 ${판정들.map((판정) => `${Math.round(판정.x)},${Math.round(판정.y)}`).join(' → ')}`;
 }
 
 async function 야누스오탐검사(파일) {
@@ -787,7 +824,7 @@ async function 실행() {
     return '거탐·야누스·골드의 이전 화면 공유 이력 제거 완료';
   });
 
-  await 검사('거탐 하위 유형 전환과 원형 사망 모션 누적 차단', async () => {
+  await 검사('거탐 하위 유형 전환과 이동 원형 추적', async () => {
     const 분석기 = 새분석기();
     const 공통 = {
       found: true,
@@ -808,8 +845,20 @@ async function 실행() {
     const 판정열 = [
       { ...공통, detectedType: '버섯 안내창형 거짓말 탐지기' },
       { ...원형 },
-      { ...원형 },
-      { ...원형 }
+      {
+        ...원형,
+        x: 35,
+        y: 12,
+        structure: { centerX: 63, centerY: 40, radius: 41 }
+      },
+      {
+        ...원형,
+        x: 145,
+        y: 62,
+        width: 61,
+        height: 61,
+        structure: { centerX: 175, centerY: 92, radius: 45 }
+      }
     ];
     분석기.findPopupTemplateMatch = () => ({});
     분석기.verifyPopupTemplateMatch = () => 판정열.shift();
@@ -819,10 +868,10 @@ async function 실행() {
     분석기.processPopupStructureFrame(빈영상);
     assert.equal(범주알림('popup').length, 0, '다른 하위 유형 2개를 연속 거탐으로 합산했습니다.');
     분석기.processPopupStructureFrame(빈영상);
-    assert.equal(범주알림('popup').length, 0, '원형형을 2회만 보고 알렸습니다.');
+    assert.equal(범주알림('popup').length, 0, '이동하는 원형형을 2회만 보고 알렸습니다.');
     분석기.processPopupStructureFrame(빈영상);
-    assert.equal(범주알림('popup').length, 1, '안정된 실제 원형형을 3회 확인하고도 알리지 않았습니다.');
-    return '하위 유형 일치 필수, 원형형 동일 중심·반지름 3회 확인';
+    assert.equal(범주알림('popup').length, 1, '서로 다른 위치로 이동한 원형형을 3회 확인하고도 알리지 않았습니다.');
+    return '하위 유형 일치 필수, 원형 위치 이동 허용, 크기·구조 3회 확인';
   });
 
   const 룬사진 = 사진목록(오탐그룹.룬, 4);
@@ -927,6 +976,10 @@ async function 실행() {
     const 예상유형 = 실제거탐양성명세[순번][2];
     await 검사(`실제 거탐 양성 ${순번 + 1}/29 · ${예상유형}`, () => 거탐양성검사(파일, 예상유형));
   }
+  await 검사(
+    '실제 원형 클릭형 거탐 위치 이동 연속 추적',
+    () => 이동원형거탐양성검사(실제거탐양성사진.slice(2, 4))
+  );
   for (const [순번, 파일] of 거탐교차음성사진.entries()) {
     await 검사(
       `일반 사냥 화면 거탐 교차 오탐 방지 ${순번 + 1}/${거탐교차음성사진.length}`,
