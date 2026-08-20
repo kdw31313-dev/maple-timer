@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>개인용 메이플 사냥 타이머</title>
+  <title>메이플 룬·거탐 저부하 감지기</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,8 +16,8 @@
       <div class="logo-area">
         <div class="logo-icon">🍁</div>
         <div>
-          <h1>메이플 사냥 헬퍼 타이머</h1>
-          <p class="subtitle">100% 브라우저 화면 분석 기반 · 변조/자동화 없음</p>
+          <h1>메이플 룬·거탐 저부하 감지기</h1>
+          <p class="subtitle">룬 150ms · 거탐 300ms 집중 감시 · 변조/자동화 없음</p>
         </div>
       </div>
       <div class="header-actions">
@@ -25,8 +25,8 @@
           <span class="status-dot"></span>
           <span id="stream-status-text">화면 공유 대기 중</span>
         </div>
-        <button id="btn-pip-toggle" class="btn btn-secondary" title="게임 위에 플로팅 타이머 노출">
-          <span class="icon">📺</span> PIP 플로팅 창
+        <button id="btn-pip-toggle" class="btn btn-secondary" title="게임 위에 룬·거탐 상태 표시">
+          <span class="icon">📺</span> PIP 감지 상태
         </button>
         <button id="btn-export-settings" class="btn btn-secondary btn-sm" title="설정 1클릭 백업">
           <span class="icon">💾</span> 설정 백업
@@ -123,8 +123,8 @@
             <div class="tool-title">
               <span class="color-badge popup-badge"></span>
               <div>
-                <strong>🚨 거짓말 탐지기 6개 유형 정밀 감지</strong>
-                <div style="font-size:0.75rem; color:var(--text-muted);">6개 유형을 실제 화면과 비교합니다. 몬스터 사망 모션과 비슷한 원형 클릭형은 3회, 나머지는 2회 연속 확인합니다.</div>
+                <strong>🚨 거짓말 탐지기 7개 유형 정밀 감지</strong>
+                <div style="font-size:0.75rem; color:var(--text-muted);">화면 어디든 나타나는 작은 클릭 준비 패널까지 전체 화면에서 찾습니다. 원형 클릭형은 3회, 나머지는 2회 연속 확인합니다.</div>
               </div>
             </div>
             <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -147,70 +147,23 @@
             </div>
           </div>
 
-          <!-- ⚡ 6차 솔 야누스 스킬 독립 감지 (버프 아이콘 & 숫자 픽셀 카운트다운 추적) -->
-          <div class="roi-tool-item">
+          <div class="roi-tool-item" style="border:1px solid rgba(46, 204, 113, 0.45); background:rgba(46, 204, 113, 0.10);">
             <div class="tool-title">
-              <span class="color-badge janus-badge"></span>
+              <span class="color-badge" style="background:#2ecc71; width:12px; height:12px; border-radius:50%; display:inline-block;"></span>
               <div>
-                <strong>⚡ 솔 야누스 버프 아이콘 정밀 감지</strong>
-                <div style="font-size:0.75rem; color:var(--text-muted);">지정 범위 전체에서 야누스를 찾고, 최근 3회 중 2회 확인하면 시작합니다. 숫자가 잠시 없어도 아이콘이 유지되며, 둘 다 2초 이상 사라질 때 종료됩니다.</div>
+                <strong>🪶 저부하 집중 감지 모드</strong>
+                <div style="font-size:0.75rem; color:var(--text-muted);">야누스·익스트림 골드 화면 분석을 제거하고 룬과 거탐만 기존 주기로 검사합니다.</div>
               </div>
-            </div>
-            <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <div class="sound-select-box" style="display:inline-flex; align-items:center; gap:4px;">
-                <select id="select-sound-janus" class="select-sound-preset" style="padding:3px 6px; font-size:0.75rem; border-radius:4px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border-color);">
-                  <option value="beep">⚡ 전자 삐삐음 (야누스 기본)</option>
-                  <option value="rune">🎶 아르페지오</option>
-                  <option value="siren">🚨 비상 사이렌</option>
-                  <option value="chime">🔔 맑은 벨소리</option>
-                  <option value="bell">🔔 딩동 듀얼벨</option>
-                  <option value="harp">🎵 하프 아르페지오</option>
-                </select>
-                <button class="btn btn-tiny btn-outline btn-test-sound" data-sound-cat="janus" style="padding:3px 6px; font-size:0.75rem;">🔊 테스트</button>
-              </div>
-              <label class="switch">
-                <input type="checkbox" id="toggle-janus-detection" checked>
-                <span class="slider"></span>
-              </label>
-              <button id="btn-select-janus-roi" class="btn btn-small btn-outline">야누스 버프 범위 지정</button>
-              <span class="status-pill" id="janus-status-pill">대기 중</span>
             </div>
           </div>
 
-          <!-- 🏆 익스트림 골드 (Extreme Gold 30분 황금 물약) 전용 감지 -->
-          <div class="roi-tool-item">
-            <div class="tool-title">
-              <span class="color-badge exp-badge" style="background:var(--accent-gold); width:12px; height:12px; border-radius:50%; display:inline-block;"></span>
-              <div>
-                <strong>🏆 익스트림 골드 병 아이콘 정밀 감지</strong>
-                <div style="font-size:0.75rem; color:var(--text-muted);">실제 병 모양과 버프 슬롯 위치를 교차 확인해 시작·종료 알림을 자동으로 제공합니다.</div>
-              </div>
-            </div>
-            <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <div class="sound-select-box" style="display:inline-flex; align-items:center; gap:4px;">
-                <select id="select-sound-exp" class="select-sound-preset" style="padding:3px 6px; font-size:0.75rem; border-radius:4px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border-color);">
-                  <option value="chime">🔔 맑은 벨소리 (도핑 기본)</option>
-                  <option value="bell">🔔 딩동 듀얼벨</option>
-                  <option value="harp">🎵 하프 아르페지오</option>
-                  <option value="rune">🎶 아르페지오</option>
-                  <option value="beep">⚡ 전자 삐삐음</option>
-                  <option value="siren">🚨 비상 사이렌</option>
-                </select>
-                <button class="btn btn-tiny btn-outline btn-test-sound" data-sound-cat="exp" style="padding:3px 6px; font-size:0.75rem;">🔊 테스트</button>
-              </div>
-              <label class="switch">
-                <input type="checkbox" id="toggle-exp-detection" checked>
-                <span class="slider"></span>
-              </label>
-              <span class="status-pill" id="exp-status-pill">대기 중</span>
-              <button id="btn-capture-buff-snapshot" class="btn btn-small btn-secondary" onclick="if(window.screenCaptureManager) window.screenCaptureManager.captureBuffSnapshot();">📸 버프 캡처 학습</button>
           <!-- 📱 텔레그램 봇 알림 연동 (실시간 메세지 전송) -->
           <div class="roi-tool-item" style="border:1px solid rgba(0, 136, 204, 0.4); background:rgba(0, 136, 204, 0.1);">
             <div class="tool-title">
               <span class="color-badge" style="background:#0088cc; width:12px; height:12px; border-radius:50%; display:inline-block;"></span>
               <div>
                 <strong>✈️ 텔레그램 봇 실시간 알림 연동</strong>
-                <div style="font-size:0.75rem; color:var(--text-muted);">모든 사건(룬/거탐/야누스/도핑/쿠폰) 발생 시 탐지 순간의 전체 화면과 판정 영역을 텔레그램으로 전송합니다.</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">룬 또는 거탐 발생 시 탐지 순간의 전체 화면과 실제 판정 영역을 텔레그램으로 전송합니다.</div>
               </div>
             </div>
             <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -225,49 +178,6 @@
               </label>
               <span class="status-pill active" id="telegram-status-pill">🟢 연동 완료</span>
             </div>
-          </div>
-          <div class="roi-tool-item" style="border:1px solid rgba(155, 89, 182, 0.55); background:rgba(155, 89, 182, 0.12);">
-            <div class="tool-title">
-              <span class="color-badge janus-badge"></span>
-              <div>
-                <strong>🧪 야누스 텔레그램 학습 수집</strong>
-                <div style="font-size:0.75rem; color:var(--text-muted);">90분 동안 정상·애매·숫자 없음·종료 후보를 균형 수집해 2분마다 최대 10장의 원본 버프 범위를 전송합니다.</div>
-              </div>
-            </div>
-            <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <button id="btn-janus-learning-start" class="btn btn-small btn-primary">▶ 90분 수집 시작</button>
-              <button id="btn-janus-learning-stop" class="btn btn-small btn-secondary hidden">■ 수집 종료</button>
-              <span class="status-pill" id="janus-learning-status">⚪ 수집 대기</span>
-              <span id="janus-learning-count" style="font-size:0.78rem; color:var(--text-muted);">수집 0장 · 전송 0장</span>
-            </div>
-          </div>
-          <div class="roi-tool-item" style="border:1px solid rgba(231, 76, 60, 0.55); background:rgba(231, 76, 60, 0.10);">
-            <div class="tool-title">
-              <span class="color-badge" style="background:#e74c3c; width:12px; height:12px; border-radius:50%; display:inline-block;"></span>
-              <div>
-                <strong>🎥 버프 영상 자동 수집</strong>
-                <div style="font-size:0.75rem; color:var(--text-muted);">버튼 한 번으로 야누스 전체 주기와 익스트림 골드 시작·이동·종료 임박 영상을 자동 수집해 텔레그램으로 전송합니다.</div>
-              </div>
-            </div>
-            <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <button id="btn-buff-video-start" class="btn btn-small btn-primary">🎥 자동 영상 수집 시작</button>
-              <button id="btn-buff-video-stop" class="btn btn-small btn-secondary hidden">⏹ 영상 수집 종료</button>
-              <button id="btn-buff-video-now" class="btn btn-small btn-outline">📌 지금 장면 저장</button>
-              <span class="status-pill" id="buff-video-status">⚪ 수집 대기</span>
-              <span id="buff-video-count" style="font-size:0.78rem; color:var(--text-muted);">수집 0:00 · 전송 0개</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 📸 버프 스크린샷 AI 학습 미리보기 창 -->
-        <div id="buff-snapshot-panel" class="info-alert hidden" style="margin-top:12px; background:rgba(155, 89, 182, 0.15); border-color:rgba(155, 89, 182, 0.4);">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <strong>📸 현재 캡처된 내 도핑 버프 아이콘 분석 결과:</strong>
-            <button class="btn btn-small btn-outline" onclick="document.getElementById('buff-snapshot-panel').classList.add('hidden');">닫기</button>
-          </div>
-          <div style="display:flex; align-items:center; gap:16px;">
-            <canvas id="buff-snapshot-canvas" style="border:1px solid #9b59b6; border-radius:4px; background:#000; height:48px; object-fit:contain;"></canvas>
-            <div id="buff-snapshot-info" style="font-size:0.85rem; color:#e0e0e0;">버프 캡처 버튼을 누르시면 내 버프 아이콘의 색상이 실시간 학습됩니다.</div>
           </div>
         </div>
       </section>
@@ -314,43 +224,7 @@
           </div>
         </div>
 
-        <!-- 솔 야누스 재사용 타이머 -->
-        <div class="card timer-card janus-card">
-          <div class="card-header">
-            <h2><span class="icon">🌌</span> 솔 야누스 주기 타이머</h2>
-            <div class="cycle-selector">
-              <label class="radio-label">
-                <input type="radio" name="janus-cycle" value="70"> 70초 주기
-              </label>
-              <label class="radio-label">
-                <input type="radio" name="janus-cycle" value="80" checked> 80초 주기
-              </label>
-            </div>
-          </div>
-
-          <div class="timer-display-area compact">
-            <div class="timer-clock" id="janus-timer-clock">01:20</div>
-            <div class="progress-bar-container">
-              <div class="progress-bar janus-bar" id="janus-progress-bar" style="width: 100%;"></div>
-            </div>
-          </div>
-
-          <div class="timer-controls">
-            <button id="btn-janus-start" class="btn btn-primary btn-large btn-janus">
-              <span class="icon">⚡</span> 야누스 시작 (Spacebar)
-            </button>
-            <button id="btn-janus-reset" class="btn btn-secondary btn-large">
-              <span class="icon">🔄</span> 리셋
-            </button>
-          </div>
-
-          <div class="timer-settings-inline">
-            <label><input type="checkbox" id="chk-janus-prealert" checked> 5초 전 알림</label>
-            <label><input type="checkbox" id="chk-janus-endalert" checked> 종료 즉시 알림</label>
-          </div>
-        </div>
-
-        <!-- 사냥 필수 도핑 버프 타이머 (재획비 / MVP / 익스골드) -->
+        <!-- 사냥 필수 도핑 버프 타이머 (재획비 / MVP) -->
         <div class="card timer-card doping-card">
           <div class="card-header">
             <h2><span class="icon">🍾</span> 사냥 필수 도핑 타이머</h2>
@@ -383,18 +257,6 @@
               </div>
             </div>
 
-            <!-- 3) 익스트림 골드 / 몬파 물약 (30분) -->
-            <div class="doping-item">
-              <div class="doping-info">
-                <span class="doping-name">🧪 익스 골드 (30분)</span>
-                <span class="doping-clock" id="doping-exgold-clock">30:00</span>
-              </div>
-              <div class="doping-controls">
-                <button id="btn-exgold-start" class="btn btn-xs btn-primary">시작</button>
-                <button id="btn-exgold-pause" class="btn btn-xs btn-warning hidden">일시정지</button>
-                <button id="btn-exgold-reset" class="btn btn-xs btn-secondary">리셋</button>
-              </div>
-            </div>
           </div>
 
           <div class="timer-settings-inline" style="margin-top:10px;">
@@ -406,7 +268,7 @@
         <!-- 팝업 인식 학습 및 유형별 안내 파트 -->
         <div class="card popup-guide-card">
           <div class="card-header">
-            <h2><span class="icon">⚠️</span> 팝업 감지 6개 유형 모니터링</h2>
+            <h2><span class="icon">⚠️</span> 팝업 감지 7개 유형 모니터링</h2>
           </div>
           <div class="popup-grid">
             <div class="popup-item">
@@ -424,6 +286,14 @@
             <div class="popup-item">
               <span class="popup-tag">투명 도형</span>
               <p>배경 방해/투명 객체 비올레타</p>
+            </div>
+            <div class="popup-item">
+              <span class="popup-tag">클릭 준비</span>
+              <p>별빛 패널·노란 카운트다운</p>
+            </div>
+            <div class="popup-item">
+              <span class="popup-tag">원형 클릭</span>
+              <p>청회색 원형 미니게임 판</p>
             </div>
           </div>
         </div>
@@ -508,7 +378,7 @@
 
     <footer class="roi-modal-footer">
       <div class="footer-tip-box">
-        💡 <strong>선택 예시:</strong> 미니맵/버프의 헤더 및 외곽선은 빼고 <strong>아이콘이 표시되는 내부 영역만 드래그</strong>하시면 탐지 오탐이 0%로 완벽해집니다! (마우스 휠 스크롤로 확대/축소 가능)
+        💡 <strong>선택 예시:</strong> 미니맵의 헤더와 외곽선은 빼고 <strong>룬 표식이 표시되는 내부 영역만 드래그</strong>해 주세요. (마우스 휠 스크롤로 확대/축소 가능)
       </div>
     </footer>
   </div>
@@ -516,22 +386,15 @@
   <!-- 스크립트 불러오기 모듈 -->
   <script src="js/storage.js?v=20260812-3"></script>
   <script src="js/telegramNotifier.js?v=20260730-1"></script>
-  <script src="js/버프영상수집기.js?v=20260730-3"></script>
   <script src="js/audioNotifier.js"></script>
   <script src="js/timerModule.js"></script>
-  <script src="js/버프인식기기준.js?v=20260730-1"></script>
-  <script src="js/야누스인식기준.js?v=20260730-1"></script>
-  <script src="js/익스트림골드인식기준.js?v=20260730-1"></script>
-  <script src="js/영상학습인식기준.js?v=20260730-1"></script>
   <script src="js/거탐인식기기준.js?v=20260818-1"></script>
   <script src="js/imageAnalyzer.js?v=20260818-1"></script>
-  <script src="js/검출정확도개선.js?v=20260819-1"></script>
+  <script src="js/검출정확도개선.js?v=20260820-1"></script>
   <script src="js/룬검출정확도.js?v=20260812-2"></script>
-  <script src="js/거탐검출정확도.js?v=20260818-1"></script>
-  <script src="js/버프검출정확도.js?v=20260812-2"></script>
-  <script src="js/screenCapture.js?v=20260818-1"></script>
-  <script src="js/야누스학습수집기.js?v=20260729-3"></script>
-  <script src="js/pipController.js"></script>
-  <script src="js/app.js?v=20260818-1"></script>
+  <script src="js/거탐검출정확도.js?v=20260820-1"></script>
+  <script src="js/screenCapture.js?v=20260820-1"></script>
+  <script src="js/pipController.js?v=20260820-1"></script>
+  <script src="js/app.js?v=20260820-1"></script>
 </body>
 </html>

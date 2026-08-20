@@ -718,17 +718,16 @@ async function 양성프레임읽기(번호, 옵션 = {}) {
 async function 실행() {
   console.log('메이플 검출 회귀 테스트');
   console.log(`sharp: ${샤프위치}`);
-  console.log(`운영 ROI: 룬 ${JSON.stringify(룬ROI)}, 버프 ${JSON.stringify(버프ROI)}, 팝업 ${팝업크기.width}x${팝업크기.height}`);
+  console.log(`운영 ROI: 룬 ${JSON.stringify(룬ROI)}, 팝업 ${팝업크기.width}x${팝업크기.height}`);
   console.log('');
 
-  await 검사('운영 로드 순서와 골드 활성화 설정', async () => {
+  await 검사('저부하 운영 로드 순서와 버프 분석 제거', async () => {
     const html = fs.readFileSync(path.join(프로젝트폴더, 'index.html'), 'utf8');
     const 로드순서 = [
       'js/imageAnalyzer.js',
       'js/검출정확도개선.js',
       'js/룬검출정확도.js',
       'js/거탐검출정확도.js',
-      'js/버프검출정확도.js',
       'js/screenCapture.js'
     ];
     let 이전위치 = -1;
@@ -737,18 +736,22 @@ async function 실행() {
       assert.ok(위치 > 이전위치, `${파일}의 운영 로드 순서가 잘못됐거나 누락됐습니다.`);
       이전위치 = 위치;
     }
-    assert.match(
-      html,
-      /<input\s+type="checkbox"\s+id="toggle-exp-detection"\s+checked>/,
-      '익스트림 골드 운영 토글이 기본 활성화 상태가 아닙니다.'
-    );
-    const storageSource = fs.readFileSync(path.join(프로젝트폴더, 'js', 'storage.js'), 'utf8');
-    const appSource = fs.readFileSync(path.join(프로젝트폴더, 'js', 'app.js'), 'utf8');
-    assert.match(storageSource, /expAutoDetectionEnabled:\s*true/, '골드 저장 기본값이 활성화가 아닙니다.');
-    assert.match(storageSource, /EXP_ALERT_ACTIVATION_KEY/, '기존 꺼짐 설정의 1회 활성화 이전이 없습니다.');
-    assert.match(appSource, /expAutoDetectionEnabled:\s*document\.getElementById\('toggle-exp-detection'\)/, '골드 토글 선택이 저장되지 않습니다.');
-    assert.equal(window.imageAnalyzer.expBuffState.disabled, false, '운영 골드 분석 상태가 활성화가 아닙니다.');
-    return '정확도 모듈 3개 순서 정상, 기본 활성화와 사용자 토글 저장 정상';
+    for (const 제거파일 of [
+      'js/버프인식기준.js',
+      'js/야누스인식기준.js',
+      'js/익스트림골드인식기준.js',
+      'js/영상학습인식기준.js',
+      'js/버프검출정확도.js',
+      'js/버프영상수집기.js',
+      'js/야누스학습수집기.js'
+    ]) {
+      assert.equal(html.includes(`src="${제거파일}`), false, `${제거파일}이 운영 화면에서 아직 로드됩니다.`);
+    }
+    const captureSource = fs.readFileSync(path.join(프로젝트폴더, 'js', 'screenCapture.js'), 'utf8');
+    assert.doesNotMatch(captureSource, /processJanusTemplateFrame|processExpTemplateFrame|janusCanvas/);
+    assert.match(captureSource, /},\s*150\);/);
+    assert.match(captureSource, /analysisTick\s*=\s*\(this\.analysisTick\s*\+\s*1\)\s*%\s*2/);
+    return '룬 150ms·거탐 300ms 유지, 버프 캡처·분석 운영 로드 제거';
   });
 
   await 검사('룬 배경 기억 초기화', async () => {

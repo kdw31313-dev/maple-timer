@@ -22,6 +22,7 @@
     type: match.type,
     detectedType: match.detectedType,
     structuralEvidence: match.structuralEvidence,
+    evidenceBox: match.evidenceBox ? { ...match.evidenceBox } : null,
     structure: match.structure ? { ...match.structure } : null,
     confidence: match.confidence,
     normalizedScore: match.normalizedScore,
@@ -430,7 +431,7 @@
       state.isDetected = false;
       state.lastType = '';
       if (this.onPopupStatusChange && window.screenCaptureManager?.isStreaming) {
-        this.onPopupStatusChange('🟢 거탐 감시 중 (6개 유형 위치·형태 교차 확인)', false);
+        this.onPopupStatusChange('🟢 거탐 감시 중 (7개 유형 위치·형태 교차 확인)', false);
       }
     }
   };

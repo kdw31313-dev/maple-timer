@@ -283,6 +283,160 @@
     return best;
   };
 
+  // 2026-08-20 실제 영상 2개와 사용자가 잘라 준 클릭 준비 패널 3장을 기준으로
+  // 만든 8x8 색 배치다. 원본 영상/스크린샷은 저장소에 넣지 않는다.
+  const CLICK_PROMPT_COLOR_PROFILE = [[[95,120,153],[95,111,142],[79,76,114],[111,97,111],[101,83,122],[73,76,119],[76,95,138],[94,102,130]],[[71,100,134],[74,80,108],[92,80,113],[119,93,106],[121,84,119],[115,81,126],[90,74,120],[74,74,108]],[[87,102,124],[81,76,101],[111,91,100],[122,95,103],[129,93,107],[134,88,119],[112,75,127],[50,44,84]],[[97,103,122],[81,77,95],[102,85,95],[107,89,99],[109,82,105],[118,80,118],[112,72,122],[72,61,83]],[[104,97,136],[87,86,94],[121,104,81],[120,101,90],[132,113,109],[122,89,109],[111,73,121],[97,87,107]],[[107,88,151],[93,90,97],[114,100,82],[117,95,91],[127,101,96],[128,94,105],[113,84,124],[82,89,104]],[[132,94,153],[116,94,124],[106,95,94],[106,88,93],[112,92,103],[123,95,116],[130,118,154],[118,123,152]],[[145,113,111],[172,151,121],[181,157,114],[163,123,106],[160,129,103],[162,141,115],[178,150,132],[172,146,111]]];
+
+  const findClickInstructionPanel = (imageData) => {
+    const { data, width, height } = imageData;
+    const baseScale = height / 135;
+    const stride = width + 1;
+    const integralSize = stride * (height + 1);
+    const yellow = new Uint32Array(integralSize);
+    const tint = new Uint32Array(integralSize);
+    const rgb = [0, 1, 2].map(() => new Uint32Array(integralSize));
+
+    for (let y = 1; y <= height; y++) {
+      let rowYellow = 0;
+      let rowTint = 0;
+      for (let x = 1; x <= width; x++) {
+        const pixel = ((y - 1) * width + x - 1) * 4;
+        const r = data[pixel];
+        const g = data[pixel + 1];
+        const b = data[pixel + 2];
+        if (r > 145 && g > 105 && b < 115 && r > b * 1.35 && g > b * 1.05) {
+          rowYellow++;
+        }
+        if (r >= 55 && b >= 55 && (r - g >= 7 || b - g >= 10)) rowTint++;
+        const position = y * stride + x;
+        yellow[position] = yellow[position - stride] + rowYellow;
+        tint[position] = tint[position - stride] + rowTint;
+        for (let channel = 0; channel < 3; channel++) {
+          rgb[channel][position] = rgb[channel][position - stride]
+            + rgb[channel][position - 1]
+            - rgb[channel][position - stride - 1]
+            + data[pixel + channel];
+        }
+      }
+    }
+
+    const sumRect = (integral, x, y, candidateWidth, candidateHeight) => {
+      const x2 = x + candidateWidth;
+      const y2 = y + candidateHeight;
+      return integral[y2 * stride + x2] - integral[y2 * stride + x]
+        - integral[y * stride + x2] + integral[y * stride + x];
+    };
+    const candidates = [];
+    const heights = [22, 26, 30]
+      .map((value) => Math.max(16, Math.round(value * baseScale)))
+      .filter((value, index, values) => values.indexOf(value) === index && value < height);
+    const step = Math.max(2, Math.round(3 * baseScale));
+    const pixelScale = baseScale * baseScale;
+    const activeBandMinimum = Math.max(3, Math.round(3 * pixelScale));
+
+    for (const candidateHeight of heights) {
+      for (const aspect of [0.88, 1, 1.12]) {
+        const candidateWidth = Math.round(candidateHeight * aspect);
+        if (candidateWidth >= width) continue;
+        for (let y = 0; y <= height - candidateHeight; y += step) {
+          for (let x = 0; x <= width - candidateWidth; x += step) {
+            const bandCounts = [];
+            for (let band = 0; band < 5; band++) {
+              const bandY1 = y + Math.floor(candidateHeight * band / 5);
+              const bandY2 = y + Math.floor(candidateHeight * (band + 1) / 5);
+              bandCounts.push(sumRect(
+                yellow,
+                x,
+                bandY1,
+                candidateWidth,
+                bandY2 - bandY1
+              ));
+            }
+            const totalYellow = bandCounts.reduce((sum, value) => sum + value, 0);
+            const activeBands = bandCounts.filter((value) => value >= activeBandMinimum).length;
+            const lowerActiveBands = bandCounts.slice(1)
+              .filter((value) => value >= activeBandMinimum).length;
+            if (activeBands < 4 || lowerActiveBands < 3
+              || totalYellow < 18 * pixelScale || totalYellow > 135 * pixelScale) continue;
+
+            const tintRatio = sumRect(
+              tint,
+              x,
+              y,
+              candidateWidth,
+              candidateHeight
+            ) / (candidateWidth * candidateHeight);
+            const balance = 1 - Math.max(...bandCounts) / Math.max(1, totalYellow);
+            if (tintRatio < 0.42 || balance < 0.52) continue;
+
+            const layoutScore = activeBands * 1.5 + lowerActiveBands
+              + Math.min(4, totalYellow / Math.max(1, 8 * pixelScale))
+              + tintRatio * 3 + balance * 2;
+            candidates.push({
+              x,
+              y,
+              width: candidateWidth,
+              height: candidateHeight,
+              bandCounts,
+              totalYellow,
+              tintRatio,
+              balance,
+              layoutScore
+            });
+            // 전체 화면을 보되, 뒤의 색 프로필 비교는 배치 점수가 높은 후보만 수행한다.
+            if (candidates.length >= 240) {
+              candidates.sort((left, right) => right.layoutScore - left.layoutScore);
+              candidates.length = 120;
+            }
+          }
+        }
+      }
+    }
+
+    candidates.sort((left, right) => right.layoutScore - left.layoutScore);
+    candidates.length = Math.min(candidates.length, 80);
+    let best = null;
+    for (const candidate of candidates) {
+      let difference = 0;
+      for (let gridY = 0; gridY < 8; gridY++) {
+        for (let gridX = 0; gridX < 8; gridX++) {
+          const x1 = candidate.x + Math.floor(candidate.width * gridX / 8);
+          const x2 = candidate.x + Math.floor(candidate.width * (gridX + 1) / 8);
+          const y1 = candidate.y + Math.floor(candidate.height * gridY / 8);
+          const y2 = candidate.y + Math.floor(candidate.height * (gridY + 1) / 8);
+          const area = Math.max(1, (x2 - x1) * (y2 - y1));
+          for (let channel = 0; channel < 3; channel++) {
+            const actual = sumRect(rgb[channel], x1, y1, x2 - x1, y2 - y1) / area;
+            difference += Math.abs(actual - CLICK_PROMPT_COLOR_PROFILE[gridY][gridX][channel]);
+          }
+        }
+      }
+      const colorScore = difference / (8 * 8 * 3);
+      const combinedScore = colorScore - candidate.layoutScore * 0.8;
+      if (!best || combinedScore < best.combinedScore) {
+        best = { ...candidate, colorScore, combinedScore };
+      }
+    }
+
+    if (!best || best.combinedScore > 12) return null;
+    return {
+      found: true,
+      kind: 'click-instruction-panel',
+      type: '클릭 준비형 거짓말 탐지기',
+      confidence: Math.min(1, Math.max(0.60, 1 - best.combinedScore / 30)),
+      structuralStrength: Math.min(1, 0.72 + Math.max(0, 12 - best.combinedScore) / 30),
+      x: best.x,
+      y: best.y,
+      width: best.width,
+      height: best.height,
+      bandCounts: best.bandCounts,
+      totalYellow: best.totalYellow,
+      tintRatio: best.tintRatio,
+      colorScore: best.colorScore,
+      combinedScore: best.combinedScore
+    };
+  };
+
   const buildLuminance = (imageData) => {
     const { data, width, height } = imageData;
     const luminance = new Float32Array(width * height);
@@ -356,6 +510,8 @@
           let brightEdge = 0;
           let innerSum = 0;
           let outerSum = 0;
+          const edgeRadii = [];
+          const edgePolarities = [];
 
           for (const angle of angles) {
             let previous = sample(
@@ -364,6 +520,7 @@
             );
             let maximumDifference = 0;
             let maximumRadius = radius;
+            let maximumPolarity = 0;
             for (let offset = -3; offset <= 4; offset++) {
               const currentRadius = radius + offset * baseScale;
               const current = sample(
@@ -374,12 +531,15 @@
               if (difference > maximumDifference) {
                 maximumDifference = difference;
                 maximumRadius = currentRadius;
+                maximumPolarity = Math.sign(current - previous);
               }
               previous = current;
             }
 
             if (maximumDifference >= 15) edge15++;
             if (maximumDifference >= 25) edge25++;
+            edgeRadii.push(maximumRadius);
+            edgePolarities.push(maximumPolarity);
             const edgeX = Math.max(0, Math.min(
               width - 1,
               Math.round(centerX + angle.cos * maximumRadius)
@@ -407,12 +567,26 @@
           const innerMean = innerSum / angles.length;
           const outerMean = outerSum / angles.length;
           const contrast = Math.abs(innerMean - outerMean);
+          const meanEdgeRadius = edgeRadii.reduce((sum, value) => sum + value, 0) / edgeRadii.length;
+          const edgeRadiusDeviation = Math.sqrt(
+            edgeRadii.reduce((sum, value) => sum + (value - meanEdgeRadius) ** 2, 0)
+              / edgeRadii.length
+          );
+          const positivePolarity = edgePolarities.filter((value) => value > 0).length;
+          const negativePolarity = edgePolarities.filter((value) => value < 0).length;
+          const polarityConsistency = Math.max(positivePolarity, negativePolarity)
+            / edgePolarities.length;
+          // 실제 원형 판의 경계는 거의 같은 반지름에서 같은 밝기 방향으로 바뀐다.
+          // 플랫폼·퀘스트 창·몬스터 외곽을 각도마다 따로 주워 만든 가짜 원은 이 두
+          // 값이 흐트러지므로, 색 비율이 우연히 맞아도 확정하지 않는다.
           const found = edge15 >= 46
             && edge25 >= 42
             && neutralEdge <= 11
             && brightEdge <= 16
             && innerMean <= 108
-            && contrast <= 18;
+            && contrast <= 18
+            && edgeRadiusDeviation <= 2.05 * baseScale
+            && polarityConsistency >= 0.62;
           if (!found) continue;
 
           let blueSamples = 0;
@@ -481,6 +655,8 @@
               innerMean,
               outerMean,
               contrast,
+              edgeRadiusDeviation,
+              polarityConsistency,
               blueInteriorRatio,
               purpleInteriorRatio
             };
@@ -492,6 +668,8 @@
   };
 
   proto.findPopupUniqueStructureEvidence = function findPopupUniqueStructureEvidence(imageData) {
+    const clickPrompt = findClickInstructionPanel(imageData);
+    if (clickPrompt) return clickPrompt;
     const banner = findActivationBanner(imageData);
     const circle = findCircularClickDetector(imageData);
     if (!banner) return circle;

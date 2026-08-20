@@ -1,5 +1,5 @@
 /**
- * ScreenCaptureManager - 100% 무설정 자동 1사분면 버프 파서 & 0% 렉 사냥 스캐너 모듈
+ * ScreenCaptureManager - 룬·거짓말 탐지기 저부하 화면 분석 모듈
  */
 class ScreenCaptureManager {
   constructor() {
@@ -15,10 +15,6 @@ class ScreenCaptureManager {
     this.runeCanvas = document.createElement('canvas');
     this.runeCtx = this.runeCanvas.getContext('2d', { willReadFrequently: true });
 
-    // ⚡ 1사분면 100% 무설정 자동 버프 캔버스 (화면 우상단 1사분면 최상단 1줄 제외 전체)
-    this.janusCanvas = document.createElement('canvas');
-    this.janusCtx = this.janusCanvas.getContext('2d', { willReadFrequently: true });
-
     // 🚨 거탐 전체 화면 다운샘플링 캔버스 (240x135 해상도)
     this.popupCanvas = document.createElement('canvas');
     this.popupCanvas.width = 240;
@@ -28,15 +24,12 @@ class ScreenCaptureManager {
     this.isStreaming = false;
     this.loopIntervalId = null;
     this.analysisTick = 0;
-    // 무거운 전체화면 탐색은 서로 다른 틱에 나눠 룬 검사를 막지 않는다.
-    // 룬은 150ms, 거탐/야누스는 300ms, 골드는 600ms 간격으로 검사한다.
-    this.buffAnalysisModulo = 4;
+    // 룬은 150ms마다, 거탐은 300ms마다 검사한다. 버프 분석은 수행하지 않는다.
 
     // ⚡ 1사분면 무설정 자동 캡처 범위 (% 비율 단위 - 1사분면 최상단 1줄 제외)
     // 실제 1280x720 사냥 화면 기준 미니맵 내부 전체(제목줄 제외).
     this.runeRoi = { x: 0.3, y: 8.3, w: 14.5, h: 13 };
     this.popupRoi = { x: 0, y: 0, w: 100, h: 100 };
-    this.janusRoi = { x: 55, y: 0, w: 44, h: 24 }; // 최상단부터 여러 줄로 이동하는 버프 아이콘 전체
 
     // 200% 정밀 모달 관련 상태
     this.modalEl = document.getElementById('roi-modal');
@@ -98,22 +91,12 @@ class ScreenCaptureManager {
     const h = Math.abs(this.dragCurrent.y - this.dragStart.y);
 
     if (w > 0.01 && h > 0.01) {
-      // 드래그한 위치가 우측 상단(x > 0.45)에 가깝다면 버프 영역(janusRoi), 아니면 미니맵(runeRoi)으로 수동 지정!
-      if (x1 > 0.45) {
-        this.janusRoi = {
-          x: Math.round(x1 * 100 * 10) / 10,
-          y: Math.round(y1 * 100 * 10) / 10,
-          w: Math.round(w * 100 * 10) / 10,
-          h: Math.round(h * 100 * 10) / 10
-        };
-      } else {
-        this.runeRoi = {
-          x: Math.round(x1 * 100 * 10) / 10,
-          y: Math.round(y1 * 100 * 10) / 10,
-          w: Math.round(w * 100 * 10) / 10,
-          h: Math.round(h * 100 * 10) / 10
-        };
-      }
+      this.runeRoi = {
+        x: Math.round(x1 * 100 * 10) / 10,
+        y: Math.round(y1 * 100 * 10) / 10,
+        w: Math.round(w * 100 * 10) / 10,
+        h: Math.round(h * 100 * 10) / 10
+      };
     }
     this.drawOverlay();
     if (window.saveCurrentConfig) window.saveCurrentConfig();
@@ -232,20 +215,15 @@ class ScreenCaptureManager {
       return;
     }
 
+    if (targetType !== 'rune') return;
     this.modalTarget = targetType;
-    if (targetType === 'rune') this.modalTempRoi = { ...this.runeRoi };
-    else if (targetType === 'janus' || targetType === 'exp') this.modalTempRoi = { ...this.janusRoi };
+    this.modalTempRoi = { ...this.runeRoi };
 
     const titleEl = document.getElementById('roi-modal-title');
     const subTitleEl = document.getElementById('roi-modal-subtitle');
 
-    if (targetType === 'rune') {
-      if (titleEl) titleEl.textContent = '📍 미니맵 영역 지정 (200% 정밀 확대)';
-      if (subTitleEl) subTitleEl.textContent = '미니맵의 내부 지도 영역만 마우스 드래그로 직사각형으로 지정하세요.';
-    } else {
-      if (titleEl) titleEl.textContent = '⚡ 버프 영역 지정 (200% 정밀 확대)';
-      if (subTitleEl) subTitleEl.textContent = '야누스가 이동할 수 있는 상단 버프 범위 전체를 여유 있게 드래그해 주세요.';
-    }
+    if (titleEl) titleEl.textContent = '📍 미니맵 영역 지정 (200% 정밀 확대)';
+    if (subTitleEl) subTitleEl.textContent = '미니맵의 내부 지도 영역만 마우스 드래그로 직사각형으로 지정하세요.';
 
     const vWidth = this.videoEl.videoWidth || 1280;
     const vHeight = this.videoEl.videoHeight || 720;
@@ -308,11 +286,7 @@ class ScreenCaptureManager {
   applyRoiModal() {
     if (!this.modalTarget || this.modalTempRoi.w <= 0) return;
 
-    if (this.modalTarget === 'rune') {
-      this.runeRoi = { ...this.modalTempRoi };
-    } else if (this.modalTarget === 'janus' || this.modalTarget === 'exp') {
-      this.janusRoi = { ...this.modalTempRoi };
-    }
+    if (this.modalTarget === 'rune') this.runeRoi = { ...this.modalTempRoi };
 
     this.drawOverlay();
     this.closeRoiModal();
@@ -375,10 +349,6 @@ class ScreenCaptureManager {
   }
 
   stopCapture() {
-    window.버프영상수집기?.stop('화면 공유 종료');
-    if (window.야누스학습수집기?.isRunning) {
-      window.야누스학습수집기.stop('화면 공유 종료');
-    }
     if (this.mediaStream) {
       this.mediaStream.getTracks().forEach(track => track.stop());
       this.mediaStream = null;
@@ -407,16 +377,12 @@ class ScreenCaptureManager {
 
     const runePill = document.getElementById('rune-status-pill');
     const popupPill = document.getElementById('popup-status-pill');
-    const janusPill = document.getElementById('janus-status-pill');
-    const expPill = document.getElementById('exp-status-pill');
-    const expEnabled = !window.imageAnalyzer?.expBuffState.disabled
-      && document.getElementById('toggle-exp-detection')?.checked;
 
     if (badge) {
       badge.className = isConnected ? 'status-badge live' : 'status-badge disconnected';
     }
     if (text) {
-      text.textContent = isConnected ? '⚡ 1사분면 100% 무설정 자동 파서 가동 중' : '연결 안 됨';
+      text.textContent = isConnected ? '🪶 룬·거탐 저부하 감지 중' : '연결 안 됨';
     }
 
     if (isConnected) {
@@ -425,25 +391,12 @@ class ScreenCaptureManager {
         runePill.className = 'status-pill active';
       }
       if (popupPill && !window.imageAnalyzer?.popupState.isDetected) {
-        popupPill.textContent = '🟢 거탐 감시 중 (6개 유형 정밀 인식)';
+        popupPill.textContent = '🟢 거탐 감시 중 (7개 유형 정밀 인식)';
         popupPill.className = 'status-pill active';
-      }
-      if (janusPill && !window.imageAnalyzer?.janusState.isBuffActive) {
-        janusPill.textContent = '⚪ 대기 중 (인식되지 않음)';
-        janusPill.className = 'status-pill';
-      }
-      if (expPill && !expEnabled) {
-        expPill.textContent = '알림 끔';
-        expPill.className = 'status-pill';
-      } else if (expPill && !window.imageAnalyzer?.expBuffState.isBuffActive) {
-        expPill.textContent = '⚪ 대기 중 (인식되지 않음)';
-        expPill.className = 'status-pill';
       }
     } else {
       if (runePill) { runePill.textContent = '⚪ 대기 중 (연결 안 됨)'; runePill.className = 'status-pill'; }
       if (popupPill) { popupPill.textContent = '⚪ 대기 중 (연결 안 됨)'; popupPill.className = 'status-pill'; }
-      if (janusPill) { janusPill.textContent = '⚪ 대기 중 (인식되지 않음)'; janusPill.className = 'status-pill'; }
-      if (expPill) { expPill.textContent = expEnabled ? '⚪ 대기 중 (인식되지 않음)' : '알림 끔'; expPill.className = 'status-pill'; }
     }
 
     if (startBtn) startBtn.classList.toggle('hidden', isConnected);
@@ -477,8 +430,6 @@ class ScreenCaptureManager {
 
     if (!this.isStreaming) return;
 
-    // 1사분면 (메이플 화면 우상단 최상단 1줄 제외 파서 영역) 시각적 반투명 가이드 그리기
-    this.drawRoiBox(this.janusRoi, 'rgba(155, 89, 182, 0.9)', '↗️ 메이플 1사분면 (버프/야누스 자동파서 영역)', 'rgba(155, 89, 182, 0.18)');
     this.drawRoiBox(this.runeRoi, 'rgba(255, 0, 128, 0.9)', '📍 미니맵 (룬)');
   }
 
@@ -514,48 +465,6 @@ class ScreenCaptureManager {
     this.overlayCtx.fillText(label, rx + 6, labelY + 14);
   }
 
-  captureBuffSnapshot() {
-    if (!this.isStreaming || !this.videoEl) {
-      alert('먼저 상단의 [▶ 게임 창 공유 시작] 버튼을 눌러 메이플 화면을 연결해 주세요!');
-      return;
-    }
-
-    const vWidth = this.videoEl.videoWidth || 1280;
-    const vHeight = this.videoEl.videoHeight || 720;
-
-    const jx = Math.max(0, Math.round((this.janusRoi.x / 100) * vWidth));
-    const jy = Math.max(0, Math.round((this.janusRoi.y / 100) * vHeight));
-    const jw = Math.max(10, Math.round((this.janusRoi.w / 100) * vWidth));
-    const jh = Math.max(10, Math.round((this.janusRoi.h / 100) * vHeight));
-
-    const snapCanvas = document.getElementById('buff-snapshot-canvas');
-    const snapInfo = document.getElementById('buff-snapshot-info');
-    const snapPanel = document.getElementById('buff-snapshot-panel');
-
-    if (snapCanvas) {
-      snapCanvas.width = jw;
-      snapCanvas.height = jh;
-      const ctx = snapCanvas.getContext('2d');
-      ctx.drawImage(this.videoEl, jx, jy, jw, jh, 0, 0, jw, jh);
-
-      const imageData = ctx.getImageData(0, 0, jw, jh);
-
-      if (window.imageAnalyzer) {
-        const result = window.imageAnalyzer.learnBuffSnapshot(imageData);
-        if (snapInfo) {
-          snapInfo.innerHTML = `✅ <strong>내 도핑 버프 아이콘 학습 완료!</strong><br>유효 픽셀: <strong>${result.activePixels}개</strong> | 평균 밝기: <strong>${result.avgBrightness}</strong><br>이제 사냥 중 이 도핑 버프가 꺼지거나 해제되면 0.1초 즉시 알림이 발생합니다!`;
-        }
-      }
-    }
-
-    if (snapPanel) {
-      snapPanel.classList.remove('hidden');
-    }
-  }
-
-  /**
-   * ⚡ 100% 무설정 자동 1사분면 버프 파서 스캔 루프
-   */
   captureAlertScreenshot(category = 'chime', message = '') {
     if (!this.isStreaming || !this.videoEl || this.videoEl.readyState < 2) {
       return Promise.resolve(null);
@@ -576,9 +485,7 @@ class ScreenCaptureManager {
 
     const categoryInfo = {
       rune: { label: '룬 탐지 영역', color: '#ff2b86', roi: this.runeRoi },
-      popup: { label: '거짓말 탐지기 전체 화면 분석', color: '#ff3b30', roi: this.popupRoi },
-      janus: { label: '솔 야누스 버프 분석 영역', color: '#9b59b6', roi: this.janusRoi },
-      exp: { label: '익스트림 골드 버프 분석 영역', color: '#f1c40f', roi: this.janusRoi }
+      popup: { label: '거짓말 탐지기 전체 화면 분석', color: '#ff3b30', roi: this.popupRoi }
     };
     const info = categoryInfo[category];
 
@@ -629,66 +536,55 @@ class ScreenCaptureManager {
         ctx.restore();
       }
 
-      if (category === 'janus' || category === 'exp') {
-        const state = category === 'janus'
-          ? window.imageAnalyzer?.janusState
-          : window.imageAnalyzer?.expBuffState;
-        const match = state?.confirmedTemplateMatch || state?.lastTemplateMatch;
-        const sourceRoiWidth = Math.max(1, this.janusCanvas.width);
-        const sourceRoiHeight = Math.max(1, this.janusCanvas.height);
-        const searchBand = match?.searchBand;
-        const rowY = searchBand?.anchored
-          ? y + (searchBand.top / sourceRoiHeight) * h
-          : y;
-        const rowH = searchBand?.anchored
-          ? ((searchBand.bottom - searchBand.top) / sourceRoiHeight) * h
-          : h;
+    }
 
-        // 사용자가 사진만 보고도 어느 화살표 행을 검사했는지 알 수 있도록
-        // 대상 버프줄 전체를 반투명 띠로 함께 표시한다.
-        ctx.save();
-        ctx.fillStyle = category === 'janus'
-          ? 'rgba(255, 43, 214, 0.12)'
-          : 'rgba(0, 229, 255, 0.12)';
-        ctx.strokeStyle = category === 'janus' ? '#ff2bd6' : '#00e5ff';
-        ctx.lineWidth = Math.max(2, width / 640);
-        ctx.setLineDash([8, 6]);
-        ctx.fillRect(x, rowY, w, rowH);
-        ctx.strokeRect(x, rowY, w, rowH);
-        ctx.restore();
+    if (category === 'popup') {
+      const match = window.imageAnalyzer?.popupState?.lastMatch;
+      const structure = match?.structure;
+      const sourceWidth = Math.max(1, this.popupCanvas.width);
+      const sourceHeight = Math.max(1, this.popupCanvas.height);
+      ctx.save();
+      ctx.strokeStyle = '#ff3b30';
+      ctx.fillStyle = '#ff3b30';
+      ctx.lineWidth = Math.max(4, width / 360);
+      ctx.font = `bold ${Math.max(15, Math.round(width / 70))}px sans-serif`;
 
-        if (match?.found && Number.isFinite(match.x) && Number.isFinite(match.y)) {
-          ctx.save();
-          const detectionColor = category === 'janus' ? '#ff2bd6' : '#00e5ff';
-          const detectionLabel = category === 'janus' ? '야누스 판정 위치' : '익스트림 골드 판정 위치';
-          ctx.strokeStyle = detectionColor;
-          ctx.lineWidth = Math.max(4, width / 400);
-          const iconX = (this.janusRoi.x / 100) * width
-            + (match.x / sourceRoiWidth) * ((this.janusRoi.w / 100) * width);
-          const iconY = (this.janusRoi.y / 100) * height
-            + (match.y / sourceRoiHeight) * ((this.janusRoi.h / 100) * height);
-          const matchedIconSize = Number.isFinite(match.size) ? match.size : 33;
-          const iconW = (matchedIconSize / sourceRoiWidth) * ((this.janusRoi.w / 100) * width);
-          const iconH = (matchedIconSize / sourceRoiHeight) * ((this.janusRoi.h / 100) * height);
-          ctx.strokeRect(iconX - 3, iconY - 3, iconW + 6, iconH + 6);
-
-          ctx.font = `bold ${Math.max(14, Math.round(width / 75))}px sans-serif`;
-          const detectionLabelWidth = ctx.measureText(detectionLabel).width;
-          const detectionLabelHeight = Math.max(24, Math.round(width / 42));
-          const detectionLabelY = iconY >= detectionLabelHeight + 6
-            ? iconY - detectionLabelHeight - 4
-            : iconY + iconH + 6;
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
-          ctx.fillRect(iconX - 3, detectionLabelY, detectionLabelWidth + 16, detectionLabelHeight);
-          ctx.fillStyle = detectionColor;
-          ctx.fillText(
-            detectionLabel,
-            iconX + 5,
-            detectionLabelY + Math.round(detectionLabelHeight * 0.72)
-          );
-          ctx.restore();
-        }
+      let labelX = 12;
+      let labelY = Math.max(28, Math.round(width / 45));
+      let label = match?.detectedType || '거짓말 탐지기 판정 위치';
+      if (match?.structuralEvidence === 'circular-click-game'
+          && Number.isFinite(structure?.centerX)
+          && Number.isFinite(structure?.centerY)
+          && Number.isFinite(structure?.radius)) {
+        const centerX = (structure.centerX / sourceWidth) * width;
+        const centerY = (structure.centerY / sourceHeight) * height;
+        const radiusX = (structure.radius / sourceWidth) * width;
+        const radiusY = (structure.radius / sourceHeight) * height;
+        ctx.beginPath();
+        ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        labelX = Math.max(8, centerX - radiusX);
+        labelY = Math.max(24, centerY - radiusY - 8);
+        label = `원형 후보 · 반지름편차 ${(structure.edgeRadiusDeviation || 0).toFixed(2)} · 방향일치 ${Math.round((structure.polarityConsistency || 0) * 100)}%`;
+      } else if (match?.evidenceBox
+          && Number.isFinite(match.evidenceBox.x)
+          && Number.isFinite(match.evidenceBox.y)) {
+        const boxX = (match.evidenceBox.x / sourceWidth) * width;
+        const boxY = (match.evidenceBox.y / sourceHeight) * height;
+        const boxWidth = (match.evidenceBox.width / sourceWidth) * width;
+        const boxHeight = (match.evidenceBox.height / sourceHeight) * height;
+        ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+        labelX = Math.max(8, boxX);
+        labelY = Math.max(24, boxY - 8);
       }
+
+      const labelWidth = ctx.measureText(label).width;
+      const labelHeight = Math.max(26, Math.round(width / 48));
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.86)';
+      ctx.fillRect(labelX, labelY - labelHeight, labelWidth + 16, labelHeight);
+      ctx.fillStyle = '#ff3b30';
+      ctx.fillText(label, labelX + 8, labelY - Math.round(labelHeight * 0.25));
+      ctx.restore();
     }
 
     const capturedAt = new Date().toLocaleString('ko-KR', { hour12: false });
@@ -704,32 +600,6 @@ class ScreenCaptureManager {
     });
   }
 
-  /**
-   * 학습용으로 표시나 글자를 덧씌우지 않은 버프 ROI 원본을 캡처한다.
-   */
-  captureJanusLearningRoi() {
-    if (!this.isStreaming || !this.videoEl || this.videoEl.readyState < 2) {
-      return Promise.resolve(null);
-    }
-
-    const sourceWidth = this.videoEl.videoWidth || 1280;
-    const sourceHeight = this.videoEl.videoHeight || 720;
-    const x = Math.max(0, Math.round((this.janusRoi.x / 100) * sourceWidth));
-    const y = Math.max(0, Math.round((this.janusRoi.y / 100) * sourceHeight));
-    const width = Math.max(10, Math.min(sourceWidth - x, Math.round((this.janusRoi.w / 100) * sourceWidth)));
-    const height = Math.max(10, Math.min(sourceHeight - y, Math.round((this.janusRoi.h / 100) * sourceHeight)));
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return Promise.resolve(null);
-    ctx.drawImage(this.videoEl, x, y, width, height, 0, 0, width, height);
-
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => resolve(blob ? { blob, width, height } : null), 'image/jpeg', 0.92);
-    });
-  }
-
   startLoop() {
     if (this.loopIntervalId) {
       clearInterval(this.loopIntervalId);
@@ -741,62 +611,7 @@ class ScreenCaptureManager {
         const vWidth = this.videoEl.videoWidth || 1280;
         const vHeight = this.videoEl.videoHeight || 720;
 
-        // 1) 룬 미니맵 마이크로 ROI
-        const rx = Math.max(0, Math.round((this.runeRoi.x / 100) * vWidth));
-        const ry = Math.max(0, Math.round((this.runeRoi.y / 100) * vHeight));
-        const rw = Math.max(10, Math.round((this.runeRoi.w / 100) * vWidth));
-        const rh = Math.max(10, Math.round((this.runeRoi.h / 100) * vHeight));
-
-        if (this.runeCanvas.width !== rw || this.runeCanvas.height !== rh) {
-          this.runeCanvas.width = rw;
-          this.runeCanvas.height = rh;
-        }
-        this.runeCtx.drawImage(this.videoEl, rx, ry, rw, rh, 0, 0, rw, rh);
-        const runeImageData = this.runeCtx.getImageData(0, 0, rw, rh);
-
-        // 2) ⚡ 1사분면 전체 6대 버프 자동 파서 마이크로 ROI (최상단 1줄 자동 제외)
-        const jx = Math.max(0, Math.round((this.janusRoi.x / 100) * vWidth));
-        const jy = Math.max(0, Math.round((this.janusRoi.y / 100) * vHeight));
-        const jw = Math.max(10, Math.round((this.janusRoi.w / 100) * vWidth));
-        const jh = Math.max(10, Math.round((this.janusRoi.h / 100) * vHeight));
-
-        if (this.janusCanvas.width !== jw || this.janusCanvas.height !== jh) {
-          this.janusCanvas.width = jw;
-          this.janusCanvas.height = jh;
-        }
-        this.janusCtx.drawImage(this.videoEl, jx, jy, jw, jh, 0, 0, jw, jh);
-        const janusImageData = this.janusCtx.getImageData(0, 0, jw, jh);
-
-        // 3) 🚨 거탐 전체 화면 다운샘플링 스캔
-        // 세로 135px을 기준으로 원본 화면비를 유지한다. 고정 240x135 강제 변환은
-        // 16:10/울트라와이드에서 원형 거탐을 타원으로 만들고 템플릿 비율도 깨뜨린다.
-        // 비정상 메타데이터나 극단적으로 넓은 화면은 메인 스레드 부하를 막기 위해
-        // 360px에서 안전하게 제한한다.
-        const popupHeight = 135;
-        const popupWidth = Math.max(
-          180,
-          Math.min(360, Math.round((vWidth / Math.max(1, vHeight)) * popupHeight))
-        );
-        if (this.popupCanvas.width !== popupWidth || this.popupCanvas.height !== popupHeight) {
-          this.popupCanvas.width = popupWidth;
-          this.popupCanvas.height = popupHeight;
-        }
-        this.popupCtx.drawImage(
-          this.videoEl,
-          0,
-          0,
-          vWidth,
-          vHeight,
-          0,
-          0,
-          popupWidth,
-          popupHeight
-        );
-        const popupImageData = this.popupCtx.getImageData(0, 0, popupWidth, popupHeight);
-
         if (window.imageAnalyzer) {
-          // 룬은 가장 먼저 매 프레임 처리한다. 전체 버프 범위의 다중 크기 탐색은
-          // 한 프레임씩 건너뛰어 느린 컴퓨터에서도 룬 판정 주기가 밀리지 않게 한다.
           const safelyAnalyze = (label, analyze) => {
             try {
               analyze();
@@ -805,27 +620,51 @@ class ScreenCaptureManager {
             }
           };
 
-          if (document.getElementById('toggle-rune-detection')?.checked) {
+          const runeEnabled = document.getElementById('toggle-rune-detection')?.checked;
+          const popupEnabled = document.getElementById('toggle-popup-detection')?.checked;
+
+          // 룬 마이크로 ROI는 기존과 같은 150ms 주기를 유지한다.
+          if (runeEnabled) {
+            const rx = Math.max(0, Math.round((this.runeRoi.x / 100) * vWidth));
+            const ry = Math.max(0, Math.round((this.runeRoi.y / 100) * vHeight));
+            const rw = Math.max(10, Math.round((this.runeRoi.w / 100) * vWidth));
+            const rh = Math.max(10, Math.round((this.runeRoi.h / 100) * vHeight));
+            if (this.runeCanvas.width !== rw || this.runeCanvas.height !== rh) {
+              this.runeCanvas.width = rw;
+              this.runeCanvas.height = rh;
+            }
+            this.runeCtx.drawImage(this.videoEl, rx, ry, rw, rh, 0, 0, rw, rh);
+            const runeImageData = this.runeCtx.getImageData(0, 0, rw, rh);
             safelyAnalyze('룬', () => window.imageAnalyzer.processRuneFrame(runeImageData, null));
           }
 
-          this.analysisTick = (this.analysisTick + 1) % this.buffAnalysisModulo;
-          // 팝업 전수 탐색과 버프 전수 탐색을 같은 150ms 틱에서 실행하지 않는다.
-          if (this.analysisTick % 2 === 1
-              && document.getElementById('toggle-popup-detection')?.checked) {
+          this.analysisTick = (this.analysisTick + 1) % 2;
+          // 전체 화면 복사도 실제 검사 틱에만 수행한다. 판정 주기는 기존 300ms 그대로다.
+          if (popupEnabled && this.analysisTick === 1) {
+            const popupHeight = 135;
+            const popupWidth = Math.max(
+              180,
+              Math.min(360, Math.round((vWidth / Math.max(1, vHeight)) * popupHeight))
+            );
+            if (this.popupCanvas.width !== popupWidth || this.popupCanvas.height !== popupHeight) {
+              this.popupCanvas.width = popupWidth;
+              this.popupCanvas.height = popupHeight;
+            }
+            this.popupCtx.drawImage(
+              this.videoEl,
+              0,
+              0,
+              vWidth,
+              vHeight,
+              0,
+              0,
+              popupWidth,
+              popupHeight
+            );
+            const popupImageData = this.popupCtx.getImageData(0, 0, popupWidth, popupHeight);
             safelyAnalyze('거짓말 탐지기', () => (
               window.imageAnalyzer.processPopupStructureFrame(popupImageData)
             ));
-          } else if (this.analysisTick % 2 === 0) {
-            safelyAnalyze('솔 야누스', () => (
-              window.imageAnalyzer.processJanusTemplateFrame(janusImageData)
-            ));
-            if (this.analysisTick === 2
-                && document.getElementById('toggle-exp-detection')?.checked) {
-              safelyAnalyze('익스트림 골드', () => (
-                window.imageAnalyzer.processExpTemplateFrame(janusImageData)
-              ));
-            }
           }
         }
       }

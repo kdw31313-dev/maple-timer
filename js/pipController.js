@@ -1,12 +1,12 @@
 /**
- * PipController - Picture-in-Picture 플로팅 사냥 오버레이 관리자
+ * PipController - Picture-in-Picture 룬·거탐 상태 오버레이 관리자
  */
 class PipController {
   constructor() {
     this.pipWindow = null;
     this.pipCanvas = document.createElement('canvas');
     this.pipCanvas.width = 360;
-    this.pipCanvas.height = 200;
+    this.pipCanvas.height = 120;
     this.pipCtx = this.pipCanvas.getContext('2d');
 
     this.pipVideo = document.createElement('video');
@@ -31,7 +31,7 @@ class PipController {
       if ('documentPictureInPicture' in window) {
         this.pipWindow = await window.documentPictureInPicture.requestWindow({
           width: 320,
-          height: 220
+          height: 130
         });
 
         // 스타일 복사
@@ -50,15 +50,13 @@ class PipController {
             flex-direction: column;
             gap: 8px;
           }
-          .timer-box {
+          .status-box {
             background: rgba(255,255,255,0.06);
             border-radius: 8px;
             padding: 8px 12px;
             border: 1px solid rgba(255,255,255,0.1);
           }
-          .timer-label { font-size: 11px; color: #a4b0be; font-weight: bold; }
-          .timer-value { font-size: 24px; font-weight: 900; font-family: monospace; color: #00f2fe; }
-          .janus-val { color: #e056fd; }
+          .status-title { font-size: 12px; color: #a4b0be; font-weight: bold; }
           .alert-pill {
             display: inline-block;
             font-size: 11px;
@@ -81,20 +79,12 @@ class PipController {
         const container = document.createElement('div');
         container.className = 'pip-container';
         container.innerHTML = `
-          <div class="timer-box">
-            <div class="timer-label">🧪 경험치 쿠폰</div>
-            <div class="timer-value" id="pip-exp-clock">30:00</div>
+          <div class="status-box">
+            <div class="status-title">🪶 룬·거탐 저부하 집중 감지</div>
           </div>
-          <div class="timer-box">
-            <div class="timer-label">🌌 솔 야누스 (80s)</div>
-            <div class="timer-value janus-val" id="pip-janus-clock">01:20</div>
-          </div>
-          <div class="timer-box" style="padding:6px 10px;">
-            <div class="timer-label">💰 재획비: <span id="pip-wealth-clock" style="color:#f6d365;">02:00:00</span> | 📢 MVP: <span id="pip-mvp-clock" style="color:#00f2fe;">30:00</span></div>
-          </div>
-          <div style="display:flex; justify-between; gap:6px;">
+          <div style="display:flex; justify-content:space-between; gap:6px;">
             <span class="alert-pill" id="pip-rune-pill">룬: 대기</span>
-            <span class="alert-pill" id="pip-popup-pill">팝업: 대기</span>
+            <span class="alert-pill" id="pip-popup-pill">거탐: 대기</span>
           </div>
         `;
         this.pipWindow.document.body.appendChild(container);
@@ -143,31 +133,18 @@ class PipController {
     const update = () => {
       if (!this.isPipActive || !this.pipWindow) return;
       
-      const expClock = document.getElementById('exp-timer-clock')?.textContent;
-      const janusClock = document.getElementById('janus-timer-clock')?.textContent;
-      const wealthClock = document.getElementById('doping-wealth-clock')?.textContent;
-      const mvpClock = document.getElementById('doping-mvp-clock')?.textContent;
       const runeText = document.getElementById('rune-status-pill')?.textContent;
       const popupText = document.getElementById('popup-status-pill')?.textContent;
 
-      const pipExp = this.pipWindow.document.getElementById('pip-exp-clock');
-      const pipJanus = this.pipWindow.document.getElementById('pip-janus-clock');
-      const pipWealth = this.pipWindow.document.getElementById('pip-wealth-clock');
-      const pipMvp = this.pipWindow.document.getElementById('pip-mvp-clock');
       const pipRune = this.pipWindow.document.getElementById('pip-rune-pill');
       const pipPopup = this.pipWindow.document.getElementById('pip-popup-pill');
 
-      if (pipExp && expClock) pipExp.textContent = expClock;
-      if (pipJanus && janusClock) pipJanus.textContent = janusClock;
-      if (pipWealth && wealthClock) pipWealth.textContent = wealthClock;
-      if (pipMvp && mvpClock) pipMvp.textContent = mvpClock;
-      
       if (pipRune && runeText) {
         pipRune.textContent = `룬: ${runeText}`;
         pipRune.className = runeText.includes('감지') ? 'alert-pill warn' : 'alert-pill';
       }
       if (pipPopup && popupText) {
-        pipPopup.textContent = `팝업: ${popupText}`;
+        pipPopup.textContent = `거탐: ${popupText}`;
         pipPopup.className = popupText.includes('감지') ? 'alert-pill warn' : 'alert-pill';
       }
 
@@ -184,27 +161,22 @@ class PipController {
       const w = this.pipCanvas.width;
       const h = this.pipCanvas.height;
 
-      const expClock = document.getElementById('exp-timer-clock')?.textContent || '30:00';
-      const janusClock = document.getElementById('janus-timer-clock')?.textContent || '01:20';
+      const runeText = document.getElementById('rune-status-pill')?.textContent || '대기';
+      const popupText = document.getElementById('popup-status-pill')?.textContent || '대기';
 
       ctx.fillStyle = '#0a0d14';
       ctx.fillRect(0, 0, w, h);
 
       ctx.fillStyle = '#a4b0be';
       ctx.font = 'bold 12px sans-serif';
-      ctx.fillText('경험치 쿠폰', 16, 30);
+      ctx.fillText('🪶 룬·거탐 저부하 집중 감지', 16, 28);
 
-      ctx.fillStyle = '#00f2fe';
-      ctx.font = 'bold 36px monospace';
-      ctx.fillText(expClock, 16, 70);
+      ctx.fillStyle = runeText.includes('감지') ? '#ff4757' : '#2ed573';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText(`룬: ${runeText}`, 16, 64);
 
-      ctx.fillStyle = '#a4b0be';
-      ctx.font = 'bold 12px sans-serif';
-      ctx.fillText('솔 야누스', 16, 110);
-
-      ctx.fillStyle = '#e056fd';
-      ctx.font = 'bold 32px monospace';
-      ctx.fillText(janusClock, 16, 150);
+      ctx.fillStyle = popupText.includes('감지') ? '#ff4757' : '#2ed573';
+      ctx.fillText(`거탐: ${popupText}`, 16, 94);
     }, 200);
   }
 }

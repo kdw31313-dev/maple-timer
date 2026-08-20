@@ -2,19 +2,6 @@
  * App.js - 메인 애플리케이션 진입점 및 이벤트 바인딩
  */
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('btn-buff-video-start')?.addEventListener('click', () => {
-    window.버프영상수집기?.start();
-  });
-  document.getElementById('btn-buff-video-stop')?.addEventListener('click', () => {
-    window.버프영상수집기?.stop('사용자 종료');
-  });
-  document.getElementById('btn-buff-video-now')?.addEventListener('click', () => {
-    if (!window.버프영상수집기?.isRunning) {
-      window.버프영상수집기?.start();
-      return;
-    }
-    window.버프영상수집기.captureNow();
-  });
   // 1. 상단 탭 (Tab) 네비게이션 전환 이벤트
   const tabBtns = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
@@ -31,9 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 2. 사냥 효율 계산기 (Mapleroad Style) 초기화
-  initCalculatorUI();
-
   // 4. 설정 불러오기 및 적용
   const config = window.storageManager.loadConfig();
   applyConfigToUI(config);
@@ -41,10 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // 5. 타이머 콜백 바인딩
   window.timerModule.onExpTick = (expState) => {
     updateExpUI(expState);
-  };
-
-  window.timerModule.onJanusTick = (janusState) => {
-    updateJanusUI(janusState);
   };
 
   window.timerModule.onDopingTick = (key, itemState) => {
@@ -74,34 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
         pill.className = 'status-pill detected';
       } else {
         const isLive = window.screenCaptureManager?.isStreaming;
-        pill.textContent = isLive ? '🟢 거탐 감시 중 (6개 유형 정밀 인식)' : statusText;
+        pill.textContent = isLive ? '🟢 거탐 감시 중 (7개 유형 정밀 인식)' : statusText;
         pill.className = isLive ? 'status-pill active' : 'status-pill';
-      }
-    }
-  };
-
-  window.imageAnalyzer.onJanusStatusChange = (statusText, isDetected) => {
-    const pill = document.getElementById('janus-status-pill');
-    if (pill) {
-      if (isDetected) {
-        pill.textContent = statusText;
-        pill.className = 'status-pill detected';
-      } else {
-        pill.textContent = statusText || '⚪ 대기 중 (인식되지 않음)';
-        pill.className = statusText?.includes('가동 중') ? 'status-pill active' : 'status-pill';
-      }
-    }
-  };
-
-  window.imageAnalyzer.onExpBuffStatusChange = (statusText, isDetected) => {
-    const pill = document.getElementById('exp-status-pill');
-    if (pill) {
-      if (isDetected) {
-        pill.textContent = statusText;
-        pill.className = 'status-pill detected';
-      } else {
-        pill.textContent = statusText || '⚪ 대기 중 (인식되지 않음)';
-        pill.className = statusText?.includes('가동 중') ? 'status-pill active' : 'status-pill';
       }
     }
   };
@@ -137,14 +91,6 @@ function bindEvents() {
   // --- 200% 정밀 확대 ROI 영역 지정 모달 오픈 ---
   document.getElementById('btn-select-rune-roi')?.addEventListener('click', () => {
     window.screenCaptureManager.openRoiModal('rune');
-  });
-
-  document.getElementById('btn-select-janus-roi')?.addEventListener('click', () => {
-    window.screenCaptureManager.openRoiModal('janus');
-  });
-
-  document.getElementById('btn-select-exp-roi')?.addEventListener('click', () => {
-    window.screenCaptureManager.openRoiModal('exp');
   });
 
   // --- 📲 텔레그램 봇 알림 이벤트 바인딩 ---
@@ -195,14 +141,6 @@ function bindEvents() {
     }
   });
 
-  document.getElementById('btn-janus-learning-start')?.addEventListener('click', () => {
-    window.야누스학습수집기?.start();
-  });
-
-  document.getElementById('btn-janus-learning-stop')?.addEventListener('click', () => {
-    window.야누스학습수집기?.stop('사용자 종료');
-  });
-
   // --- 경험치 쿠폰 타이머 버튼 ---
   const expStartBtn = document.getElementById('btn-exp-start');
   const expPauseBtn = document.getElementById('btn-exp-pause');
@@ -249,44 +187,8 @@ function bindEvents() {
     window.timerModule.addExpMinutes(5);
   });
 
-
-  // --- 솔 야누스 타이머 버튼 ---
-  const janusStartBtn = document.getElementById('btn-janus-start');
-  const janusResetBtn = document.getElementById('btn-janus-reset');
-
-  janusStartBtn?.addEventListener('click', () => {
-    window.audioNotifier.initAudioContext();
-    window.timerModule.startJanusTimer();
-  });
-
-  janusResetBtn?.addEventListener('click', () => {
-    window.timerModule.resetJanusTimer();
-  });
-
-  // 솔 야누스 주기 선택 라디오
-  document.querySelectorAll('input[name="janus-cycle"]').forEach(radio => {
-    radio.addEventListener('change', (e) => {
-      const secs = parseInt(e.target.value, 10);
-      window.timerModule.setJanusCycle(secs);
-      saveCurrentConfig();
-    });
-  });
-
-  // 단축키 (Spacebar 누르면 솔 야누스 타이머 재시작)
-  window.addEventListener('keydown', (e) => {
-    // 텍스트 입력 중일 때는 제외
-    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
-
-    if (e.code === 'Space') {
-      e.preventDefault();
-      window.audioNotifier.initAudioContext();
-      window.timerModule.startJanusTimer();
-    }
-  });
-
-
-  // --- 사냥 필수 도핑 타이머 버튼 (재획비, MVP, 익스골드) ---
-  ['wealth', 'mvp', 'exgold'].forEach(key => {
+  // --- 사냥 필수 도핑 타이머 버튼 (재획비, MVP) ---
+  ['wealth', 'mvp'].forEach(key => {
     const startBtn = document.getElementById(`btn-${key}-start`);
     const pauseBtn = document.getElementById(`btn-${key}-pause`);
     const resetBtn = document.getElementById(`btn-${key}-reset`);
@@ -340,31 +242,6 @@ function bindEvents() {
     saveCurrentConfig();
   });
 
-  const expDetectionToggle = document.getElementById('toggle-exp-detection');
-  expDetectionToggle?.addEventListener('change', (e) => {
-    const state = window.imageAnalyzer?.expBuffState;
-    if (state) {
-      Object.assign(state, {
-        isBuffActive: false,
-        consecutiveActiveCount: 0,
-        consecutiveInactiveCount: 0,
-        alert10Triggered: false,
-        alertExpiredTriggered: false,
-        endingFrames: 0,
-        startEvidenceHistory: [],
-        moveEvidenceHistory: [],
-        lastTemplateMatch: null,
-        confirmedTemplateMatch: null
-      });
-    }
-    const pill = document.getElementById('exp-status-pill');
-    if (pill) {
-      pill.textContent = e.target.checked ? '⚪ 대기 중 (인식되지 않음)' : '알림 끔';
-      pill.className = 'status-pill';
-    }
-    saveCurrentConfig();
-  });
-
   // 메인 소리 테스트 버튼 (상단/설정 탭)
   document.getElementById('btn-test-sound')?.addEventListener('click', () => {
     if (window.audioNotifier) {
@@ -374,7 +251,7 @@ function bindEvents() {
   });
 
   // 🔊 항목별 개별 사운드 선택 및 미리듣기 테스트 버튼 이벤트 바인딩
-  ['rune', 'popup', 'janus', 'exp'].forEach(cat => {
+  ['rune', 'popup'].forEach(cat => {
     const selectEl = document.getElementById(`select-sound-${cat}`);
     if (selectEl) {
       selectEl.addEventListener('change', (e) => {
@@ -445,7 +322,7 @@ function bindEvents() {
   });
 
   // 타이머 알림 설정 체크박스들 저장 연동
-  ['chk-exp-alert-10', 'chk-exp-alert-end', 'chk-janus-prealert', 'chk-janus-endalert', 'chk-doping-10s', 'chk-doping-end'].forEach(id => {
+  ['chk-exp-alert-10', 'chk-exp-alert-end', 'chk-doping-10s', 'chk-doping-end'].forEach(id => {
     document.getElementById(id)?.addEventListener('change', () => {
       saveCurrentConfig();
     });
@@ -490,153 +367,6 @@ function formatHMS(seconds) {
 }
 
 /**
- * 도핑 버프 타이머 UI 업데이트
- */
-/**
- * 사냥 효율 계산기 UI 바인딩 & 100% 동적 실시간 연산 (재획비 1.2배 곱연산 엔진)
- */
-function initCalculatorUI() {
-  const mapSelect = document.getElementById('calc-map-select');
-  const levelInput = document.getElementById('calc-user-level');
-  const killRatioInput = document.getElementById('calc-kill-ratio');
-  const kills6minInput = document.getElementById('calc-6min-kills');
-  const expBuffInput = document.getElementById('calc-exp-buff');
-  const mesoRateInput = document.getElementById('calc-meso-rate');
-  const dropRateInput = document.getElementById('calc-drop-rate');
-  const useWealthChk = document.getElementById('chk-calc-use-wealth');
-
-  if (!mapSelect || !window.huntingCalculator) return;
-
-  let isManual6MinKills = false;
-
-  // 1) 맵 목록 셀렉트 채우기 (Optgroup 지역별 그룹화로 UI 시독성 극대화)
-  mapSelect.innerHTML = '';
-  const regionGroups = {};
-
-  window.huntingCalculator.mapDatabase.forEach((item, idx) => {
-    if (!regionGroups[item.region]) {
-      const group = document.createElement('optgroup');
-      group.label = `📍 ${item.region} (Lv.${item.mobLevel}~`;
-      regionGroups[item.region] = group;
-      mapSelect.appendChild(group);
-    }
-
-    const opt = document.createElement('option');
-    opt.value = idx;
-    const max6m = Math.round(item.hourlyMax / 10);
-    opt.textContent = `${item.name} (젠당 ${item.spawnPerWave}마리 | 6분 ${max6m.toLocaleString()}마리 | 1시간 ${item.hourlyMax.toLocaleString()}마리)`;
-    if (item.name.includes('최하층 통로 2')) opt.selected = true;
-    regionGroups[item.region].appendChild(opt);
-  });
-
-  const currentExpInput = document.getElementById('calc-current-exp');
-  const targetLevelInput = document.getElementById('calc-target-level');
-  const dailyHoursInput = document.getElementById('calc-daily-hours');
-
-  const updateCalculations = () => {
-    const userLevel = parseInt(levelInput.value, 10) || 280;
-    const mapIndex = parseInt(mapSelect.value, 10) || 0;
-    const killRatio = parseInt(killRatioInput.value, 10) || 100;
-    const expBuffPct = parseFloat(expBuffInput.value) || 200;
-    const mesoRatePct = parseFloat(mesoRateInput.value) || 0;
-    const dropRatePct = parseFloat(dropRateInput.value) || 100;
-    const useWealthPotion = useWealthChk ? useWealthChk.checked : true;
-
-    const currentExpPct = parseFloat(currentExpInput?.value) || 0;
-    const targetLevel = parseInt(targetLevelInput?.value, 10) || (userLevel + 1);
-    const dailyPlayHours = parseFloat(dailyHoursInput?.value) || 2;
-
-    const custom6min = isManual6MinKills ? (parseInt(kills6minInput.value, 10) || null) : null;
-
-    document.getElementById('val-kill-ratio').textContent = `${killRatio}%`;
-
-    const res = window.huntingCalculator.calculate({
-      userLevel,
-      mapIndex,
-      userCustomKills6min: custom6min,
-      killRatio,
-      expBuffPct,
-      mesoRatePct,
-      dropRatePct,
-      useWealthPotion,
-      currentExpPct,
-      targetLevel,
-      dailyPlayHours
-    });
-
-    // --- 📸 맵 배너 이미지 및 상세 스펙 카드 업데이트 ---
-    const selectedMap = res.mapInfo;
-    const imgEl = document.getElementById('map-preview-img');
-    const titleEl = document.getElementById('map-preview-title');
-    const specEl = document.getElementById('map-preview-spec');
-
-    if (imgEl && selectedMap.imgUrl) imgEl.src = selectedMap.imgUrl;
-    if (titleEl) titleEl.textContent = `📍 [${selectedMap.region}] ${selectedMap.name}`;
-    if (specEl) specEl.textContent = `몬스터 Lv.${selectedMap.mobLevel} | 젠당 ${selectedMap.spawnPerWave}마리 | 1시간 최대 ${selectedMap.hourlyMax.toLocaleString()}마리`;
-
-    if (!isManual6MinKills) {
-      kills6minInput.value = res.actual6MinKills;
-    }
-
-    // --- 🚀 Mapleroad 정밀 리포트 결과 렌더링 ---
-    const goalMesoEok = (res.totalGoalMesoExpected / 100000000).toFixed(1);
-    document.getElementById('res-goal-dday').textContent = `약 ${res.daysNeededForGoal} 일 (D-${res.daysNeededForGoal}) - 총 ${res.totalGoalHoursNeeded}시간`;
-    document.getElementById('res-goal-rehoek-total').textContent = `약 ${res.totalGoalRehoekCount} 개 (${res.targetLevel}레벨 달성까지)`;
-    document.getElementById('res-goal-meso-total').textContent = `약 ${goalMesoEok} 억 메소`;
-    document.getElementById('res-goal-erda-total').textContent = `약 ${res.totalGoalErdaExpected.toLocaleString()} 개`;
-
-    // --- 100% 동적 결과 카드 렌더링 ---
-    // 1) 일일 메소 제한 & 필요 재획량
-    document.getElementById('res-req-kills').textContent = `${res.requiredKillsForCap.toLocaleString()} 마리`;
-    document.getElementById('res-req-rehoek').textContent = `약 ${res.requiredRehoekCount} 개`;
-    document.getElementById('res-cap-time-needed').textContent = `약 ${res.timeToCapFormatted}`;
-
-    // 2) 기본 상한 및 메획% 반영 상한선 (d) & 주머니 평균값 (a)
-    const baseCapEok = (res.baseCapMeso / 100000000).toFixed(1);
-    const totalCapEok = (res.totalCapMesoWithRate / 100000000).toFixed(3);
-
-    document.getElementById('res-base-cap').textContent = `${baseCapEok} 억 메소`;
-    document.getElementById('res-total-cap-meso').textContent = `약 ${totalCapEok} 억 메소 (최종메획 ${res.displayFinalMesoPct}%)`;
-    document.getElementById('res-meso-per-bag').textContent = `약 ${res.actualMesoPerBag.toLocaleString()} 메소`;
-
-    // 3) 시간별 획득 메소
-    const thirtyMinMan = Math.round(res.thirtyMinMeso / 10000);
-    const hourlyMesoMan = Math.round(res.hourlyMesoTotal / 10000);
-    const hourlyMesoEok = (res.hourlyMesoTotal / 100000000).toFixed(2);
-    const twoHrMesoEok = (res.twoHourMesoTotal / 100000000).toFixed(2);
-
-    document.getElementById('res-30min-meso').textContent = `약 ${thirtyMinMan.toLocaleString()} 만 메소`;
-    document.getElementById('res-hourly-meso').textContent = `약 ${hourlyMesoEok} 억 (${hourlyMesoMan.toLocaleString()} 만) 메소`;
-    document.getElementById('res-2hr-meso').textContent = `약 ${twoHrMesoEok} 억 메소`;
-
-    // 4) 마릿수 & 경험치/조각
-    document.getElementById('res-hourly-kills').textContent = `${res.hourlyKills.toLocaleString()} 마리 / ${res.twoHourKills.toLocaleString()} 마리`;
-
-    const expPctHourly = ((res.hourlyExpTotal / (userLevel * 250000000000)) * 100).toFixed(3);
-    const expPct2Hr = (expPctHourly * 2).toFixed(3);
-    document.getElementById('res-2hr-exp').textContent = `약 +${expPct2Hr}%`;
-    document.getElementById('res-2hr-erda').textContent = `약 ${res.solErdaPieces2Hr} 개`;
-  };
-
-  // 이벤트 바인딩
-  mapSelect.addEventListener('change', () => { isManual6MinKills = false; updateCalculations(); });
-  killRatioInput.addEventListener('input', () => { isManual6MinKills = false; updateCalculations(); });
-  kills6minInput.addEventListener('input', () => { isManual6MinKills = true; updateCalculations(); });
-
-  levelInput.addEventListener('input', updateCalculations);
-  expBuffInput.addEventListener('input', updateCalculations);
-  mesoRateInput.addEventListener('input', updateCalculations);
-  dropRateInput.addEventListener('input', updateCalculations);
-  if (currentExpInput) currentExpInput.addEventListener('input', updateCalculations);
-  if (targetLevelInput) targetLevelInput.addEventListener('input', updateCalculations);
-  if (dailyHoursInput) dailyHoursInput.addEventListener('input', updateCalculations);
-  if (useWealthChk) useWealthChk.addEventListener('change', updateCalculations);
-
-  updateCalculations();
-}
-
-
-/**
  * 저장된 설정을 UI에 반영
  */
 function applyConfigToUI(cfg) {
@@ -653,18 +383,6 @@ function applyConfigToUI(cfg) {
   if (ttsToggle) ttsToggle.checked = cfg.ttsVoice;
   if (flashToggle) flashToggle.checked = cfg.visualFlash;
 
-  const expDetectionToggle = document.getElementById('toggle-exp-detection');
-  const expStatusPill = document.getElementById('exp-status-pill');
-  if (expDetectionToggle) {
-    expDetectionToggle.checked = cfg.expAutoDetectionEnabled !== false;
-    expDetectionToggle.disabled = false;
-    expDetectionToggle.title = '익스트림 골드 병 아이콘 시작·종료 자동 알림';
-  }
-  if (expStatusPill) {
-    expStatusPill.textContent = expDetectionToggle?.checked ? '대기 중' : '알림 끔';
-    expStatusPill.className = 'status-pill';
-  }
-
   window.audioNotifier.setPreset(cfg.soundPreset);
   window.audioNotifier.setVolume(cfg.volume);
   window.audioNotifier.setTTS(cfg.ttsVoice);
@@ -673,7 +391,7 @@ function applyConfigToUI(cfg) {
   // 항목별 커스텀 사운드 설정 반영
   if (cfg.customSounds) {
     window.audioNotifier.customSounds = { ...cfg.customSounds };
-    ['rune', 'popup', 'janus', 'exp'].forEach(cat => {
+    ['rune', 'popup'].forEach(cat => {
       const selectEl = document.getElementById(`select-sound-${cat}`);
       if (selectEl && cfg.customSounds[cat]) {
         selectEl.value = cfg.customSounds[cat];
@@ -692,23 +410,14 @@ function applyConfigToUI(cfg) {
   });
   window.timerModule.setExpPresetMinutes(cfg.expPresetMinutes);
 
-  // 야누스 주기
-  const janusRadio = document.querySelector(`input[name="janus-cycle"][value="${cfg.janusCycle}"]`);
-  if (janusRadio) janusRadio.checked = true;
-  window.timerModule.setJanusCycle(cfg.janusCycle);
-
   // 타이머 세부 체크박스 반영
   const chkExp10 = document.getElementById('chk-exp-alert-10');
   const chkExpEnd = document.getElementById('chk-exp-alert-end');
-  const chkJanusPre = document.getElementById('chk-janus-prealert');
-  const chkJanusEnd = document.getElementById('chk-janus-endalert');
   const chkDoping10 = document.getElementById('chk-doping-10s');
   const chkDopingEnd = document.getElementById('chk-doping-end');
 
   if (chkExp10 && cfg.expAlert10 !== undefined) chkExp10.checked = cfg.expAlert10;
   if (chkExpEnd && cfg.expAlertEnd !== undefined) chkExpEnd.checked = cfg.expAlertEnd;
-  if (chkJanusPre && cfg.janusPreAlert !== undefined) chkJanusPre.checked = cfg.janusPreAlert;
-  if (chkJanusEnd && cfg.janusEndAlert !== undefined) chkJanusEnd.checked = cfg.janusEndAlert;
   if (chkDoping10 && cfg.dopingAlert10 !== undefined) chkDoping10.checked = cfg.dopingAlert10;
   if (chkDopingEnd && cfg.dopingAlertEnd !== undefined) chkDopingEnd.checked = cfg.dopingAlertEnd;
 
@@ -727,16 +436,6 @@ function applyConfigToUI(cfg) {
         : roi;
     }
     if (cfg.popupRoi) window.screenCaptureManager.popupRoi = cfg.popupRoi;
-    if (cfg.janusRoi) {
-      const roi = cfg.janusRoi;
-      const isOldBuffDefault = (
-        (roi.x === 55 && roi.y === 1.5 && roi.w === 44 && roi.h === 22) ||
-        (roi.x === 75 && roi.y === 1 && roi.w === 24 && roi.h === 15)
-      );
-      window.screenCaptureManager.janusRoi = isOldBuffDefault
-        ? { x: 55, y: 0, w: 44, h: 24 }
-        : roi;
-    }
   }
 }
 
@@ -749,10 +448,9 @@ function saveCurrentConfig() {
   const ttsToggle = document.getElementById('toggle-tts-voice');
   const flashToggle = document.getElementById('toggle-visual-flash');
   const activePresetBtn = document.querySelector('.btn-preset.active');
-  const janusRadio = document.querySelector('input[name="janus-cycle"]:checked');
 
   const customSounds = {};
-  ['rune', 'popup', 'janus', 'exp'].forEach(cat => {
+  ['rune', 'popup'].forEach(cat => {
     const selectEl = document.getElementById(`select-sound-${cat}`);
     if (selectEl) customSounds[cat] = selectEl.value;
   });
@@ -763,18 +461,13 @@ function saveCurrentConfig() {
     ttsVoice: ttsToggle ? ttsToggle.checked : false,
     visualFlash: flashToggle ? flashToggle.checked : true,
     expPresetMinutes: activePresetBtn ? parseInt(activePresetBtn.getAttribute('data-minutes'), 10) : 30,
-    janusCycle: janusRadio ? parseInt(janusRadio.value, 10) : 80,
     expAlert10: document.getElementById('chk-exp-alert-10')?.checked ?? true,
     expAlertEnd: document.getElementById('chk-exp-alert-end')?.checked ?? true,
-    janusPreAlert: document.getElementById('chk-janus-prealert')?.checked ?? true,
-    janusEndAlert: document.getElementById('chk-janus-endalert')?.checked ?? true,
     dopingAlert10: document.getElementById('chk-doping-10s')?.checked ?? true,
     dopingAlertEnd: document.getElementById('chk-doping-end')?.checked ?? true,
-    expAutoDetectionEnabled: document.getElementById('toggle-exp-detection')?.checked ?? true,
     customSounds: customSounds,
     runeRoi: window.screenCaptureManager ? window.screenCaptureManager.runeRoi : { x: 0.3, y: 8.3, w: 14.5, h: 13 },
-    popupRoi: window.screenCaptureManager ? window.screenCaptureManager.popupRoi : { x: 0, y: 0, w: 100, h: 100 },
-    janusRoi: window.screenCaptureManager ? window.screenCaptureManager.janusRoi : { x: 55, y: 0, w: 44, h: 24 }
+    popupRoi: window.screenCaptureManager ? window.screenCaptureManager.popupRoi : { x: 0, y: 0, w: 100, h: 100 }
   };
 
   window.storageManager.saveConfig(cfg);
