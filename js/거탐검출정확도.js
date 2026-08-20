@@ -418,7 +418,10 @@
       }
     }
 
-    if (!best || best.combinedScore > 12) return null;
+    // 노란 버프 타이머가 여러 줄로 겹치면 배치 점수만으로는 클릭 안내처럼
+    // 보일 수 있다. 실제 클릭 준비 패널의 전체 색 배치와도 충분히 가까운
+    // 후보만 허용해, 타이머 숫자/아이콘 군집이 배치 점수로 통과하지 못하게 한다.
+    if (!best || best.combinedScore > 12 || best.colorScore > 25.5) return null;
     return {
       found: true,
       kind: 'click-instruction-panel',
@@ -578,14 +581,15 @@
             / edgePolarities.length;
           // 실제 원형 판의 경계는 거의 같은 반지름에서 같은 밝기 방향으로 바뀐다.
           // 플랫폼·퀘스트 창·몬스터 외곽을 각도마다 따로 주워 만든 가짜 원은 이 두
-          // 값이 흐트러지므로, 색 비율이 우연히 맞아도 확정하지 않는다.
+          // 값이 흐트러지므로, 색 비율이 우연히 맞아도 확정하지 않는다. 실제 이동
+          // 원형 표본의 반지름 편차 2.29는 포함하되 방향 일치 기준은 그대로 둔다.
           const found = edge15 >= 46
             && edge25 >= 42
             && neutralEdge <= 11
             && brightEdge <= 16
             && innerMean <= 108
             && contrast <= 18
-            && edgeRadiusDeviation <= 2.05 * baseScale
+            && edgeRadiusDeviation <= 2.45 * baseScale
             && polarityConsistency >= 0.62;
           if (!found) continue;
 

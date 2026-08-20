@@ -68,6 +68,9 @@ const 거탐판정 = 분석기.verifyPopupTemplateMatch(
   거탐화면,
   분석기.findPopupTemplateMatch(거탐화면)
 );
+if (/^(1|true|yes|on)$/i.test(process.env.MAPLE_TEST_DIAGNOSTIC || '')) {
+  console.log(JSON.stringify(거탐판정.structure || null, null, 2));
+}
 assert.equal(Boolean(거탐판정.verified), true, '임의 위치의 클릭 준비 패널을 감지해야 합니다.');
 assert.equal(거탐판정.detectedType, '클릭 준비형 거짓말 탐지기');
 assert.equal(거탐판정.structuralEvidence, 'click-instruction-panel');

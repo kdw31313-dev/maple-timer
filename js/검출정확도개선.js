@@ -65,17 +65,11 @@
         (leftCircle.radius || 1) / Math.max(1, rightCircle.radius || 1),
         (rightCircle.radius || 1) / Math.max(1, leftCircle.radius || 1)
       );
-      const centerDistance = Math.hypot(
-        (leftCircle.centerX || 0) - (rightCircle.centerX || 0),
-        (leftCircle.centerY || 0) - (rightCircle.centerY || 0)
-      );
-      return sizeRatio <= 1.12
-        && radiusRatio <= 1.12
-        && positionDistance <= Math.max(4, Math.min(width, height) * 0.12)
-        && centerDistance <= Math.max(4, Math.min(
-          leftCircle.radius || 1,
-          rightCircle.radius || 1
-        ) * 0.14);
+      // 원형 클릭형 거탐은 판 자체가 화면을 떠다닌다. 중심 좌표를 연속성
+      // 조건으로 쓰면 실제 거탐이 이동할 때마다 새로운 후보로 초기화된다.
+      // 위치는 자유롭게 허용하되, 원의 크기와 고유 구조가 같은 경우만 같은
+      // 원형 거탐으로 이어서 센다. 하위 유형 일치 검사는 위에서 별도로 한다.
+      return sizeRatio <= 1.25 && radiusRatio <= 1.25;
     }
     return sizeRatio <= 1.25
       && positionDistance <= Math.max(6, Math.min(width, height) * 0.22);
@@ -411,9 +405,9 @@
       state.consecutiveCount = isSame ? state.consecutiveCount + 1 : 1;
       state.lastType = match.type;
       state.lastMatch = copyMatch(match);
-      // 원형 몬스터 사망 잔상은 약 0.3~0.6초 동안 실제 클릭판과 비슷해질 수 있다.
-      // 원형 클릭형만 3회(약 0.9초) 같은 중심·반지름을 확인하고, 나머지 유형은
-      // 기존 2회 확인을 유지해 알림 반응성을 보존한다.
+      // 원형 몬스터 사망 잔상은 짧게 실제 클릭판과 비슷해질 수 있다. 위치가
+      // 움직여도 같은 원 크기·고유 구조가 3회 이어질 때 확정한다. 나머지
+      // 유형은 기존 2회 확인을 유지해 알림 반응성을 보존한다.
       const requiredConsecutive = match.structuralEvidence === 'circular-click-game'
         ? Math.max(3, state.REQUIRED_CONSECUTIVE)
         : state.REQUIRED_CONSECUTIVE;
