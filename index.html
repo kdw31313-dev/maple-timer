@@ -46,9 +46,6 @@
       <button class="tab-btn active" data-tab="tab-timer">
         <span class="icon">⏱️</span> 사냥 타이머 HUD
       </button>
-      <button class="tab-btn" data-tab="tab-calculator">
-        <span class="icon">📊</span> 사냥 효율 계산기
-      </button>
     </nav>
 
     <!-- 📌 Tab 1: 기존 사냥 타이머 HUD -->
@@ -476,185 +473,6 @@
 
     </div> <!-- /#tab-timer -->
 
-    <!-- 📌 Tab 2: 사냥 효율 계산기 (Mapleroad 스타일) -->
-    <div id="tab-calculator" class="tab-content">
-      <div class="calculator-container card">
-        <div class="card-header">
-          <h2><span class="icon">📊</span> 맵별 사냥 마릿수 & 경험치/메소 계산기</h2>
-          <span class="badge badge-info">Mapleroad Style Engine</span>
-        </div>
-
-        <div class="calc-grid">
-          <!-- 좌측: 입력 폼 -->
-          <div class="calc-form-panel">
-            <div class="form-group">
-              <label for="calc-user-level">👤 내 캐릭터 레벨</label>
-              <input type="number" id="calc-user-level" class="input-field" value="280" min="200" max="300">
-            </div>
-
-            <div class="form-group">
-              <label for="calc-map-select">🗺️ 사냥터 선택 (2026 최신 200~295레벨 전 사냥터 수록)</label>
-              <select id="calc-map-select" class="select-field">
-                <!-- calculator.js에서 자동 동적 채움 -->
-              </select>
-            </div>
-
-            <!-- 📸 선택된 메이플 실존 사냥터 맵 배너 사진 카드리프 -->
-            <div id="map-preview-card" style="margin-bottom:16px; border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.4); position:relative;">
-              <img id="map-preview-img" src="https://maplestory.dn.nexoncdn.co.kr/DesignScript/images/maple/town/img_grandis_arteria.jpg" alt="사냥터 맵 배너" style="width:100%; height:130px; object-fit:cover; filter:brightness(0.75); display:block;">
-              <div style="position:absolute; bottom:0; left:0; right:0; padding:8px 12px; background:linear-gradient(transparent, rgba(0,0,0,0.9)); display:flex; justify-content:space-between; align-items:flex-end;">
-                <div>
-                  <strong id="map-preview-title" style="color:#fff; font-size:0.95rem; display:block;">아르테리아 - 최하층 통로 2</strong>
-                  <span id="map-preview-spec" style="font-size:0.75rem; color:var(--accent-gold);">몬스터 Lv.282 | 젠당 40마리 | 1시간 최대 19,200마리</span>
-                </div>
-                <span id="map-preview-ratio-badge" class="badge badge-info" style="font-size:0.75rem;">12초 주기 480젠</span>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="calc-kill-ratio">🎯 젠컷 비율: <span id="val-kill-ratio" style="color:var(--accent-gold); font-weight:bold;">100%</span> (자동 마릿수 계산)</label>
-              <input type="range" id="calc-kill-ratio" class="range-slider" min="80" max="100" value="100" step="1">
-            </div>
-
-            <div class="form-group">
-              <label for="calc-6min-kills">⚔️ 6분 전투분석 마릿수 (자동계산 / 수동수정 가능)</label>
-              <input type="number" id="calc-6min-kills" class="input-field" value="1200">
-            </div>
-
-            <div class="form-group">
-              <label for="calc-exp-buff">✨ 경험치 버프 총합 (%) (기본100 + 경쿠100 + 익스골드 등)</label>
-              <input type="number" id="calc-exp-buff" class="input-field" value="200" step="10">
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="calc-meso-rate">💰 합산 메획 % (장비+어빌+유니온)</label>
-                <input type="number" id="calc-meso-rate" class="input-field" value="137" step="1">
-              </div>
-              <div class="form-group">
-                <label for="calc-drop-rate">💎 총 아획 % (장비+재획비 등)</label>
-                <input type="number" id="calc-drop-rate" class="input-field" value="98" step="1">
-              </div>
-            </div>
-
-            <!-- Mapleroad 스타일 목표 레벨 분석 입력 폼 -->
-            <div class="form-row">
-              <div class="form-group">
-                <label for="calc-current-exp">📊 현재 경험치 (%)</label>
-                <input type="number" id="calc-current-exp" class="input-field" value="25.5" step="0.1" min="0" max="99.9">
-              </div>
-              <div class="form-group">
-                <label for="calc-target-level">🎯 목표 레벨</label>
-                <input type="number" id="calc-target-level" class="input-field" value="285" min="200" max="300">
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="calc-daily-hours">⏳ 하루 평균 사냥 시간 (시간/일)</label>
-              <input type="number" id="calc-daily-hours" class="input-field" value="2" step="0.5" min="0.5" max="24">
-            </div>
-
-            <div class="form-group" style="margin-top:6px;">
-              <label style="color:var(--accent-gold); cursor:pointer;">
-                <input type="checkbox" id="chk-calc-use-wealth" checked> 🧪 재물 획득의 약 (재획비 / 소형재획비 1.2배 곱연산 적용)
-              </label>
-            </div>
-          </div>
-
-          <!-- 우측: 유저 수식 기반 정밀 연산 결과 카드 -->
-          <div class="calc-result-panel">
-            <!-- 🌟 0) Mapleroad 스타일 목표 레벨 D-Day 정밀 달성 분석 카드 (핵심!) -->
-            <div class="result-card-box highlight" style="border-color: #9b59b6; background: rgba(155, 89, 182, 0.15);">
-              <h3><span class="icon">🚀</span> Mapleroad 목표 레벨 달성 예상 분석 (D-Day)</h3>
-              <div class="result-row">
-                <span>목표 달성 예상 소요 일수:</span>
-                <strong id="res-goal-dday" style="color:#e056fd; font-size:1.1rem;">약 42 일 (D-42)</strong>
-              </div>
-              <div class="result-row">
-                <span>필요 총 재획비 수량 (2시간=1재):</span>
-                <strong id="res-goal-rehoek-total" style="color:var(--accent-gold); font-size:1.05rem;">약 42.0 개</strong>
-              </div>
-              <div class="result-row">
-                <span>목표 달성 시 누적 예상 메소:</span>
-                <strong id="res-goal-meso-total" style="color:#00f2fe; font-size:1.05rem;">약 86 억 메소</strong>
-              </div>
-              <div class="result-row">
-                <span>목표 달성 시 누적 솔 에르다 조각:</span>
-                <strong id="res-goal-erda-total" style="color:#e056fd; font-size:1.05rem;">약 302 개</strong>
-              </div>
-            </div>
-            <!-- 1) 메소 제한 도달 필요 마릿수 & 필요 재획량 (핵심!) -->
-            <div class="result-card-box highlight" style="border-color: #00f2fe;">
-              <h3><span class="icon">🛑</span> 일일 메소 제한 & 필요 재획량</h3>
-              <div class="result-row">
-                <span>메소 제한 도달 필요 마릿수:</span>
-                <strong id="res-req-kills" style="color:#00f2fe; font-size:1.05rem;">80,952 마리</strong>
-              </div>
-              <div class="result-row">
-                <span>필요 재획량 (재획비 개수):</span>
-                <strong id="res-req-rehoek" style="color:var(--accent-gold); font-size:1.05rem;">약 2.152 개</strong>
-              </div>
-              <div class="result-row">
-                <span>메소 제한까지 소요 시간:</span>
-                <strong id="res-cap-time-needed" style="color:#ff4b2b; font-size:1.05rem;">약 4시간 18분</strong>
-              </div>
-            </div>
-
-            <!-- 2) 메획 반영 상한선 & 주머니 평균값 -->
-            <div class="result-card-box">
-              <h3><span class="icon">💰</span> 메획 반영 메소 상한선 (d) & 주머니</h3>
-              <div class="result-row">
-                <span>기본 제한량 (메획 0% 기준):</span>
-                <strong id="res-base-cap">1억 7,000 만 메소</strong>
-              </div>
-              <div class="result-row">
-                <span>메획% 반영 최종 메소 상한 (d):</span>
-                <strong id="res-total-cap-meso" class="text-gold">4억 290 만 메소</strong>
-              </div>
-              <div class="result-row">
-                <span>메소주머니 1개 평균액 (a):</span>
-                <strong id="res-meso-per-bag">약 5,451 메소</strong>
-              </div>
-            </div>
-
-            <!-- 3) 시간별 예상 메소 획득액 -->
-            <div class="result-card-box">
-              <h3><span class="icon">📈</span> 시간별 메소 획득량</h3>
-              <div class="result-row">
-                <span>30분 획득 메소:</span>
-                <strong id="res-30min-meso">약 5,124 만 메소</strong>
-              </div>
-              <div class="result-row">
-                <span>시간당(1시간) 획득 메소:</span>
-                <strong id="res-hourly-meso" class="text-accent">약 1억 248 만 메소</strong>
-              </div>
-              <div class="result-row">
-                <span>1재획(2시간) 획득 메소:</span>
-                <strong id="res-2hr-meso" class="text-gold">약 2억 497 만 메소</strong>
-              </div>
-            </div>
-
-            <!-- 4) 사냥 마릿수 & 경험치/조각 -->
-            <div class="result-card-box">
-              <h3><span class="icon">⚔️</span> 예상 마릿수 / 경험치 / 조각</h3>
-              <div class="result-row">
-                <span>시간당 / 1재획 마릿수:</span>
-                <strong id="res-hourly-kills">18,800 마리 / 37,600 마리</strong>
-              </div>
-              <div class="result-row">
-                <span>1재획(2시간) 총 경험치:</span>
-                <strong id="res-2hr-exp" class="text-gold">0.00%</strong>
-              </div>
-              <div class="result-row">
-                <span>솔 에르다 조각 (1재획):</span>
-                <strong id="res-2hr-erda" style="color:#00f2fe;">약 0 개</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- 시각 알림용 오버레이 플래시 -->
     <div id="flash-overlay" class="flash-overlay hidden"></div>
   </div>
@@ -714,7 +532,6 @@
   <script src="js/screenCapture.js?v=20260818-1"></script>
   <script src="js/야누스학습수집기.js?v=20260729-3"></script>
   <script src="js/pipController.js"></script>
-  <script src="js/calculator.js"></script>
   <script src="js/app.js?v=20260818-1"></script>
 </body>
 </html>
