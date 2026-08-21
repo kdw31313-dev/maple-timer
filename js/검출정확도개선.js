@@ -9,6 +9,8 @@
 
   const Analyzer = analyzer.constructor;
   const proto = Analyzer.prototype;
+  const POPUP_EVIDENCE_WINDOW_MS = 2500;
+  const POPUP_STRONG_SINGLE_CONFIDENCE = 0.98;
 
   const copyMatch = (match) => ({
     x: match.x,
@@ -405,21 +407,45 @@
   proto.processPopupStructureFrame = function improvedPopupState(imageData) {
     if (!imageData?.data?.length) return;
     const state = this.popupState;
+    const now = Date.now();
+    if (!Array.isArray(state.recentPopupEvidence)) state.recentPopupEvidence = [];
     const match = this.verifyPopupTemplateMatch(imageData, this.findPopupTemplateMatch(imageData));
     state.lastConfidence = match.confidence || 0;
     if (match.verified) {
       state.missedCount = 0;
+      const isFloatingActivation = match.structuralEvidence === 'floating-activation-text';
       const isSame = samePopup(state.lastMatch, match);
       state.consecutiveCount = isSame ? state.consecutiveCount + 1 : 1;
       state.lastType = match.type;
       state.lastMatch = copyMatch(match);
+
+      if (isFloatingActivation) {
+        state.recentPopupEvidence = state.recentPopupEvidence.filter((entry) => (
+          now - entry.seenAt <= POPUP_EVIDENCE_WINDOW_MS
+          && entry.match?.type === match.type
+          && entry.match?.detectedType === match.detectedType
+          && entry.match?.structuralEvidence === 'floating-activation-text'
+        ));
+        state.recentPopupEvidence.push({ seenAt: now, match: copyMatch(match) });
+      } else {
+        state.recentPopupEvidence = [];
+      }
+
       // 원형 몬스터 사망 잔상은 짧게 실제 클릭판과 비슷해질 수 있다. 위치가
       // 움직여도 같은 원 크기·고유 구조가 3회 이어질 때 확정한다. 나머지
       // 유형은 기존 2회 확인을 유지해 알림 반응성을 보존한다.
       const requiredConsecutive = match.structuralEvidence === 'circular-click-game'
         ? Math.max(3, state.REQUIRED_CONSECUTIVE)
         : state.REQUIRED_CONSECUTIVE;
-      if (state.consecutiveCount >= requiredConsecutive
+      // 5줄 발동 안내는 신뢰도가 매우 높은 한 장이면 즉시 알린다. 가림이나
+      // 백그라운드 탭 제한으로 중간 프레임을 놓친 경우에도 2.5초 안의 두
+      // 확인을 합쳐서 알리되, 약한 단일 후보는 계속 보류한다.
+      const strongSingleFrame = isFloatingActivation
+        && (match.confidence || 0) >= POPUP_STRONG_SINGLE_CONFIDENCE;
+      const confirmedWithinWindow = isFloatingActivation
+        && state.recentPopupEvidence.length >= 2;
+      if ((strongSingleFrame || confirmedWithinWindow
+          || state.consecutiveCount >= requiredConsecutive)
         && !state.isDetected && !state.cooldownActive) {
         this.triggerPopupStructureAlert(match.detectedType || match.type);
       }
@@ -427,6 +453,9 @@
     }
     state.consecutiveCount = 0;
     state.lastMatch = null;
+    state.recentPopupEvidence = state.recentPopupEvidence.filter(
+      (entry) => now - entry.seenAt <= POPUP_EVIDENCE_WINDOW_MS
+    );
     state.missedCount++;
     // 색 변화·전투 가림으로 잠깐 놓쳐도 같은 발동 사건을 새 거탐으로 다시 알리지 않는다.
     // 300ms 검사 100회(30초) 동안 연속으로 사라져야 다음 사건을 받을 준비를 한다.
@@ -434,6 +463,7 @@
       state.cooldownActive = false;
       state.isDetected = false;
       state.lastType = '';
+      state.recentPopupEvidence = [];
       if (this.onPopupStatusChange && window.screenCaptureManager?.isStreaming) {
         this.onPopupStatusChange('🟢 거탐 감시 중 (7개 유형 위치·형태 교차 확인)', false);
       }

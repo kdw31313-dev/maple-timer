@@ -99,4 +99,62 @@ assert.notEqual(
   '연속된 공격 광원을 발동 안내 5줄로 잡으면 안 됩니다.'
 );
 
+const 가상일치 = (confidence) => ({
+  found: true,
+  verified: true,
+  type: '거짓말 탐지기 팝업',
+  detectedType: '발동 안내형 거짓말 탐지기',
+  confidence,
+  structuralEvidence: 'floating-activation-text',
+  x: 30,
+  y: 20,
+  width: 57,
+  height: 57
+});
+const 가상불일치 = {
+  found: false,
+  verified: false,
+  type: '거짓말 탐지기 팝업',
+  detectedType: '',
+  confidence: 0,
+  structuralEvidence: ''
+};
+
+const 원래시각 = Date.now;
+let 가상시각 = 1000;
+Date.now = () => 가상시각;
+try {
+  const 누락복구분석기 = new global.imageAnalyzer.constructor();
+  const 누락복구응답 = [가상일치(0.90), 가상불일치, 가상일치(0.91)];
+  누락복구분석기.findPopupTemplateMatch = () => ({});
+  누락복구분석기.verifyPopupTemplateMatch = () => 누락복구응답.shift();
+  const 누락복구전 = 알림.length;
+
+  누락복구분석기.processPopupStructureFrame(노랑화면);
+  assert.equal(알림.length, 누락복구전, '약한 단일 후보만으로 알리면 안 됩니다.');
+  가상시각 += 1000;
+  누락복구분석기.processPopupStructureFrame(빈화면);
+  assert.equal(알림.length, 누락복구전, '중간 누락 프레임에서 알리면 안 됩니다.');
+  가상시각 += 1000;
+  누락복구분석기.processPopupStructureFrame(주황화면);
+  assert.equal(
+    알림.length,
+    누락복구전 + 1,
+    '2.5초 안의 두 발동 안내 증거는 중간 누락이 있어도 합쳐서 알려야 합니다.'
+  );
+
+  const 즉시분석기 = new global.imageAnalyzer.constructor();
+  즉시분석기.findPopupTemplateMatch = () => ({});
+  즉시분석기.verifyPopupTemplateMatch = () => 가상일치(0.99);
+  const 즉시전 = 알림.length;
+  즉시분석기.processPopupStructureFrame(노랑화면);
+  assert.equal(
+    알림.length,
+    즉시전 + 1,
+    '매우 강한 5줄 발동 안내는 첫 확인에서 즉시 알려야 합니다.'
+  );
+} finally {
+  Date.now = 원래시각;
+}
+
 console.log('✅ 발동 안내 거탐 회귀 통과: 이동·노랑/주황 양성, 연속 전투광원 음성');
