@@ -357,7 +357,7 @@
             const lowerActiveBands = bandCounts.slice(1)
               .filter((value) => value >= activeBandMinimum).length;
             if (activeBands < 4 || lowerActiveBands < 3
-              || totalYellow < 18 * pixelScale || totalYellow > 135 * pixelScale) continue;
+              || totalYellow < 45 * pixelScale || totalYellow > 135 * pixelScale) continue;
 
             const tintRatio = sumRect(
               tint,
@@ -367,7 +367,7 @@
               candidateHeight
             ) / (candidateWidth * candidateHeight);
             const balance = 1 - Math.max(...bandCounts) / Math.max(1, totalYellow);
-            if (tintRatio < 0.42 || balance < 0.52) continue;
+            if (tintRatio < 0.90 || balance < 0.52) continue;
 
             const layoutScore = activeBands * 1.5 + lowerActiveBands
               + Math.min(4, totalYellow / Math.max(1, 8 * pixelScale))
@@ -418,10 +418,45 @@
       }
     }
 
-    // 노란 버프 타이머가 여러 줄로 겹치면 배치 점수만으로는 클릭 안내처럼
-    // 보일 수 있다. 실제 클릭 준비 패널의 전체 색 배치와도 충분히 가까운
-    // 후보만 허용해, 타이머 숫자/아이콘 군집이 배치 점수로 통과하지 못하게 한다.
-    if (!best || best.combinedScore > 12 || best.colorScore > 25.5) return null;
+    if (!best) return null;
+    const yellowColumnCounts = new Uint16Array(best.width);
+    const yellowRowCounts = new Uint16Array(best.height);
+    let horizontalYellowLinks = 0;
+    for (let localY = 0; localY < best.height; localY++) {
+      let previousYellow = false;
+      for (let localX = 0; localX < best.width; localX++) {
+        const pixel = ((best.y + localY) * width + best.x + localX) * 4;
+        const r = data[pixel];
+        const g = data[pixel + 1];
+        const b = data[pixel + 2];
+        const isYellow = r > 145 && g > 105 && b < 115
+          && r > b * 1.35 && g > b * 1.05;
+        if (isYellow) {
+          yellowColumnCounts[localX]++;
+          yellowRowCounts[localY]++;
+          if (previousYellow) horizontalYellowLinks++;
+        }
+        previousYellow = isYellow;
+      }
+    }
+    const linePixelMinimum = Math.max(2, Math.round(2 * baseScale));
+    const activeYellowColumns = [...yellowColumnCounts]
+      .filter((count) => count >= linePixelMinimum).length;
+    const activeYellowRows = [...yellowRowCounts]
+      .filter((count) => count >= linePixelMinimum).length;
+    const yellowColumnCoverage = activeYellowColumns / best.width;
+    const horizontalYellowRatio = horizontalYellowLinks / Math.max(1, best.totalYellow);
+
+    // 실제 클릭 준비 패널은 보라 별빛 바탕이 거의 전 영역에 이어지고,
+    // 노란 안내 문자가 여러 행·열에 짧은 가로획을 만든다. 몬스터 갑옷과
+    // 공격 이펙트는 색 프로필이 비슷해도 노란 윤곽이 성기거나 한 방향으로
+    // 길게 이어지므로 이 문자 구조를 동시에 만족하지 못한다.
+    if (best.combinedScore > 12 || best.colorScore > 24.5
+      || best.tintRatio < 0.90
+      || best.totalYellow < 45 * pixelScale
+      || activeYellowRows < Math.max(7, Math.round(7 * baseScale))
+      || yellowColumnCoverage < 0.46
+      || horizontalYellowRatio < 0.34) return null;
     return {
       found: true,
       kind: 'click-instruction-panel',
@@ -435,6 +470,9 @@
       bandCounts: best.bandCounts,
       totalYellow: best.totalYellow,
       tintRatio: best.tintRatio,
+      activeYellowRows,
+      yellowColumnCoverage,
+      horizontalYellowRatio,
       colorScore: best.colorScore,
       combinedScore: best.combinedScore
     };
@@ -581,15 +619,18 @@
             / edgePolarities.length;
           // 실제 원형 판의 경계는 거의 같은 반지름에서 같은 밝기 방향으로 바뀐다.
           // 플랫폼·퀘스트 창·몬스터 외곽을 각도마다 따로 주워 만든 가짜 원은 이 두
-          // 값이 흐트러지므로, 색 비율이 우연히 맞아도 확정하지 않는다. 실제 이동
-          // 원형 표본의 반지름 편차 2.29는 포함하되 방향 일치 기준은 그대로 둔다.
+          // 값이 흐트러지므로, 색 비율이 우연히 맞아도 확정하지 않는다. 반지름
+          // 편차가 큰 이동 표본은 방향 일치가 더 강할 때만 추가 범위로 허용한다.
+          const regularBoundary = edgeRadiusDeviation <= 2.05 * baseScale;
+          const movingBoundary = edgeRadiusDeviation <= 2.45 * baseScale
+            && polarityConsistency >= 0.70;
           const found = edge15 >= 46
             && edge25 >= 42
             && neutralEdge <= 11
             && brightEdge <= 16
             && innerMean <= 108
             && contrast <= 18
-            && edgeRadiusDeviation <= 2.45 * baseScale
+            && (regularBoundary || movingBoundary)
             && polarityConsistency >= 0.62;
           if (!found) continue;
 
@@ -624,7 +665,13 @@
           // 클릭 미니게임의 원형 판은 내부 전반에 청회색 계열이 이어진다.
           // 새 맵 구조물의 보라 구체와 버프/스킬 아이콘도 원주는 만들지만,
           // 내부가 보라색이거나 청회색 연속 면적이 부족하므로 제외한다.
-          if (blueInteriorRatio < 0.82 || purpleInteriorRatio > 0.18) continue;
+          const movingBoundaryColorConsistent = regularBoundary
+            || purpleInteriorRatio <= 0.065;
+          const noisyBrightInterior = innerMean > 104
+            && contrast > 12
+            && polarityConsistency < 0.70;
+          if (blueInteriorRatio < 0.84 || purpleInteriorRatio > 0.18
+            || !movingBoundaryColorConsistent || noisyBrightInterior) continue;
 
           const confidence = edge25 / angles.length * 0.42
             + edge15 / angles.length * 0.20
@@ -633,7 +680,7 @@
             + Math.max(0, 18 - contrast) / 18 * 0.10;
           const circleMargins = [
             Math.min(1, Math.max(0, (edge25 - 42) / 6)),
-            Math.min(1, Math.max(0, (blueInteriorRatio - 0.82) / 0.15)),
+            Math.min(1, Math.max(0, (blueInteriorRatio - 0.84) / 0.15)),
             Math.min(1, Math.max(0, (0.18 - purpleInteriorRatio) / 0.15))
           ];
           const structuralStrength = 0.60

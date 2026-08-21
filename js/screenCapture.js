@@ -576,6 +576,11 @@ class ScreenCaptureManager {
         ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
         labelX = Math.max(8, boxX);
         labelY = Math.max(24, boxY - 8);
+        if (match.structuralEvidence === 'click-instruction-panel') {
+          label = `클릭 후보 · 노랑 ${structure?.totalYellow || 0}`
+            + ` · 배경연속 ${Math.round((structure?.tintRatio || 0) * 100)}%`
+            + ` · 가로획 ${Math.round((structure?.horizontalYellowRatio || 0) * 100)}%`;
+        }
       }
 
       const labelWidth = ctx.measureText(label).width;
