@@ -612,7 +612,10 @@ class ScreenCaptureManager {
 
     this.loopIntervalId = setInterval(() => {
       if (!this.isStreaming || !this.videoEl) return;
-      if (this.videoEl.readyState === this.videoEl.HAVE_ENOUGH_DATA) {
+      // 게임·Chrome 부하로 버퍼가 잠깐 줄어도 현재 프레임(HAVE_CURRENT_DATA)은
+      // 이미 Canvas에 그릴 수 있다. HAVE_ENOUGH_DATA(4)만 허용하면 readyState가
+      // 2~3인 동안 룬·거탐 검사를 통째로 건너뛰므로, 표시 가능한 프레임부터 분석한다.
+      if (this.videoEl.readyState >= this.videoEl.HAVE_CURRENT_DATA) {
         const vWidth = this.videoEl.videoWidth || 1280;
         const vHeight = this.videoEl.videoHeight || 720;
 

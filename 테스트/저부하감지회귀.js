@@ -53,7 +53,10 @@ const 새캔버스 = () => {
 };
 
 const 게임영상 = {
-  readyState: 4,
+  // Chrome이 바쁠 때 충분한 버퍼(4)는 아니어도 현재 프레임(2)은 그릴 수 있다.
+  // 이 상태에서도 감지 루프가 멈추지 않아야 한다.
+  readyState: 2,
+  HAVE_CURRENT_DATA: 2,
   HAVE_ENOUGH_DATA: 4,
   videoWidth: 1600,
   videoHeight: 900,
@@ -100,4 +103,4 @@ assert.equal(분석횟수.popup, 2, '거탐 300ms 검사 주기가 유지되지 
 assert.equal(관리자.runeCanvas.횟수.getImageData, 4, '룬 화면 복사 횟수가 다릅니다.');
 assert.equal(관리자.popupCanvas.횟수.getImageData, 2, '거탐 화면이 검사하지 않는 틱에도 복사됩니다.');
 
-console.log('✅ 저부하 감지 회귀 통과: 룬 4회, 거탐 2회, 버프 분석 0회');
+console.log('✅ 저부하 감지 회귀 통과: 버퍼 부족 상태에서도 룬 4회, 거탐 2회, 버프 분석 0회');

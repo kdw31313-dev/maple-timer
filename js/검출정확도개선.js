@@ -71,6 +71,14 @@
       // 원형 거탐으로 이어서 센다. 하위 유형 일치 검사는 위에서 별도로 한다.
       return sizeRatio <= 1.25 && radiusRatio <= 1.25;
     }
+    if (left.structuralEvidence === 'floating-activation-text'
+      || right.structuralEvidence === 'floating-activation-text') {
+      // 발동 안내 글자는 화면을 떠다니며 기울기와 위치가 계속 바뀐다.
+      // 다만 300ms 사이에 화면 반대편으로 순간이동하지는 않는다. 넉넉한 이동
+      // 반경은 허용하면서 서로 먼 공격 숫자 두 곳이 한 안내로 합쳐지는 것은 막는다.
+      return sizeRatio <= 1.35
+        && positionDistance <= Math.max(48, Math.max(width, height) * 0.95);
+    }
     return sizeRatio <= 1.25
       && positionDistance <= Math.max(6, Math.min(width, height) * 0.22);
   };
@@ -413,14 +421,16 @@
         : state.REQUIRED_CONSECUTIVE;
       if (state.consecutiveCount >= requiredConsecutive
         && !state.isDetected && !state.cooldownActive) {
-        this.triggerPopupStructureAlert(match.type);
+        this.triggerPopupStructureAlert(match.detectedType || match.type);
       }
       return;
     }
     state.consecutiveCount = 0;
     state.lastMatch = null;
     state.missedCount++;
-    if (state.cooldownActive && state.missedCount >= 5) {
+    // 색 변화·전투 가림으로 잠깐 놓쳐도 같은 발동 사건을 새 거탐으로 다시 알리지 않는다.
+    // 300ms 검사 100회(30초) 동안 연속으로 사라져야 다음 사건을 받을 준비를 한다.
+    if (state.cooldownActive && state.missedCount >= 100) {
       state.cooldownActive = false;
       state.isDetected = false;
       state.lastType = '';

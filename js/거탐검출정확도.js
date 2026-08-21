@@ -195,7 +195,7 @@
     return count / Math.max(1, width * height);
   };
 
-  const findActivationBanner = (imageData) => {
+  const findFramedActivationBanner = (imageData) => {
     const { width, height } = imageData;
     const sums = buildBannerIntegrals(imageData);
     // 캔버스가 화면비를 보존하므로 UI 크기는 너비가 아니라 높이 배율로
@@ -716,6 +716,230 @@
       }
     }
     return best;
+  };
+
+  const findFloatingActivationText = (imageData) => {
+    if (!imageData?.data?.length) return null;
+    const { data, width, height } = imageData;
+    const stride = width + 1;
+    const warm = new Uint32Array(stride * (height + 1));
+    const warmMask = new Uint8Array(width * height);
+
+    // 발동 안내는 배경 없이 떠다니며 전투광에 따라 노랑·금색·주황으로 바뀐다.
+    // 고정 RGB 대신 붉은색과 녹색이 파란색보다 함께 강한 따뜻한 글자색을 모은다.
+    for (let y = 1; y <= height; y++) {
+      let rowWarm = 0;
+      for (let x = 1; x <= width; x++) {
+        const pixel = ((y - 1) * width + x - 1) * 4;
+        const r = data[pixel];
+        const g = data[pixel + 1];
+        const b = data[pixel + 2];
+        if (r >= 140 && g >= 78 && b <= 150
+          && r - b >= 28 && g - b >= 6 && r >= g * 0.88) {
+          rowWarm++;
+          warmMask[(y - 1) * width + x - 1] = 1;
+        }
+        const position = y * stride + x;
+        warm[position] = warm[position - stride] + rowWarm;
+      }
+    }
+
+    const sumRect = (x, y, candidateWidth, candidateHeight) => {
+      const x2 = x + candidateWidth;
+      const y2 = y + candidateHeight;
+      return warm[y2 * stride + x2] - warm[y2 * stride + x]
+        - warm[y * stride + x2] + warm[y * stride + x];
+    };
+    const baseScale = height / 135;
+    const widths = [32, 38, 44, 50, 56]
+      .map((value) => Math.max(24, Math.round(value * baseScale)));
+    const heights = [30, 36, 42, 48]
+      .map((value) => Math.max(24, Math.round(value * baseScale)));
+    const step = Math.max(2, Math.round(2 * baseScale));
+    const pixelScale = baseScale * baseScale;
+    const candidates = [];
+
+    for (const candidateHeight of new Set(heights)) {
+      if (candidateHeight >= height) continue;
+      for (const candidateWidth of new Set(widths)) {
+        if (candidateWidth >= width || candidateWidth / candidateHeight < 0.65
+          || candidateWidth / candidateHeight > 1.65) continue;
+        for (let y = 0; y <= height - candidateHeight; y += step) {
+          for (let x = 0; x <= width - candidateWidth; x += step) {
+            const bandCounts = [];
+            const totalWarm = sumRect(x, y, candidateWidth, candidateHeight);
+            if (totalWarm < 30 * pixelScale || totalWarm > 190 * pixelScale) continue;
+
+            for (let band = 0; band < 5; band++) {
+              const bandY1 = y + Math.floor(candidateHeight * band / 5);
+              const bandY2 = y + Math.floor(candidateHeight * (band + 1) / 5);
+              bandCounts.push(sumRect(x, bandY1, candidateWidth, bandY2 - bandY1));
+            }
+
+            const minimumBand = Math.max(2, Math.round(2 * pixelScale));
+            if (bandCounts[0] < minimumBand
+              || bandCounts.slice(1).some((count) => count < minimumBand * 2)
+            ) continue;
+            const lowerTotal = bandCounts.slice(1).reduce((sum, count) => sum + count, 0);
+            const balance = 1 - Math.max(...bandCounts.slice(1)) / Math.max(1, lowerTotal);
+            if (balance < 0.55) continue;
+            candidates.push({
+              x,
+              y,
+              width: candidateWidth,
+              height: candidateHeight,
+              bandCounts,
+              totalWarm,
+              layoutScore: totalWarm + balance * 40
+            });
+            if (candidates.length >= 360) {
+              candidates.sort((left, right) => right.layoutScore - left.layoutScore);
+              candidates.length = 180;
+            }
+          }
+        }
+      }
+    }
+
+    candidates.sort((left, right) => right.layoutScore - left.layoutScore);
+    candidates.length = Math.min(120, candidates.length);
+    let best = null;
+    for (const candidate of candidates) {
+      const bands = [];
+      const rowProfiles = [];
+      for (let band = 0; band < 5; band++) {
+        const bandY1 = candidate.y + Math.floor(candidate.height * band / 5);
+        const bandY2 = candidate.y + Math.floor(candidate.height * (band + 1) / 5);
+        let minX = candidate.width;
+        let maxX = -1;
+        let count = 0;
+        let horizontalLinks = 0;
+        for (let py = bandY1; py < bandY2; py++) {
+          let previousWarm = false;
+          for (let px = candidate.x; px < candidate.x + candidate.width; px++) {
+            const isWarm = warmMask[py * width + px] === 1;
+            if (isWarm) {
+              count++;
+              minX = Math.min(minX, px - candidate.x);
+              maxX = Math.max(maxX, px - candidate.x);
+              if (previousWarm) horizontalLinks++;
+            }
+            previousWarm = isWarm;
+          }
+        }
+        bands.push({
+          count,
+          span: maxX >= minX ? maxX - minX + 1 : 0,
+          center: maxX >= minX ? (minX + maxX) / 2 : candidate.width / 2,
+          horizontalLinks
+        });
+      }
+
+      for (let py = candidate.y; py < candidate.y + candidate.height; py++) {
+        let count = 0;
+        let minX = candidate.width;
+        let maxX = -1;
+        for (let px = candidate.x; px < candidate.x + candidate.width; px++) {
+          if (warmMask[py * width + px] === 1) {
+            count++;
+            minX = Math.min(minX, px - candidate.x);
+            maxX = Math.max(maxX, px - candidate.x);
+          }
+        }
+        rowProfiles.push({ count, minX, maxX });
+      }
+
+      // 숫자 한 줄 + 안내문 네 줄. 이 간격 구조가 공격 숫자·스킬 광원과의 핵심 차이다.
+      const activeRowMinimum = Math.max(2, Math.round(candidate.width * 0.08));
+      const lineClusters = [];
+      for (let row = 0; row < rowProfiles.length; row++) {
+        const profile = rowProfiles[row];
+        if (profile.count < activeRowMinimum) continue;
+        const previous = lineClusters[lineClusters.length - 1];
+        if (!previous || row > previous.end + 1) {
+          lineClusters.push({
+            start: row,
+            end: row,
+            minX: profile.minX,
+            maxX: profile.maxX,
+            count: profile.count
+          });
+        } else {
+          previous.end = row;
+          previous.minX = Math.min(previous.minX, profile.minX);
+          previous.maxX = Math.max(previous.maxX, profile.maxX);
+          previous.count += profile.count;
+        }
+      }
+      if (lineClusters.length !== 5) continue;
+      const clusterSpans = lineClusters.map((cluster) => cluster.maxX - cluster.minX + 1);
+      const clusterCenters = lineClusters.map((cluster) => (cluster.minX + cluster.maxX) / 2);
+      const lowerClusterSpans = clusterSpans.slice(1);
+      const meanLowerClusterSpan = lowerClusterSpans.reduce((sum, value) => sum + value, 0) / 4;
+      const meanLowerClusterCenter = clusterCenters.slice(1)
+        .reduce((sum, value) => sum + value, 0) / 4;
+      if (clusterSpans[0] > meanLowerClusterSpan * 0.58
+        || lowerClusterSpans.some((span) => span < candidate.width * 0.30)
+        || Math.abs(clusterCenters[0] - meanLowerClusterCenter) > candidate.width * 0.22
+        || clusterCenters.slice(1)
+          .some((center) => Math.abs(center - meanLowerClusterCenter) > candidate.width * 0.24)) continue;
+
+      const lowerSpans = bands.slice(1).map((band) => band.span);
+      const meanLowerSpan = lowerSpans.reduce((sum, value) => sum + value, 0) / 4;
+      const lowerCenters = bands.slice(1).map((band) => band.center);
+      const meanLowerCenter = lowerCenters.reduce((sum, value) => sum + value, 0) / 4;
+      const horizontalLinks = bands.reduce((sum, band) => sum + band.horizontalLinks, 0);
+      if (meanLowerSpan < candidate.width * 0.46
+        || lowerSpans.some((span) => span < candidate.width * 0.30)
+        || bands[0].span > meanLowerSpan * 0.72
+        || Math.abs(bands[0].center - meanLowerCenter) > candidate.width * 0.20
+        || lowerCenters.some((center) => Math.abs(center - meanLowerCenter) > candidate.width * 0.22)
+        || horizontalLinks / Math.max(1, candidate.totalWarm) < 0.16) continue;
+
+      const edgePenalty = (
+        Math.min(
+          candidate.x,
+          width - candidate.x - candidate.width,
+          candidate.y,
+          height - candidate.y - candidate.height
+        ) <= 1
+      ) ? 0.12 : 0;
+      const confidence = Math.min(1, 0.66
+        + Math.min(0.12, candidate.totalWarm / Math.max(1, 650 * pixelScale))
+        + Math.min(0.10, meanLowerSpan / candidate.width * 0.14)
+        + Math.min(0.12, horizontalLinks / Math.max(1, candidate.totalWarm) * 0.22)
+        - edgePenalty);
+      if (!best || confidence > best.confidence) {
+        best = {
+          found: true,
+          kind: 'floating-activation-text',
+          type: '발동 안내형 거짓말 탐지기',
+          confidence,
+          structuralStrength: 0.94,
+          x: candidate.x,
+          y: candidate.y,
+          width: candidate.width,
+          height: candidate.height,
+          totalWarm: candidate.totalWarm,
+          bandCounts: bands.map((band) => band.count),
+          topSpan: bands[0].span,
+          meanLowerSpan,
+          horizontalWarmRatio: horizontalLinks / Math.max(1, candidate.totalWarm),
+          lineClusterCount: lineClusters.length
+        };
+      }
+    }
+    return best;
+  };
+
+  const findActivationBanner = (imageData) => {
+    const framed = findFramedActivationBanner(imageData);
+    const floating = findFloatingActivationText(imageData);
+    if (!framed) return floating;
+    if (!floating) return framed;
+    return (floating.structuralStrength || 0) > (framed.structuralStrength || 0)
+      ? floating
+      : framed;
   };
 
   proto.findPopupUniqueStructureEvidence = function findPopupUniqueStructureEvidence(imageData) {
