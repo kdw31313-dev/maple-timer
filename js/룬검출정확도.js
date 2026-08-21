@@ -18,6 +18,9 @@
   const previousReset = proto.reset;
   const STARTUP_REQUIRED_CONSECUTIVE = 5;
   const STARTUP_REQUIRED_STABLE_MS = 600;
+  // 기본 ROI의 아래쪽 약 16%는 미니맵 밖 전투 UI다. 실제 영상의 룬은 모두
+  // 이 경계 안쪽에 있었고, 아래쪽 후보는 스킬·단축키 이펙트에서만 나타났다.
+  const RUNE_MAP_INTERIOR_MAX_Y = 0.84;
 
   const isWeakRuneViolet = (r, g, b) => (
     r >= 75
@@ -233,7 +236,7 @@
       const edge = candidate.centerX / width < 0.07
         || candidate.centerX / width > 0.93
         || candidate.centerY / height < 0.07
-        || candidate.centerY / height > 0.95;
+        || candidate.centerY / height > RUNE_MAP_INTERIOR_MAX_Y;
       candidate.runeRank = candidate.shapeConfidence * 0.48
         + Math.min(1, candidate.averageRedGreenContrast / 90) * 0.20
         + candidate.pinkCoreRatio * 0.20
@@ -369,7 +372,12 @@
     if (isLearningBackground || !candidate?.isHysteresisRune) return false;
     const horizontal = candidate.centerX / Math.max(1, imageData.width);
     const vertical = candidate.centerY / Math.max(1, imageData.height);
-    if (horizontal < 0.07 || horizontal > 0.93 || vertical < 0.07 || vertical > 0.95) {
+    if (
+      horizontal < 0.07
+      || horizontal > 0.93
+      || vertical < 0.07
+      || vertical > RUNE_MAP_INTERIOR_MAX_Y
+    ) {
       return false;
     }
     if (candidate.repeatedStructureCount > 1
@@ -407,7 +415,7 @@
       && horizontal >= 0.10
       && horizontal <= 0.90
       && vertical >= 0.10
-      && vertical <= 0.92;
+      && vertical <= RUNE_MAP_INTERIOR_MAX_Y;
   };
 
   const sameStartupCandidate = (candidate, previous) => {
@@ -516,12 +524,19 @@
     // 맵이 바뀌는 동안 새 구조물을 룬으로 알리지 않는다. 이동이 6회
     // 확인되면 배경 학습을 처음부터 다시 시작한다.
     if (this.hasRuneMapChanged(runeImageData)) {
-      state.mapTransitionFrames++;
-      resetTracking(state);
-      if (state.mapTransitionFrames >= state.MAP_TRANSITION_REQUIRED) {
-        this.restartRuneBackgroundLearning();
+      // 큰 전투 이펙트가 미니맵을 덮으면 맵 전환처럼 보일 수 있다. 이때도
+      // 신규성·형태·미니맵 내부 위치를 모두 통과한 룬은 600ms 추적을 계속한다.
+      const verifiedRuneVisible = this.findRuneDiamondCandidates(runeImageData).some((candidate) => (
+        this.isRuneCandidateAccepted(candidate, runeImageData, false)
+      ));
+      if (!verifiedRuneVisible) {
+        state.mapTransitionFrames++;
+        resetTracking(state);
+        if (state.mapTransitionFrames >= state.MAP_TRANSITION_REQUIRED) {
+          this.restartRuneBackgroundLearning();
+        }
+        return;
       }
-      return;
     }
     state.mapTransitionFrames = 0;
     return baseProcessRuneFrame.call(this, runeImageData, fullImageData);
