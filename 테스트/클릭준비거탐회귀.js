@@ -47,10 +47,28 @@ const 패널그리기 = (화면, 시작X, 시작Y, width = 26, height = 30) => {
       픽셀(화면, 시작X + x, 시작Y + y, 색프로필[gridY][gridX]);
     }
   }
-  const 노랑 = [218, 174, 42];
+  const 노랑 = [218, 174, 70];
   [3, 9, 15, 21, 27].forEach((y, index) => {
     const inset = index === 0 ? 8 : (index === 4 ? 2 : 4);
-    for (let x = inset; x < width - inset; x++) 픽셀(화면, 시작X + x, 시작Y + y, 노랑);
+    for (let x = inset; x < width - inset; x++) {
+      픽셀(화면, 시작X + x, 시작Y + y, 노랑);
+      if (y + 1 < height) 픽셀(화면, 시작X + x, 시작Y + y + 1, 노랑);
+    }
+  });
+};
+
+const 몬스터윤곽그리기 = (화면, 시작X, 시작Y, width = 26, height = 30) => {
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const gridX = Math.min(7, Math.floor(x * 8 / width));
+      const gridY = Math.min(7, Math.floor(y * 8 / height));
+      픽셀(화면, 시작X + x, 시작Y + y, 색프로필[gridY][gridX]);
+    }
+  }
+  const 노랑 = [218, 174, 70];
+  [3, 9, 15, 21, 27].forEach((y, index) => {
+    const start = 4 + index;
+    for (let x = start; x < start + 7; x++) 픽셀(화면, 시작X + x, 시작Y + y, 노랑);
   });
 };
 
@@ -75,4 +93,16 @@ assert.equal(Boolean(거탐판정.verified), true, '임의 위치의 클릭 준�
 assert.equal(거탐판정.detectedType, '클릭 준비형 거짓말 탐지기');
 assert.equal(거탐판정.structuralEvidence, 'click-instruction-panel');
 
-console.log('✅ 클릭 준비 거탐 회귀 통과: 전체 화면 임의 위치 감지, 일반 배경 미감지');
+const 몬스터화면 = 새화면();
+몬스터윤곽그리기(몬스터화면, 96, 54);
+const 몬스터판정 = 분석기.verifyPopupTemplateMatch(
+  몬스터화면,
+  분석기.findPopupTemplateMatch(몬스터화면)
+);
+assert.equal(
+  Boolean(몬스터판정.verified),
+  false,
+  '성긴 노란 몬스터 윤곽을 클릭 준비 거탐으로 잡으면 안 됩니다.'
+);
+
+console.log('✅ 클릭 준비 거탐 회귀 통과: 임의 위치 양성, 일반 배경·몬스터 윤곽 음성');
