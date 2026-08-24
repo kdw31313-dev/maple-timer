@@ -932,9 +932,232 @@
     return best;
   };
 
+  const findColorIndependentFloatingActivation = (imageData) => {
+    if (!imageData?.data?.length) return null;
+    const { data, width, height } = imageData;
+    let previewSalient = 0;
+    for (let y = 0; y < height; y += 2) {
+      for (let x = 0; x < width; x += 2) {
+        const pixel = (y * width + x) * 4;
+        const r = data[pixel];
+        const g = data[pixel + 1];
+        const b = data[pixel + 2];
+        const maximum = Math.max(r, g, b);
+        const minimum = Math.min(r, g, b);
+        const spread = maximum - minimum;
+        if (minimum >= 168
+          || (maximum >= 118 && spread >= 34 && r + g + b >= 240)) {
+          previewSalient++;
+          if (previewSalient >= 4) break;
+        }
+      }
+      if (previewSalient >= 4) break;
+    }
+    if (previewSalient < 4) return null;
+
+    const stride = width + 1;
+    const salient = new Uint32Array(stride * (height + 1));
+    const salientMask = new Uint8Array(width * height);
+    let salientTotal = 0;
+
+    // 거탐 글자의 색조는 계속 달라지지만 게임 배경보다 밝거나 채도가 높다.
+    // 특정 RGB 범위 대신 밝은 무채색과 채도 높은 모든 색을 같은 전경으로 묶는다.
+    for (let y = 1; y <= height; y++) {
+      let rowSalient = 0;
+      for (let x = 1; x <= width; x++) {
+        const pixel = ((y - 1) * width + x - 1) * 4;
+        const r = data[pixel];
+        const g = data[pixel + 1];
+        const b = data[pixel + 2];
+        const maximum = Math.max(r, g, b);
+        const minimum = Math.min(r, g, b);
+        const spread = maximum - minimum;
+        const neutralBright = minimum >= 168;
+        const chromaticBright = maximum >= 118 && spread >= 34 && r + g + b >= 240;
+        if (neutralBright || chromaticBright) {
+          rowSalient++;
+          salientTotal++;
+          salientMask[(y - 1) * width + x - 1] = 1;
+        }
+        const position = y * stride + x;
+        salient[position] = salient[position - stride] + rowSalient;
+      }
+    }
+    if (salientTotal < 16) return null;
+
+    const sumRect = (x, y, candidateWidth, candidateHeight) => {
+      const x2 = x + candidateWidth;
+      const y2 = y + candidateHeight;
+      return salient[y2 * stride + x2] - salient[y2 * stride + x]
+        - salient[y * stride + x2] + salient[y * stride + x];
+    };
+    const baseScale = height / 135;
+    // 4개 대표 높이와 3개 가로세로비만 훑는다. 각 창은 실제 글자보다
+    // 넉넉하게 잡히므로 연속된 모든 크기를 하나씩 검사할 필요가 없다.
+    const candidateHeights = [24, 34, 46, 62]
+      .map((value) => Math.max(18, Math.round(value * baseScale)));
+    const widthRatios = [0.78, 1.08, 1.42];
+    const step = Math.max(6, Math.round(6 * baseScale));
+    const candidates = [];
+
+    for (const candidateHeight of new Set(candidateHeights)) {
+      if (candidateHeight >= height) continue;
+      const candidateWidths = widthRatios
+        .map((ratio) => Math.max(18, Math.round(candidateHeight * ratio)));
+      for (const candidateWidth of new Set(candidateWidths)) {
+        if (candidateWidth >= width) continue;
+        for (let y = 0; y <= height - candidateHeight; y += step) {
+          for (let x = 0; x <= width - candidateWidth; x += step) {
+            const area = candidateWidth * candidateHeight;
+            const totalSalient = sumRect(x, y, candidateWidth, candidateHeight);
+            if (totalSalient < Math.max(16, area * 0.025)
+              || totalSalient > area * 0.48) continue;
+
+            const bandCounts = [];
+            for (let band = 0; band < 5; band++) {
+              const bandY1 = y + Math.floor(candidateHeight * band / 5);
+              const bandY2 = y + Math.floor(candidateHeight * (band + 1) / 5);
+              bandCounts.push(sumRect(x, bandY1, candidateWidth, bandY2 - bandY1));
+            }
+            const minimumBand = Math.max(2, Math.round(candidateWidth * 0.035));
+            if (bandCounts[0] < minimumBand
+              || bandCounts.slice(1).some((count) => count < minimumBand * 1.5)) continue;
+            const lowerTotal = bandCounts.slice(1).reduce((sum, count) => sum + count, 0);
+            const balance = 1 - Math.max(...bandCounts.slice(1)) / Math.max(1, lowerTotal);
+            if (balance < 0.48) continue;
+            candidates.push({
+              x,
+              y,
+              width: candidateWidth,
+              height: candidateHeight,
+              totalSalient,
+              layoutScore: totalSalient + balance * area * 0.08
+            });
+            if (candidates.length >= 300) {
+              candidates.sort((left, right) => right.layoutScore - left.layoutScore);
+              candidates.length = 140;
+            }
+          }
+        }
+      }
+    }
+
+    candidates.sort((left, right) => right.layoutScore - left.layoutScore);
+    candidates.length = Math.min(90, candidates.length);
+    let best = null;
+    for (const candidate of candidates) {
+      const rowProfiles = [];
+      let horizontalLinks = 0;
+      for (let py = candidate.y; py < candidate.y + candidate.height; py++) {
+        let count = 0;
+        let minX = candidate.width;
+        let maxX = -1;
+        let previousSalient = false;
+        for (let px = candidate.x; px < candidate.x + candidate.width; px++) {
+          const isSalient = salientMask[py * width + px] === 1;
+          if (isSalient) {
+            count++;
+            minX = Math.min(minX, px - candidate.x);
+            maxX = Math.max(maxX, px - candidate.x);
+            if (previousSalient) horizontalLinks++;
+          }
+          previousSalient = isSalient;
+        }
+        rowProfiles.push({ count, minX, maxX });
+      }
+
+      const activeRowMinimum = Math.max(2, Math.round(candidate.width * 0.055));
+      const maximumBlankRows = Math.max(1, Math.round(baseScale));
+      const lineClusters = [];
+      for (let row = 0; row < rowProfiles.length; row++) {
+        const profile = rowProfiles[row];
+        if (profile.count < activeRowMinimum) continue;
+        const previous = lineClusters[lineClusters.length - 1];
+        if (!previous || row > previous.end + maximumBlankRows + 1) {
+          lineClusters.push({
+            start: row,
+            end: row,
+            minX: profile.minX,
+            maxX: profile.maxX,
+            count: profile.count
+          });
+        } else {
+          previous.end = row;
+          previous.minX = Math.min(previous.minX, profile.minX);
+          previous.maxX = Math.max(previous.maxX, profile.maxX);
+          previous.count += profile.count;
+        }
+      }
+      if (lineClusters.length !== 5) continue;
+
+      const clusterSpans = lineClusters.map((cluster) => cluster.maxX - cluster.minX + 1);
+      const clusterCenters = lineClusters.map((cluster) => (cluster.minX + cluster.maxX) / 2);
+      const clusterHeights = lineClusters.map((cluster) => cluster.end - cluster.start + 1);
+      const verticalCenters = lineClusters.map((cluster) => (cluster.start + cluster.end) / 2);
+      const verticalGaps = verticalCenters.slice(1)
+        .map((center, index) => center - verticalCenters[index]);
+      const lowerSpans = clusterSpans.slice(1);
+      const meanLowerSpan = lowerSpans.reduce((sum, value) => sum + value, 0) / 4;
+      const meanLowerCenter = clusterCenters.slice(1)
+        .reduce((sum, value) => sum + value, 0) / 4;
+      const minimumGap = Math.min(...verticalGaps);
+      const maximumGap = Math.max(...verticalGaps);
+      const horizontalRatio = horizontalLinks / Math.max(1, candidate.totalSalient);
+      const density = candidate.totalSalient / (candidate.width * candidate.height);
+
+      if (clusterSpans[0] > meanLowerSpan * 0.70
+        || lowerSpans.some((span) => span < candidate.width * 0.28)
+        || Math.abs(clusterCenters[0] - meanLowerCenter) > candidate.width * 0.23
+        || clusterCenters.slice(1)
+          .some((center) => Math.abs(center - meanLowerCenter) > candidate.width * 0.27)
+        || clusterHeights.some((lineHeight) => lineHeight > candidate.height * 0.22)
+        || minimumGap < candidate.height * 0.085
+        || maximumGap / Math.max(1, minimumGap) > 2.6
+        || horizontalRatio < 0.12) continue;
+
+      const touchesEdge = Math.min(
+        candidate.x,
+        width - candidate.x - candidate.width,
+        candidate.y,
+        height - candidate.y - candidate.height
+      ) <= 1;
+      const confidence = Math.min(0.965, 0.76
+        + Math.min(0.08, density * 0.45)
+        + Math.min(0.08, meanLowerSpan / candidate.width * 0.10)
+        + Math.min(0.06, horizontalRatio * 0.12)
+        - (touchesEdge ? 0.08 : 0));
+      if (!best || confidence > best.confidence) {
+        best = {
+          found: true,
+          kind: 'floating-activation-layout',
+          type: '발동 안내형 거짓말 탐지기',
+          confidence,
+          structuralStrength: 0.92,
+          x: candidate.x,
+          y: candidate.y,
+          width: candidate.width,
+          height: candidate.height,
+          totalSalient: candidate.totalSalient,
+          topSpan: clusterSpans[0],
+          meanLowerSpan,
+          horizontalSalientRatio: horizontalRatio,
+          lineClusterCount: lineClusters.length
+        };
+      }
+    }
+    return best;
+  };
+
   const findActivationBanner = (imageData) => {
     const framed = findFramedActivationBanner(imageData);
-    const floating = findFloatingActivationText(imageData);
+    const warmFloating = findFloatingActivationText(imageData);
+    // 기존의 빠른 따뜻한 색 경로가 성공하면 추가 구조 검사를 건너뛰어
+    // 이미 학습된 발동 안내의 반응 속도와 계산량을 유지한다.
+    const floating = warmFloating || (
+      imageData.skipColorIndependentActivation
+        ? null
+        : findColorIndependentFloatingActivation(imageData)
+    );
     if (!framed) return floating;
     if (!floating) return framed;
     return (floating.structuralStrength || 0) > (framed.structuralStrength || 0)
