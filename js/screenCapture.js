@@ -24,6 +24,8 @@ class ScreenCaptureManager {
     this.isStreaming = false;
     this.loopIntervalId = null;
     this.analysisTick = 0;
+    this.backgroundGuardPeers = null;
+    this.backgroundGuardStarting = null;
     // 룬은 150ms마다, 거탐은 300ms마다 검사한다. 버프 분석은 수행하지 않는다.
 
     // ⚡ 1사분면 무설정 자동 캡처 범위 (% 비율 단위 - 1사분면 최상단 1줄 제외)
@@ -338,6 +340,7 @@ class ScreenCaptureManager {
 
       this.updateStatusBadge(true);
       this.resizeCanvas();
+      this.startBackgroundTimerGuard();
       this.startLoop();
     })
     .catch((err) => {
@@ -355,6 +358,7 @@ class ScreenCaptureManager {
     }
 
     this.isStreaming = false;
+    this.stopBackgroundTimerGuard();
     if (this.loopIntervalId) {
       clearInterval(this.loopIntervalId);
       this.loopIntervalId = null;
@@ -367,6 +371,84 @@ class ScreenCaptureManager {
 
     this.updateStatusBadge(false);
     if (window.imageAnalyzer) window.imageAnalyzer.reset();
+  }
+
+  /**
+   * Chrome은 소리·WebRTC가 없는 탭이 5분 넘게 뒤로 가면 setInterval을
+   * 최악의 경우 1분마다만 확인한다. 거탐 안내창은 약 15초만 보이므로 그
+   * 공백에 통째로 빠질 수 있다. 외부 서버나 영상 재인코딩 없이 로컬 데이터
+   * 채널 하나만 열어 두면 백그라운드 타이머가 최소 1초 단위로 계속 깨어난다.
+   */
+  startBackgroundTimerGuard() {
+    if (this.backgroundGuardPeers) return Promise.resolve(true);
+    if (this.backgroundGuardStarting) return this.backgroundGuardStarting;
+    if (typeof window.RTCPeerConnection !== 'function') return Promise.resolve(false);
+
+    this.backgroundGuardStarting = (async () => {
+      let sender = null;
+      let receiver = null;
+      let sendChannel = null;
+      let receiveChannel = null;
+
+      try {
+        sender = new window.RTCPeerConnection({ iceServers: [] });
+        receiver = new window.RTCPeerConnection({ iceServers: [] });
+        sender.onicecandidate = (event) => {
+          if (event.candidate) receiver.addIceCandidate(event.candidate).catch(() => {});
+        };
+        receiver.onicecandidate = (event) => {
+          if (event.candidate) sender.addIceCandidate(event.candidate).catch(() => {});
+        };
+
+        const receiveReady = new Promise((resolve) => {
+          receiver.ondatachannel = (event) => {
+            receiveChannel = event.channel;
+            resolve();
+          };
+        });
+        sendChannel = sender.createDataChannel('maple-background-guard');
+
+        const offer = await sender.createOffer();
+        await sender.setLocalDescription(offer);
+        await receiver.setRemoteDescription(offer);
+        const answer = await receiver.createAnswer();
+        await receiver.setLocalDescription(answer);
+        await sender.setRemoteDescription(answer);
+        await receiveReady;
+
+        if (!this.isStreaming) {
+          sendChannel.close();
+          receiveChannel?.close();
+          sender.close();
+          receiver.close();
+          return false;
+        }
+
+        this.backgroundGuardPeers = { sender, receiver, sendChannel, receiveChannel };
+        return true;
+      } catch (error) {
+        console.warn('[백그라운드 감시] 실시간 연결 보강 실패', error);
+        sendChannel?.close();
+        receiveChannel?.close();
+        sender?.close();
+        receiver?.close();
+        return false;
+      } finally {
+        this.backgroundGuardStarting = null;
+      }
+    })();
+
+    return this.backgroundGuardStarting;
+  }
+
+  stopBackgroundTimerGuard() {
+    const peers = this.backgroundGuardPeers;
+    this.backgroundGuardPeers = null;
+    if (!peers) return;
+    peers.sendChannel?.close();
+    peers.receiveChannel?.close();
+    peers.sender?.close();
+    peers.receiver?.close();
   }
 
   updateStatusBadge(isConnected) {
