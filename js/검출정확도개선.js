@@ -73,8 +73,8 @@
       // 원형 거탐으로 이어서 센다. 하위 유형 일치 검사는 위에서 별도로 한다.
       return sizeRatio <= 1.25 && radiusRatio <= 1.25;
     }
-    if (left.structuralEvidence === 'floating-activation-text'
-      || right.structuralEvidence === 'floating-activation-text') {
+    if (['floating-activation-text', 'floating-activation-layout'].includes(left.structuralEvidence)
+      || ['floating-activation-text', 'floating-activation-layout'].includes(right.structuralEvidence)) {
       // 발동 안내 글자는 화면을 떠다니며 기울기와 위치가 계속 바뀐다.
       // 다만 300ms 사이에 화면 반대편으로 순간이동하지는 않는다. 넉넉한 이동
       // 반경은 허용하면서 서로 먼 공격 숫자 두 곳이 한 안내로 합쳐지는 것은 막는다.
@@ -409,11 +409,37 @@
     const state = this.popupState;
     const now = Date.now();
     if (!Array.isArray(state.recentPopupEvidence)) state.recentPopupEvidence = [];
-    const match = this.verifyPopupTemplateMatch(imageData, this.findPopupTemplateMatch(imageData));
+    // 색상 무관 전 화면 탐색은 대기 중에는 두 프레임마다 한 번만 실행한다.
+    // 첫 후보가 보이면 다음 프레임부터 연속 실행해 300ms 뒤 바로 재확인한다.
+    // 기존 따뜻한 색 경로와 템플릿 경로는 매 프레임 그대로 검사한다.
+    if (!Number.isFinite(state.colorIndependentScanIndex)) state.colorIndependentScanIndex = 0;
+    const trackingColorIndependentLayout = state.lastMatch?.structuralEvidence
+      === 'floating-activation-layout'
+      || state.recentPopupEvidence.some((entry) => (
+        now - entry.seenAt <= POPUP_EVIDENCE_WINDOW_MS
+        && entry.match?.structuralEvidence === 'floating-activation-layout'
+      ));
+    const runColorIndependentScan = trackingColorIndependentLayout
+      || state.colorIndependentScanIndex % 2 === 0;
+    state.colorIndependentScanIndex++;
+    const previousSkipColorIndependent = imageData.skipColorIndependentActivation;
+    if (!runColorIndependentScan) imageData.skipColorIndependentActivation = true;
+    let match;
+    try {
+      match = this.verifyPopupTemplateMatch(imageData, this.findPopupTemplateMatch(imageData));
+    } finally {
+      if (previousSkipColorIndependent === undefined) {
+        delete imageData.skipColorIndependentActivation;
+      } else {
+        imageData.skipColorIndependentActivation = previousSkipColorIndependent;
+      }
+    }
     state.lastConfidence = match.confidence || 0;
     if (match.verified) {
       state.missedCount = 0;
-      const isFloatingActivation = match.structuralEvidence === 'floating-activation-text';
+      const isFloatingActivation = ['floating-activation-text', 'floating-activation-layout']
+        .includes(match.structuralEvidence);
+      const isColorIndependentLayout = match.structuralEvidence === 'floating-activation-layout';
       const isSame = samePopup(state.lastMatch, match);
       state.consecutiveCount = isSame ? state.consecutiveCount + 1 : 1;
       state.lastType = match.type;
@@ -424,7 +450,7 @@
           now - entry.seenAt <= POPUP_EVIDENCE_WINDOW_MS
           && entry.match?.type === match.type
           && entry.match?.detectedType === match.detectedType
-          && entry.match?.structuralEvidence === 'floating-activation-text'
+          && entry.match?.structuralEvidence === match.structuralEvidence
         ));
         state.recentPopupEvidence.push({ seenAt: now, match: copyMatch(match) });
       } else {
@@ -434,16 +460,30 @@
       // 원형 몬스터 사망 잔상은 짧게 실제 클릭판과 비슷해질 수 있다. 위치가
       // 움직여도 같은 원 크기·고유 구조가 3회 이어질 때 확정한다. 나머지
       // 유형은 기존 2회 확인을 유지해 알림 반응성을 보존한다.
-      const requiredConsecutive = match.structuralEvidence === 'circular-click-game'
-        ? Math.max(3, state.REQUIRED_CONSECUTIVE)
-        : state.REQUIRED_CONSECUTIVE;
+      const requiredConsecutive = (
+        match.structuralEvidence === 'circular-click-game' || isColorIndependentLayout
+      ) ? Math.max(3, state.REQUIRED_CONSECUTIVE) : state.REQUIRED_CONSECUTIVE;
       // 5줄 발동 안내는 신뢰도가 매우 높은 한 장이면 즉시 알린다. 가림이나
       // 백그라운드 탭 제한으로 중간 프레임을 놓친 경우에도 2.5초 안의 두
       // 확인을 합쳐서 알리되, 약한 단일 후보는 계속 보류한다.
-      const strongSingleFrame = isFloatingActivation
+      const strongSingleFrame = match.structuralEvidence === 'floating-activation-text'
         && (match.confidence || 0) >= POPUP_STRONG_SINGLE_CONFIDENCE;
-      const confirmedWithinWindow = isFloatingActivation
-        && state.recentPopupEvidence.length >= 2;
+      const firstRecentMatch = state.recentPopupEvidence[0]?.match;
+      const firstEvidenceBox = firstRecentMatch?.evidenceBox || firstRecentMatch;
+      const currentEvidenceBox = match.evidenceBox || match;
+      const layoutMovement = firstRecentMatch
+        ? Math.hypot(
+          firstEvidenceBox.x - currentEvidenceBox.x,
+          firstEvidenceBox.y - currentEvidenceBox.y
+        )
+        : 0;
+      const minimumMovement = Math.max(2, Math.min(match.width || 1, match.height || 1) * 0.04);
+      const confirmedWithinWindow = isFloatingActivation && (
+        (!isColorIndependentLayout && state.recentPopupEvidence.length >= 2)
+        || (isColorIndependentLayout && state.recentPopupEvidence.length >= 2
+          && layoutMovement >= minimumMovement)
+        || (isColorIndependentLayout && state.recentPopupEvidence.length >= 3)
+      );
       if ((strongSingleFrame || confirmedWithinWindow
           || state.consecutiveCount >= requiredConsecutive)
         && !state.isDetected && !state.cooldownActive) {

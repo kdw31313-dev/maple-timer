@@ -57,6 +57,32 @@ const 발동안내 = (화면, x, y, color) => {
   선(화면, x + 2, y + 29, 28, color);
 };
 
+const 가변선 = (화면, x, y, width, height, color) => {
+  for (let py = y; py < y + height; py++) {
+    for (let px = x; px < x + width; px++) 픽셀(화면, px, py, color);
+  }
+};
+
+const 색상무관발동안내 = (화면, x, y, width, lineHeight, gap, color) => {
+  const lineWidths = [
+    Math.max(4, Math.round(width * 0.25)),
+    Math.round(width * 0.72),
+    Math.round(width * 0.92),
+    Math.round(width * 0.84),
+    width
+  ];
+  lineWidths.forEach((lineWidth, index) => {
+    가변선(
+      화면,
+      x + Math.round((width - lineWidth) / 2),
+      y + index * (lineHeight + gap),
+      lineWidth,
+      lineHeight,
+      color
+    );
+  });
+};
+
 const 분석기 = new global.imageAnalyzer.constructor();
 const 노랑화면 = 새화면();
 발동안내(노랑화면, 18, 10, [222, 174, 58]);
@@ -67,6 +93,33 @@ const 주황화면 = 새화면();
 발동안내(주황화면, 186, 78, [230, 125, 72]);
 const 주황증거 = 분석기.findPopupUniqueStructureEvidence(주황화면);
 assert.equal(주황증거?.kind, 'floating-activation-text', '이동한 주황색 발동 안내도 찾아야 합니다.');
+
+const 청록소형화면 = 새화면();
+색상무관발동안내(청록소형화면, 88, 35, 32, 2, 4, [45, 205, 235]);
+const 청록소형증거 = 분석기.findPopupUniqueStructureEvidence(청록소형화면);
+assert.equal(
+  청록소형증거?.kind,
+  'floating-activation-layout',
+  '따뜻한 색이 아닌 작은 청록색 5줄 발동 안내도 구조로 찾아야 합니다.'
+);
+
+const 보라대형화면 = 새화면();
+색상무관발동안내(보라대형화면, 124, 54, 72, 3, 8, [190, 85, 235]);
+const 보라대형증거 = 분석기.findPopupUniqueStructureEvidence(보라대형화면);
+assert.equal(
+  보라대형증거?.kind,
+  'floating-activation-layout',
+  '크기가 큰 보라색 5줄 발동 안내도 구조로 찾아야 합니다.'
+);
+
+const 흰색중형화면 = 새화면();
+색상무관발동안내(흰색중형화면, 22, 72, 48, 3, 5, [230, 230, 230]);
+const 흰색중형증거 = 분석기.findPopupUniqueStructureEvidence(흰색중형화면);
+assert.equal(
+  흰색중형증거?.kind,
+  'floating-activation-layout',
+  '채도가 없는 흰색 5줄 발동 안내도 구조로 찾아야 합니다.'
+);
 
 const 연속이동화면 = 새화면();
 발동안내(연속이동화면, 56, 36, [230, 125, 72]);
@@ -97,6 +150,23 @@ assert.notEqual(
   전투증거?.kind,
   'floating-activation-text',
   '연속된 공격 광원을 발동 안내 5줄로 잡으면 안 됩니다.'
+);
+assert.notEqual(
+  전투증거?.kind,
+  'floating-activation-layout',
+  '연속된 공격 광원을 색상 무관 5줄 구조로 잡으면 안 됩니다.'
+);
+
+const 불규칙광원 = 새화면();
+가변선(불규칙광원, 30, 18, 28, 4, [60, 225, 220]);
+가변선(불규칙광원, 146, 35, 10, 8, [215, 80, 240]);
+가변선(불규칙광원, 76, 64, 46, 6, [235, 235, 235]);
+가변선(불규칙광원, 182, 94, 32, 3, [90, 210, 125]);
+const 불규칙증거 = 분석기.findPopupUniqueStructureEvidence(불규칙광원);
+assert.notEqual(
+  불규칙증거?.kind,
+  'floating-activation-layout',
+  '색색의 불규칙 공격 광원을 5줄 발동 안내로 잡으면 안 됩니다.'
 );
 
 const 가상일치 = (confidence) => ({
@@ -153,8 +223,40 @@ try {
     즉시전 + 1,
     '매우 강한 5줄 발동 안내는 첫 확인에서 즉시 알려야 합니다.'
   );
+
+  const 색상무관이동분석기 = new global.imageAnalyzer.constructor();
+  const 색상무관이동전 = 알림.length;
+  색상무관이동분석기.processPopupStructureFrame(청록소형화면);
+  assert.equal(알림.length, 색상무관이동전, '색상 무관 후보 한 장만으로 즉시 알리면 안 됩니다.');
+  가상시각 += 300;
+  const 이동한초록화면 = 새화면();
+  색상무관발동안내(이동한초록화면, 112, 51, 32, 2, 4, [70, 225, 115]);
+  색상무관이동분석기.processPopupStructureFrame(이동한초록화면);
+  assert.equal(
+    알림.length,
+    색상무관이동전 + 1,
+    '색이 바뀌며 이동한 색상 무관 발동 안내는 두 번째 확인에서 알려야 합니다.'
+  );
+
+  const 색상무관정지분석기 = new global.imageAnalyzer.constructor();
+  const 색상무관정지전 = 알림.length;
+  색상무관정지분석기.processPopupStructureFrame(흰색중형화면);
+  가상시각 += 300;
+  색상무관정지분석기.processPopupStructureFrame(흰색중형화면);
+  assert.equal(
+    알림.length,
+    색상무관정지전,
+    '움직이지 않는 색상 무관 후보는 두 장만으로 알리면 안 됩니다.'
+  );
+  가상시각 += 300;
+  색상무관정지분석기.processPopupStructureFrame(흰색중형화면);
+  assert.equal(
+    알림.length,
+    색상무관정지전 + 1,
+    '움직이지 않아도 같은 5줄 구조가 세 장 이어지면 알려야 합니다.'
+  );
 } finally {
   Date.now = 원래시각;
 }
 
-console.log('✅ 발동 안내 거탐 회귀 통과: 이동·노랑/주황 양성, 연속 전투광원 음성');
+console.log('✅ 발동 안내 거탐 회귀 통과: 다색·다크기·이동 양성, 전투광원 음성');
