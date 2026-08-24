@@ -10,7 +10,7 @@
   const Analyzer = analyzer.constructor;
   const proto = Analyzer.prototype;
   const POPUP_EVIDENCE_WINDOW_MS = 2500;
-  const POPUP_MAX_COOLDOWN_MS = 30000;
+  const POPUP_MAX_COOLDOWN_MS = 3000;
   const POPUP_STATUS_CLEAR_MISSES = 6;
 
   const copyMatch = (match) => ({
@@ -592,8 +592,8 @@
       (entry) => now - entry.seenAt <= POPUP_EVIDENCE_WINDOW_MS
     );
     state.missedCount++;
-    // 화면 상태 표시는 약 1.8초 뒤 감시 중으로 되돌리되, 같은 거탐 과정의
-    // 중복 알림을 막는 재알림 제한은 절대시간 30초까지 별도로 유지한다.
+    // 화면 상태 표시는 약 1.8초 뒤 감시 중으로 되돌리되, 10초 안에 풀어야 하는
+    // 상황을 놓치지 않도록 재알림 제한은 절대시간 3초까지만 유지한다.
     if (state.isDetected && state.missedCount >= POPUP_STATUS_CLEAR_MISSES) {
       state.isDetected = false;
       if (this.onPopupStatusChange && window.screenCaptureManager?.isStreaming) {

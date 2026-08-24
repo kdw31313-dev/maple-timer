@@ -142,10 +142,10 @@ for (let frame = 0; frame < 4; frame++) 분석기.processPopupStructureFrame(빈
 분석기.processPopupStructureFrame(연속이동화면);
 assert.equal(알림.length, 1, '잠깐 가려진 같은 발동 안내를 다시 알리면 안 됩니다.');
 
-분석기.popupState.lastAlertAt -= 31000;
+분석기.popupState.lastAlertAt -= 3100;
 분석기.processPopupStructureFrame(노랑화면);
 분석기.processPopupStructureFrame(연속이동화면);
-assert.equal(알림.length, 2, '30초 상한 뒤 새 발동 안내는 다시 알려야 합니다.');
+assert.equal(알림.length, 2, '3초 상한 뒤 새 발동 안내는 다시 알려야 합니다.');
 for (let y = 32; y < 65; y++) {
   for (let x = 88; x < 142; x++) {
     if ((x + y) % 3 !== 0) 픽셀(전투광원, x, y, [235, 145, 55]);
@@ -286,8 +286,8 @@ try {
   사건분리분석기.processPopupStructureFrame(연속이동화면);
   assert.equal(
     알림.length,
-    사건분리전 + 1,
-    '같은 거탐 과정의 화면 형태가 바뀌어도 30초 안에는 중복 알림을 내면 안 됩니다.'
+    사건분리전 + 2,
+    '같은 거탐 과정이 남아 있으면 3초 뒤 다시 알려야 합니다.'
   );
 
   const 시간상한분석기 = new global.imageAnalyzer.constructor();
@@ -295,12 +295,12 @@ try {
   시간상한분석기.popupState.isDetected = true;
   시간상한분석기.popupState.lastAlertAt = 가상시각;
   시간상한분석기.popupState.cooldownTrackMatch = 가상일치(0.92, 30, 20);
-  가상시각 += 30001;
+  가상시각 += 3001;
   시간상한분석기.processPopupStructureFrame(빈화면);
   assert.equal(
     시간상한분석기.popupState.cooldownActive,
     false,
-    '다른 후보가 이어져도 재알림 제한은 30초를 넘기면 안 됩니다.'
+    '다른 후보가 이어져도 재알림 제한은 3초를 넘기면 안 됩니다.'
   );
 } finally {
   Date.now = 원래시각;
