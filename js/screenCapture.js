@@ -21,8 +21,10 @@ class ScreenCaptureManager {
     this.popupCanvas.height = 135;
     this.popupCtx = this.popupCanvas.getContext('2d', { willReadFrequently: true });
     this.popupPreviewCanvas = document.createElement('canvas');
-    this.popupPreviewCanvas.width = 120;
-    this.popupPreviewCanvas.height = 68;
+    // 240x135의 60% 크기. 50%에서는 실제 두 자리 숫자와 네 문장이 한두
+    // 픽셀로 뭉쳐 사라졌지만, 이 크기에서는 구조를 보존하면서 픽셀 수는 36%다.
+    this.popupPreviewCanvas.width = 144;
+    this.popupPreviewCanvas.height = 81;
     this.popupPreviewCtx = this.popupPreviewCanvas.getContext('2d', { willReadFrequently: true });
 
     this.isStreaming = false;
@@ -456,14 +458,17 @@ class ScreenCaptureManager {
   }
 
   /**
-   * 150ms 중간 틱은 절반 크기 화면에서 네 거탐 패널 템플릿 후보만 확인한다.
+   * 150ms 중간 틱은 절반 크기 화면에서 네 거탐 패널 템플릿과 떠다니는
+   * 발동 안내 후보를 확인한다.
    * 순수 후보 탐색이라 운영 상태와 알림을 건드리지 않으며, 후보일 때만 원래
    * 240x135 색·구조·시간 정밀 판정을 당긴다.
    */
   hasPopupFastTemplateSignal(imageData) {
     if (!imageData?.data?.length || !window.imageAnalyzer?.findPopupTemplateMatch) return false;
     const raw = window.imageAnalyzer.findPopupTemplateMatch(imageData);
-    return Boolean(raw?.found);
+    if (raw?.found) return true;
+    const floating = window.imageAnalyzer.findFloatingActivationFastEvidence?.(imageData);
+    return Boolean(floating?.found);
   }
 
   updateStatusBadge(isConnected) {

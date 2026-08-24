@@ -751,11 +751,12 @@
         - warm[y * stride + x2] + warm[y * stride + x];
     };
     const baseScale = height / 135;
+    const minimumWindow = baseScale < 0.75 ? 14 : 24;
     const widths = [32, 38, 44, 50, 56]
-      .map((value) => Math.max(24, Math.round(value * baseScale)));
+      .map((value) => Math.max(minimumWindow, Math.round(value * baseScale)));
     const heights = [30, 36, 42, 48]
-      .map((value) => Math.max(24, Math.round(value * baseScale)));
-    const step = Math.max(2, Math.round(2 * baseScale));
+      .map((value) => Math.max(minimumWindow, Math.round(value * baseScale)));
+    const step = Math.max(baseScale < 0.75 ? 1 : 2, Math.round(2 * baseScale));
     const pixelScale = baseScale * baseScale;
     const candidates = [];
 
@@ -886,11 +887,21 @@
 
       const lowerSpans = bands.slice(1).map((band) => band.span);
       const meanLowerSpan = lowerSpans.reduce((sum, value) => sum + value, 0) / 4;
+      const lowerCounts = bands.slice(1).map((band) => band.count);
+      const meanLowerCount = lowerCounts.reduce((sum, value) => sum + value, 0) / 4;
+      const lowerBandUniformity = Math.max(...lowerCounts)
+        / Math.max(1, Math.min(...lowerCounts));
+      const topToLowerCountRatio = bands[0].count / Math.max(1, meanLowerCount);
       const lowerCenters = bands.slice(1).map((band) => band.center);
       const meanLowerCenter = lowerCenters.reduce((sum, value) => sum + value, 0) / 4;
       const horizontalLinks = bands.reduce((sum, band) => sum + band.horizontalLinks, 0);
       if (meanLowerSpan < candidate.width * 0.46
         || lowerSpans.some((span) => span < candidate.width * 0.30)
+        // 실제 안내의 아래 네 문장은 길이가 비슷하다. 몬스터 윤곽·버프 숫자가
+        // 우연히 다섯 덩어리가 된 경우에는 줄별 픽셀 양이 크게 흔들린다.
+        || lowerBandUniformity > 1.60
+        // 맨 위는 두 자리 카운트 숫자이므로 본문 네 줄보다 분명히 작아야 한다.
+        || topToLowerCountRatio > 0.78
         || bands[0].span > meanLowerSpan * 0.72
         || Math.abs(bands[0].center - meanLowerCenter) > candidate.width * 0.20
         || lowerCenters.some((center) => Math.abs(center - meanLowerCenter) > candidate.width * 0.22)
@@ -922,6 +933,8 @@
           height: candidate.height,
           totalWarm: candidate.totalWarm,
           bandCounts: bands.map((band) => band.count),
+          lowerBandUniformity,
+          topToLowerCountRatio,
           topSpan: bands[0].span,
           meanLowerSpan,
           horizontalWarmRatio: horizontalLinks / Math.max(1, candidate.totalWarm),
@@ -992,18 +1005,19 @@
         - salient[y * stride + x2] + salient[y * stride + x];
     };
     const baseScale = height / 135;
+    const minimumWindow = baseScale < 0.75 ? 12 : 18;
     // 4개 대표 높이와 3개 가로세로비만 훑는다. 각 창은 실제 글자보다
     // 넉넉하게 잡히므로 연속된 모든 크기를 하나씩 검사할 필요가 없다.
     const candidateHeights = [24, 34, 46, 62]
-      .map((value) => Math.max(18, Math.round(value * baseScale)));
+      .map((value) => Math.max(minimumWindow, Math.round(value * baseScale)));
     const widthRatios = [0.78, 1.08, 1.42];
-    const step = Math.max(6, Math.round(6 * baseScale));
+    const step = Math.max(baseScale < 0.75 ? 3 : 6, Math.round(6 * baseScale));
     const candidates = [];
 
     for (const candidateHeight of new Set(candidateHeights)) {
       if (candidateHeight >= height) continue;
       const candidateWidths = widthRatios
-        .map((ratio) => Math.max(18, Math.round(candidateHeight * ratio)));
+        .map((ratio) => Math.max(minimumWindow, Math.round(candidateHeight * ratio)));
       for (const candidateWidth of new Set(candidateWidths)) {
         if (candidateWidth >= width) continue;
         for (let y = 0; y <= height - candidateHeight; y += step) {
@@ -1163,6 +1177,13 @@
     return (floating.structuralStrength || 0) > (framed.structuralStrength || 0)
       ? floating
       : framed;
+  };
+
+  // 150ms 중간 틱의 절반 크기 화면에서 상태를 바꾸지 않고 떠다니는 안내만
+  // 가볍게 찾는다. 양성일 때만 240x135 정밀 검사를 즉시 당겨 실행한다.
+  proto.findFloatingActivationFastEvidence = function findFloatingActivationFastEvidence(imageData) {
+    return findFloatingActivationText(imageData)
+      || findColorIndependentFloatingActivation(imageData);
   };
 
   proto.findPopupUniqueStructureEvidence = function findPopupUniqueStructureEvidence(imageData) {
