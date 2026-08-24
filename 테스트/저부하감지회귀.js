@@ -73,6 +73,7 @@ const 요소 = new Map([
 global.window = global;
 global.addEventListener = () => {};
 global.document = {
+  hidden: false,
   getElementById(id) { return 요소.get(id) || null; },
   createElement(tag) { return tag === 'canvas' ? 새캔버스() : {}; }
 };
@@ -85,10 +86,14 @@ global.setInterval = (callback) => {
 global.clearInterval = () => {};
 
 const 분석횟수 = { rune: 0, popup: 0 };
-global.imageAnalyzer = {
-  processRuneFrame() { 분석횟수.rune++; },
+class 가짜분석기 {
+  processRuneFrame() { 분석횟수.rune++; }
   processPopupStructureFrame() { 분석횟수.popup++; }
-};
+  findPopupTemplateMatch() { return { found: false }; }
+  verifyPopupTemplateMatch() { return { verified: false }; }
+  reset() {}
+}
+global.imageAnalyzer = new 가짜분석기();
 
 require(path.join(프로젝트폴더, 'js', 'screenCapture.js'));
 const 관리자 = global.screenCaptureManager;
@@ -101,6 +106,12 @@ for (let 틱 = 0; 틱 < 4; 틱++) 예약함수();
 assert.equal(분석횟수.rune, 4, '룬 150ms 검사 주기가 유지되지 않았습니다.');
 assert.equal(분석횟수.popup, 2, '거탐 300ms 검사 주기가 유지되지 않았습니다.');
 assert.equal(관리자.runeCanvas.횟수.getImageData, 4, '룬 화면 복사 횟수가 다릅니다.');
-assert.equal(관리자.popupCanvas.횟수.getImageData, 2, '거탐 화면이 검사하지 않는 틱에도 복사됩니다.');
+assert.equal(관리자.popupCanvas.횟수.getImageData, 2, '거탐 정밀 화면 복사 횟수가 다릅니다.');
+assert.equal(관리자.popupPreviewCanvas.횟수.getImageData, 2, '거탐 초경량 후보 화면 복사 횟수가 다릅니다.');
 
-console.log('✅ 저부하 감지 회귀 통과: 버퍼 부족 상태에서도 룬 4회, 거탐 2회, 버프 분석 0회');
+document.hidden = true;
+for (let 틱 = 0; 틱 < 4; 틱++) 예약함수();
+assert.equal(분석횟수.rune, 8, '백그라운드에서 룬 검사가 유지되지 않았습니다.');
+assert.equal(분석횟수.popup, 6, '백그라운드 타이머 기회마다 거탐을 검사하지 않았습니다.');
+
+console.log('✅ 저부하 감지 회귀 통과: 전면 룬 4회·거탐 2회, 후면 룬 4회·거탐 4회');

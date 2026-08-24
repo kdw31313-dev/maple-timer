@@ -20,6 +20,10 @@ class ScreenCaptureManager {
     this.popupCanvas.width = 240;
     this.popupCanvas.height = 135;
     this.popupCtx = this.popupCanvas.getContext('2d', { willReadFrequently: true });
+    this.popupPreviewCanvas = document.createElement('canvas');
+    this.popupPreviewCanvas.width = 120;
+    this.popupPreviewCanvas.height = 68;
+    this.popupPreviewCtx = this.popupPreviewCanvas.getContext('2d', { willReadFrequently: true });
 
     this.isStreaming = false;
     this.loopIntervalId = null;
@@ -451,6 +455,17 @@ class ScreenCaptureManager {
     peers.receiver?.close();
   }
 
+  /**
+   * 150ms 중간 틱은 절반 크기 화면에서 네 거탐 패널 템플릿 후보만 확인한다.
+   * 순수 후보 탐색이라 운영 상태와 알림을 건드리지 않으며, 후보일 때만 원래
+   * 240x135 색·구조·시간 정밀 판정을 당긴다.
+   */
+  hasPopupFastTemplateSignal(imageData) {
+    if (!imageData?.data?.length || !window.imageAnalyzer?.findPopupTemplateMatch) return false;
+    const raw = window.imageAnalyzer.findPopupTemplateMatch(imageData);
+    return Boolean(raw?.found);
+  }
+
   updateStatusBadge(isConnected) {
     const badge = document.getElementById('stream-status-badge');
     const text = document.getElementById('stream-status-text');
@@ -729,32 +744,40 @@ class ScreenCaptureManager {
           }
 
           this.analysisTick = (this.analysisTick + 1) % 2;
-          // 전체 화면 복사도 실제 검사 틱에만 수행한다. 판정 주기는 기존 300ms 그대로다.
-          if (popupEnabled && this.analysisTick === 1) {
+          // 보이는 탭에서는 기존 300ms 저부하 주기를 유지한다. Chrome이 뒤에 있는
+          // 탭의 타이머를 1초 단위로 모을 때는 매번 거탐을 검사해, 추가 2배 지연을
+          // 만들지 않는다. 백그라운드에서도 전체 화면은 초당 1장뿐이라 부담이 작다.
+          const popupTickDue = document.hidden || this.analysisTick === 1;
+          if (popupEnabled) {
             const popupHeight = 135;
             const popupWidth = Math.max(
               180,
               Math.min(360, Math.round((vWidth / Math.max(1, vHeight)) * popupHeight))
             );
-            if (this.popupCanvas.width !== popupWidth || this.popupCanvas.height !== popupHeight) {
-              this.popupCanvas.width = popupWidth;
-              this.popupCanvas.height = popupHeight;
+            let shouldAnalyzePopup = popupTickDue;
+            if (!popupTickDue) {
+              this.popupPreviewCtx.drawImage(
+                this.videoEl, 0, 0, vWidth, vHeight, 0, 0,
+                this.popupPreviewCanvas.width, this.popupPreviewCanvas.height
+              );
+              const preview = this.popupPreviewCtx.getImageData(
+                0, 0, this.popupPreviewCanvas.width, this.popupPreviewCanvas.height
+              );
+              shouldAnalyzePopup = this.hasPopupFastTemplateSignal(preview);
             }
-            this.popupCtx.drawImage(
-              this.videoEl,
-              0,
-              0,
-              vWidth,
-              vHeight,
-              0,
-              0,
-              popupWidth,
-              popupHeight
-            );
-            const popupImageData = this.popupCtx.getImageData(0, 0, popupWidth, popupHeight);
-            safelyAnalyze('거짓말 탐지기', () => (
-              window.imageAnalyzer.processPopupStructureFrame(popupImageData)
-            ));
+            if (shouldAnalyzePopup) {
+              if (this.popupCanvas.width !== popupWidth || this.popupCanvas.height !== popupHeight) {
+                this.popupCanvas.width = popupWidth;
+                this.popupCanvas.height = popupHeight;
+              }
+              this.popupCtx.drawImage(
+                this.videoEl, 0, 0, vWidth, vHeight, 0, 0, popupWidth, popupHeight
+              );
+              const popupImageData = this.popupCtx.getImageData(0, 0, popupWidth, popupHeight);
+              safelyAnalyze('거짓말 탐지기', () => (
+                window.imageAnalyzer.processPopupStructureFrame(popupImageData)
+              ));
+            }
           }
         }
       }
