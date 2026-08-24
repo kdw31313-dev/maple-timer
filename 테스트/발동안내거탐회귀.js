@@ -87,12 +87,18 @@ const 분석기 = new global.imageAnalyzer.constructor();
 const 노랑화면 = 새화면();
 발동안내(노랑화면, 18, 10, [222, 174, 58]);
 const 노랑증거 = 분석기.findPopupUniqueStructureEvidence(노랑화면);
-assert.equal(노랑증거?.kind, 'floating-activation-text', '노란 발동 안내 5줄을 찾아야 합니다.');
+assert.ok(
+  ['floating-activation-text', 'floating-activation-layout'].includes(노랑증거?.kind),
+  '노란 발동 안내 5줄을 찾아야 합니다.'
+);
 
 const 주황화면 = 새화면();
 발동안내(주황화면, 186, 78, [230, 125, 72]);
 const 주황증거 = 분석기.findPopupUniqueStructureEvidence(주황화면);
-assert.equal(주황증거?.kind, 'floating-activation-text', '이동한 주황색 발동 안내도 찾아야 합니다.');
+assert.ok(
+  ['floating-activation-text', 'floating-activation-layout'].includes(주황증거?.kind),
+  '이동한 주황색 발동 안내도 찾아야 합니다.'
+);
 
 const 청록소형화면 = 새화면();
 색상무관발동안내(청록소형화면, 88, 35, 32, 2, 4, [45, 205, 235]);
@@ -122,7 +128,7 @@ assert.equal(
 );
 
 const 연속이동화면 = 새화면();
-발동안내(연속이동화면, 56, 36, [230, 125, 72]);
+발동안내(연속이동화면, 24, 14, [230, 125, 72]);
 분석기.processPopupStructureFrame(노랑화면);
 분석기.processPopupStructureFrame(연속이동화면);
 assert.equal(알림.length, 1, '색과 위치가 바뀌어도 두 프레임 확인 후 한 번 알려야 합니다.');
@@ -131,15 +137,15 @@ assert.match(알림[0].message, /발동 안내형 거짓말 탐지기/);
 const 전투광원 = 새화면();
 
 const 빈화면 = 새화면();
-for (let frame = 0; frame < 20; frame++) 분석기.processPopupStructureFrame(빈화면);
+for (let frame = 0; frame < 4; frame++) 분석기.processPopupStructureFrame(빈화면);
 분석기.processPopupStructureFrame(노랑화면);
 분석기.processPopupStructureFrame(연속이동화면);
 assert.equal(알림.length, 1, '잠깐 가려진 같은 발동 안내를 다시 알리면 안 됩니다.');
 
-for (let frame = 0; frame < 100; frame++) 분석기.processPopupStructureFrame(빈화면);
+분석기.popupState.lastAlertAt -= 31000;
 분석기.processPopupStructureFrame(노랑화면);
 분석기.processPopupStructureFrame(연속이동화면);
-assert.equal(알림.length, 2, '30초 연속 해제 뒤 새 발동 안내는 다시 알려야 합니다.');
+assert.equal(알림.length, 2, '30초 상한 뒤 새 발동 안내는 다시 알려야 합니다.');
 for (let y = 32; y < 65; y++) {
   for (let x = 88; x < 142; x++) {
     if ((x + y) % 3 !== 0) 픽셀(전투광원, x, y, [235, 145, 55]);
@@ -169,15 +175,15 @@ assert.notEqual(
   '색색의 불규칙 공격 광원을 5줄 발동 안내로 잡으면 안 됩니다.'
 );
 
-const 가상일치 = (confidence) => ({
+const 가상일치 = (confidence, x = 30, y = 20) => ({
   found: true,
   verified: true,
   type: '거짓말 탐지기 팝업',
   detectedType: '발동 안내형 거짓말 탐지기',
   confidence,
   structuralEvidence: 'floating-activation-text',
-  x: 30,
-  y: 20,
+  x,
+  y,
   width: 57,
   height: 57
 });
@@ -195,7 +201,7 @@ let 가상시각 = 1000;
 Date.now = () => 가상시각;
 try {
   const 누락복구분석기 = new global.imageAnalyzer.constructor();
-  const 누락복구응답 = [가상일치(0.90), 가상불일치, 가상일치(0.91)];
+  const 누락복구응답 = [가상일치(0.90), 가상불일치, 가상일치(0.91, 34, 22)];
   누락복구분석기.findPopupTemplateMatch = () => ({});
   누락복구분석기.verifyPopupTemplateMatch = () => 누락복구응답.shift();
   const 누락복구전 = 알림.length;
@@ -215,14 +221,18 @@ try {
 
   const 즉시분석기 = new global.imageAnalyzer.constructor();
   즉시분석기.findPopupTemplateMatch = () => ({});
-  즉시분석기.verifyPopupTemplateMatch = () => 가상일치(0.99);
+  const 고신뢰응답 = [가상일치(0.99), 가상일치(0.99, 34, 22)];
+  즉시분석기.verifyPopupTemplateMatch = () => 고신뢰응답.shift();
   const 즉시전 = 알림.length;
   즉시분석기.processPopupStructureFrame(노랑화면);
   assert.equal(
     알림.length,
-    즉시전 + 1,
-    '매우 강한 5줄 발동 안내는 첫 확인에서 즉시 알려야 합니다.'
+    즉시전,
+    '매우 강해도 한 장뿐인 5줄 후보는 즉시 알리면 안 됩니다.'
   );
+  가상시각 += 300;
+  즉시분석기.processPopupStructureFrame(연속이동화면);
+  assert.equal(알림.length, 즉시전 + 1, '이동이 이어진 두 번째 확인에서는 바로 알려야 합니다.');
 
   const 색상무관이동분석기 = new global.imageAnalyzer.constructor();
   const 색상무관이동전 = 알림.length;
@@ -230,7 +240,7 @@ try {
   assert.equal(알림.length, 색상무관이동전, '색상 무관 후보 한 장만으로 즉시 알리면 안 됩니다.');
   가상시각 += 300;
   const 이동한초록화면 = 새화면();
-  색상무관발동안내(이동한초록화면, 112, 51, 32, 2, 4, [70, 225, 115]);
+  색상무관발동안내(이동한초록화면, 96, 41, 32, 2, 4, [70, 225, 115]);
   색상무관이동분석기.processPopupStructureFrame(이동한초록화면);
   assert.equal(
     알림.length,
@@ -252,8 +262,45 @@ try {
   색상무관정지분석기.processPopupStructureFrame(흰색중형화면);
   assert.equal(
     알림.length,
-    색상무관정지전 + 1,
-    '움직이지 않아도 같은 5줄 구조가 세 장 이어지면 알려야 합니다.'
+    색상무관정지전,
+    '정지한 후보는 세 장 이어져도 떠다니는 발동 안내로 알리면 안 됩니다.'
+  );
+
+  const 사건분리분석기 = new global.imageAnalyzer.constructor();
+  사건분리분석기.findPopupTemplateMatch = () => ({});
+  const 사건분리응답 = [
+    가상일치(0.92, 30, 20),
+    가상일치(0.92, 34, 22),
+    가상일치(0.93, 150, 78),
+    가상일치(0.93, 154, 80)
+  ];
+  사건분리분석기.verifyPopupTemplateMatch = () => 사건분리응답.shift();
+  const 사건분리전 = 알림.length;
+  사건분리분석기.processPopupStructureFrame(노랑화면);
+  가상시각 += 300;
+  사건분리분석기.processPopupStructureFrame(연속이동화면);
+  assert.equal(알림.length, 사건분리전 + 1, '첫 발동 사건을 알려야 합니다.');
+  가상시각 += 3000;
+  사건분리분석기.processPopupStructureFrame(노랑화면);
+  가상시각 += 300;
+  사건분리분석기.processPopupStructureFrame(연속이동화면);
+  assert.equal(
+    알림.length,
+    사건분리전 + 1,
+    '같은 거탐 과정의 화면 형태가 바뀌어도 30초 안에는 중복 알림을 내면 안 됩니다.'
+  );
+
+  const 시간상한분석기 = new global.imageAnalyzer.constructor();
+  시간상한분석기.popupState.cooldownActive = true;
+  시간상한분석기.popupState.isDetected = true;
+  시간상한분석기.popupState.lastAlertAt = 가상시각;
+  시간상한분석기.popupState.cooldownTrackMatch = 가상일치(0.92, 30, 20);
+  가상시각 += 30001;
+  시간상한분석기.processPopupStructureFrame(빈화면);
+  assert.equal(
+    시간상한분석기.popupState.cooldownActive,
+    false,
+    '다른 후보가 이어져도 재알림 제한은 30초를 넘기면 안 됩니다.'
   );
 } finally {
   Date.now = 원래시각;

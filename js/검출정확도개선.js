@@ -10,7 +10,8 @@
   const Analyzer = analyzer.constructor;
   const proto = Analyzer.prototype;
   const POPUP_EVIDENCE_WINDOW_MS = 2500;
-  const POPUP_STRONG_SINGLE_CONFIDENCE = 0.98;
+  const POPUP_MAX_COOLDOWN_MS = 30000;
+  const POPUP_STATUS_CLEAR_MISSES = 6;
 
   const copyMatch = (match) => ({
     x: match.x,
@@ -32,6 +33,64 @@
     searchBand: match.searchBand ? { ...match.searchBand } : null,
     shape: match.shape ? { ...match.shape } : {}
   });
+
+  const popupEvidenceBox = (match) => match?.evidenceBox || match;
+
+  const dimensionRatio = (left, right, key) => Math.max(
+    (left?.[key] || 1) / Math.max(1, right?.[key] || 1),
+    (right?.[key] || 1) / Math.max(1, left?.[key] || 1)
+  );
+
+  const floatingProfileDistance = (left, right) => {
+    const leftCounts = left?.structure?.bandCounts;
+    const rightCounts = right?.structure?.bandCounts;
+    if (!Array.isArray(leftCounts) || !Array.isArray(rightCounts)
+      || leftCounts.length !== 5 || rightCounts.length !== 5) return 0;
+    const leftTotal = leftCounts.reduce((sum, value) => sum + value, 0);
+    const rightTotal = rightCounts.reduce((sum, value) => sum + value, 0);
+    return leftCounts.reduce((distance, value, index) => (
+      distance + Math.abs(
+        value / Math.max(1, leftTotal)
+        - rightCounts[index] / Math.max(1, rightTotal)
+      )
+    ), 0);
+  };
+
+  const sameFloatingCandidate = (left, right) => {
+    if (!left || !right) return false;
+    const leftBox = popupEvidenceBox(left);
+    const rightBox = popupEvidenceBox(right);
+    if (!leftBox || !rightBox) return false;
+    const widthRatio = dimensionRatio(leftBox, rightBox, 'width');
+    const heightRatio = dimensionRatio(leftBox, rightBox, 'height');
+    const leftCenterX = leftBox.x + (leftBox.width || 1) / 2;
+    const leftCenterY = leftBox.y + (leftBox.height || 1) / 2;
+    const rightCenterX = rightBox.x + (rightBox.width || 1) / 2;
+    const rightCenterY = rightBox.y + (rightBox.height || 1) / 2;
+    const distance = Math.hypot(leftCenterX - rightCenterX, leftCenterY - rightCenterY);
+    const travelLimit = Math.max(
+      14,
+      Math.min(leftBox.width || 1, leftBox.height || 1, rightBox.width || 1, rightBox.height || 1)
+        * 0.48
+    );
+    // 전투 이펙트가 글자를 가리면 같은 안내의 검출 상자 폭이 한 프레임 사이
+    // 32→50픽셀까지 바뀔 수 있다. 중심 이동·줄 분포는 별도로 엄격히 본다.
+    return widthRatio <= 1.65
+      && heightRatio <= 1.65
+      && distance <= travelLimit
+      && floatingProfileDistance(left, right) <= 0.46;
+  };
+
+  const floatingTrackMovement = (entries) => {
+    if (!Array.isArray(entries) || entries.length < 2) return 0;
+    const first = popupEvidenceBox(entries[0].match);
+    const last = popupEvidenceBox(entries[entries.length - 1].match);
+    if (!first || !last) return 0;
+    return Math.hypot(
+      first.x + (first.width || 1) / 2 - last.x - (last.width || 1) / 2,
+      first.y + (first.height || 1) / 2 - last.y - (last.height || 1) / 2
+    );
+  };
 
   const sameBuffSlot = (left, right, positionRatio = 0.42) => {
     if (!left || !right || !Number.isFinite(left.x) || !Number.isFinite(right.x)) return false;
@@ -75,11 +134,9 @@
     }
     if (['floating-activation-text', 'floating-activation-layout'].includes(left.structuralEvidence)
       || ['floating-activation-text', 'floating-activation-layout'].includes(right.structuralEvidence)) {
-      // 발동 안내 글자는 화면을 떠다니며 기울기와 위치가 계속 바뀐다.
-      // 다만 300ms 사이에 화면 반대편으로 순간이동하지는 않는다. 넉넉한 이동
-      // 반경은 허용하면서 서로 먼 공격 숫자 두 곳이 한 안내로 합쳐지는 것은 막는다.
-      return sizeRatio <= 1.35
-        && positionDistance <= Math.max(48, Math.max(width, height) * 0.95);
+      // 추적용 큰 상자 대신 실제 다섯 줄 증거 상자를 비교한다. 몬스터 두 곳의
+      // 윤곽이 번갈아 잡히는 현상은 끊고, 천천히 떠다니는 안내문은 이어서 센다.
+      return sameFloatingCandidate(left, right);
     }
     return sizeRatio <= 1.25
       && positionDistance <= Math.max(6, Math.min(width, height) * 0.22);
@@ -109,6 +166,23 @@
     if (!Array.isArray(state.moveEvidenceHistory)) state.moveEvidenceHistory = [];
     if (!Number.isFinite(state.lastConfirmedAt)) state.lastConfirmedAt = 0;
     if (!Number.isFinite(state.endingFrames)) state.endingFrames = 0;
+  };
+
+  const clearPopupCooldown = (analyzerInstance, state, preserveEvidence = false) => {
+    state.cooldownActive = false;
+    state.isDetected = false;
+    state.missedCount = 0;
+    state.lastType = '';
+    state.lastAlertAt = 0;
+    state.cooldownTrackMatch = null;
+    if (!preserveEvidence) {
+      state.lastMatch = null;
+      state.consecutiveCount = 0;
+      state.recentPopupEvidence = [];
+    }
+    if (analyzerInstance.onPopupStatusChange && window.screenCaptureManager?.isStreaming) {
+      analyzerInstance.onPopupStatusChange('🟢 거탐 감시 중 (7개 유형 위치·형태 교차 확인)', false);
+    }
   };
 
   // 기본 템플릿도 변형 목록에 포함한다. 기존 코드는 변형이 하나라도 있으면
@@ -409,6 +483,12 @@
     const state = this.popupState;
     const now = Date.now();
     if (!Array.isArray(state.recentPopupEvidence)) state.recentPopupEvidence = [];
+    if (!Number.isFinite(state.lastAlertAt)) state.lastAlertAt = 0;
+    if (state.cooldownActive
+      && (!state.lastAlertAt || now - state.lastAlertAt >= POPUP_MAX_COOLDOWN_MS)) {
+      // 다른 전투 이펙트가 계속 후보로 잡혀도 재알림 제한이 영구 연장되지 않는다.
+      clearPopupCooldown(this, state);
+    }
     // 색상 무관 전 화면 탐색은 대기 중에는 두 프레임마다 한 번만 실행한다.
     // 첫 후보가 보이면 다음 프레임부터 연속 실행해 300ms 뒤 바로 재확인한다.
     // 기존 따뜻한 색 경로와 템플릿 경로는 매 프레임 그대로 검사한다.
@@ -436,22 +516,36 @@
     }
     state.lastConfidence = match.confidence || 0;
     if (match.verified) {
-      state.missedCount = 0;
       const isFloatingActivation = ['floating-activation-text', 'floating-activation-layout']
         .includes(match.structuralEvidence);
       const isColorIndependentLayout = match.structuralEvidence === 'floating-activation-layout';
       const isSame = samePopup(state.lastMatch, match);
+      const sameCooldownEvent = state.cooldownActive
+        && samePopup(state.cooldownTrackMatch, match);
+      if (!state.cooldownActive || sameCooldownEvent) {
+        state.missedCount = 0;
+      } else {
+        // 이미 알린 사건과 다른 후보는 이전 사건의 잠금 시간을 연장하지 않는다.
+        state.missedCount++;
+      }
+      if (sameCooldownEvent) state.cooldownTrackMatch = copyMatch(match);
       state.consecutiveCount = isSame ? state.consecutiveCount + 1 : 1;
       state.lastType = match.type;
       state.lastMatch = copyMatch(match);
 
       if (isFloatingActivation) {
-        state.recentPopupEvidence = state.recentPopupEvidence.filter((entry) => (
+        const recentFloating = state.recentPopupEvidence.filter((entry) => (
           now - entry.seenAt <= POPUP_EVIDENCE_WINDOW_MS
           && entry.match?.type === match.type
           && entry.match?.detectedType === match.detectedType
-          && entry.match?.structuralEvidence === match.structuralEvidence
+          && ['floating-activation-text', 'floating-activation-layout']
+            .includes(entry.match?.structuralEvidence)
         ));
+        const previousFloating = recentFloating[recentFloating.length - 1]?.match;
+        state.recentPopupEvidence = previousFloating
+          && sameFloatingCandidate(previousFloating, match)
+          ? recentFloating
+          : [];
         state.recentPopupEvidence.push({ seenAt: now, match: copyMatch(match) });
       } else {
         state.recentPopupEvidence = [];
@@ -463,31 +557,32 @@
       const requiredConsecutive = (
         match.structuralEvidence === 'circular-click-game' || isColorIndependentLayout
       ) ? Math.max(3, state.REQUIRED_CONSECUTIVE) : state.REQUIRED_CONSECUTIVE;
-      // 5줄 발동 안내는 신뢰도가 매우 높은 한 장이면 즉시 알린다. 가림이나
-      // 백그라운드 탭 제한으로 중간 프레임을 놓친 경우에도 2.5초 안의 두
-      // 확인을 합쳐서 알리되, 약한 단일 후보는 계속 보류한다.
-      const strongSingleFrame = match.structuralEvidence === 'floating-activation-text'
-        && (match.confidence || 0) >= POPUP_STRONG_SINGLE_CONFIDENCE;
-      const firstRecentMatch = state.recentPopupEvidence[0]?.match;
-      const firstEvidenceBox = firstRecentMatch?.evidenceBox || firstRecentMatch;
-      const currentEvidenceBox = match.evidenceBox || match;
-      const layoutMovement = firstRecentMatch
-        ? Math.hypot(
-          firstEvidenceBox.x - currentEvidenceBox.x,
-          firstEvidenceBox.y - currentEvidenceBox.y
-        )
-        : 0;
-      const minimumMovement = Math.max(2, Math.min(match.width || 1, match.height || 1) * 0.04);
-      const confirmedWithinWindow = isFloatingActivation && (
-        (!isColorIndependentLayout && state.recentPopupEvidence.length >= 2)
-        || (isColorIndependentLayout && state.recentPopupEvidence.length >= 2
-          && layoutMovement >= minimumMovement)
-        || (isColorIndependentLayout && state.recentPopupEvidence.length >= 3)
+      // 떠다니는 발동 안내는 신뢰도가 높아도 한 장만으로 확정하지 않는다.
+      // 같은 실제 증거 상자가 2.5초 안에 이어지고 조금이라도 이동해야 한다.
+      // 정지한 몬스터 윤곽과 화면 곳곳의 공격 숫자를 이어 붙이는 오탐을 막는다.
+      const minimumMovement = Math.max(
+        2,
+        Math.min(
+          popupEvidenceBox(match)?.width || 1,
+          popupEvidenceBox(match)?.height || 1
+        ) * 0.04
       );
-      if ((strongSingleFrame || confirmedWithinWindow
-          || state.consecutiveCount >= requiredConsecutive)
-        && !state.isDetected && !state.cooldownActive) {
+      const confirmedWithinWindow = isFloatingActivation
+        && state.recentPopupEvidence.length >= 2
+        && floatingTrackMovement(state.recentPopupEvidence) >= minimumMovement;
+      const candidateConfirmed = isFloatingActivation
+        ? confirmedWithinWindow
+        : state.consecutiveCount >= requiredConsecutive;
+
+      if (candidateConfirmed && !state.isDetected && !state.cooldownActive) {
+        state.lastAlertAt = now;
+        state.cooldownTrackMatch = copyMatch(match);
         this.triggerPopupStructureAlert(match.detectedType || match.type);
+      }
+
+      if (state.isDetected && !sameCooldownEvent
+        && state.missedCount >= POPUP_STATUS_CLEAR_MISSES) {
+        state.isDetected = false;
       }
       return;
     }
@@ -497,15 +592,12 @@
       (entry) => now - entry.seenAt <= POPUP_EVIDENCE_WINDOW_MS
     );
     state.missedCount++;
-    // 색 변화·전투 가림으로 잠깐 놓쳐도 같은 발동 사건을 새 거탐으로 다시 알리지 않는다.
-    // 300ms 검사 100회(30초) 동안 연속으로 사라져야 다음 사건을 받을 준비를 한다.
-    if (state.cooldownActive && state.missedCount >= 100) {
-      state.cooldownActive = false;
+    // 화면 상태 표시는 약 1.8초 뒤 감시 중으로 되돌리되, 같은 거탐 과정의
+    // 중복 알림을 막는 재알림 제한은 절대시간 30초까지 별도로 유지한다.
+    if (state.isDetected && state.missedCount >= POPUP_STATUS_CLEAR_MISSES) {
       state.isDetected = false;
-      state.lastType = '';
-      state.recentPopupEvidence = [];
       if (this.onPopupStatusChange && window.screenCaptureManager?.isStreaming) {
-        this.onPopupStatusChange('🟢 거탐 감시 중 (7개 유형 위치·형태 교차 확인)', false);
+        this.onPopupStatusChange('🟢 거탐 감시 중 (재알림 제한 중)', false);
       }
     }
   };
@@ -747,6 +839,9 @@
   proto.reset = function resetDetectorEvidenceHistory() {
     const result = originalReset.call(this);
     this.popupState.lastMatch = null;
+    this.popupState.lastAlertAt = 0;
+    this.popupState.cooldownTrackMatch = null;
+    this.popupState.recentPopupEvidence = [];
     ensureJanusState(this.janusState);
     this.janusState.moveEvidenceHistory = [];
     this.janusState.lastConfirmedAt = 0;

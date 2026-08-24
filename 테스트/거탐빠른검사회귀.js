@@ -32,14 +32,16 @@ global.document = {
 };
 
 let previewResult = false;
+let floatingPreviewResult = false;
 class 가짜분석기 {
   findPopupTemplateMatch() { return { found: previewResult }; }
+  findFloatingActivationFastEvidence() { return { found: floatingPreviewResult }; }
   reset() {}
 }
 global.imageAnalyzer = new 가짜분석기();
 require(path.join(프로젝트폴더, 'js', 'screenCapture.js'));
 const 관리자 = global.screenCaptureManager;
-const 작은화면 = { width: 120, height: 68, data: new Uint8ClampedArray(120 * 68 * 4) };
+const 작은화면 = { width: 144, height: 81, data: new Uint8ClampedArray(144 * 81 * 4) };
 
 previewResult = false;
 assert.equal(관리자.hasPopupFastTemplateSignal(작은화면), false, '음성 후보가 정밀 검사로 올라갔습니다.');
@@ -47,7 +49,15 @@ assert.equal(관리자.hasPopupFastTemplateSignal(작은화면), false, '음성 
 previewResult = true;
 assert.equal(관리자.hasPopupFastTemplateSignal(작은화면), true, '거탐 패널 후보를 놓쳤습니다.');
 
+previewResult = false;
+floatingPreviewResult = true;
+assert.equal(
+  관리자.hasPopupFastTemplateSignal(작은화면),
+  true,
+  '떠다니는 발동 안내 후보를 150ms 중간 틱에서 놓쳤습니다.'
+);
+
 관리자.isStreaming = false;
 관리자.stopCapture();
 
-console.log('✅ 거탐 빠른 검사 회귀 통과: 120x68 패널 후보 양성·음성 분리');
+console.log('✅ 거탐 빠른 검사 회귀 통과: 144x81 패널·발동 안내 후보 양성·음성 분리');
