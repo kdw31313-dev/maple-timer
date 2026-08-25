@@ -59,7 +59,7 @@ class AudioNotifier {
   /**
    * 🚨 백그라운드 탭에서도 100% 울리는 사운드 & 음성 통지
    */
-  notify(message, category = 'chime') {
+  notify(message, category = 'chime', options = {}) {
     this.initAudioContext();
     // category가 customSounds 키에 해당하는 경우 사용자 지정 음원 사용
     const presetToUse = this.customSounds[category] || category || this.preset;
@@ -87,7 +87,7 @@ class AudioNotifier {
     }
 
     // 3. 📱 텔레그램 메세지 알림 자동 전송 (간결한 문구)
-    if (window.telegramNotifier && message) {
+    if (options.telegram !== false && window.telegramNotifier && message) {
       window.telegramNotifier.sendAlert(message, category);
     }
 

@@ -12,7 +12,7 @@ global.document = {
 };
 const 알림 = [];
 global.audioNotifier = {
-  notify(message, category) { 알림.push({ message, category }); }
+  notify(message, category, options = {}) { 알림.push({ message, category, options }); }
 };
 
 const 프로젝트 = path.resolve(__dirname, '..');
@@ -189,6 +189,19 @@ assert.notEqual(
   다섯줄전투증거?.kind,
   'floating-activation-layout',
   '크기와 획 양이 불규칙한 몬스터·검광 5줄을 발동 안내로 잡으면 안 됩니다.'
+);
+
+const 불규칙줄간격 = 새화면();
+가변선(불규칙줄간격, 83, 11, 6, 3, [222, 174, 58]);
+가변선(불규칙줄간격, 73, 18, 26, 3, [222, 174, 58]);
+가변선(불규칙줄간격, 72, 28, 28, 3, [222, 174, 58]);
+가변선(불규칙줄간격, 74, 39, 24, 3, [222, 174, 58]);
+가변선(불규칙줄간격, 71, 54, 30, 3, [222, 174, 58]);
+const 불규칙줄간격증거 = 분석기.findPopupUniqueStructureEvidence(불규칙줄간격);
+assert.notEqual(
+  불규칙줄간격증거?.kind,
+  'floating-activation-text',
+  '버프 타이머·몬스터·데미지 숫자가 불규칙한 다섯 줄로 모여도 발동 안내로 잡으면 안 됩니다.'
 );
 
 const 상단가로배너 = 새화면();
@@ -392,23 +405,67 @@ try {
   const 반복알림응답 = [
     가상일치(0.98, 30, 20),
     가상일치(0.98, 34, 22),
+    가상일치(0.98, 38, 24),
+    가상일치(0.98, 42, 26),
+    가상일치(0.98, 46, 28),
+    가상일치(0.98, 50, 30),
     가상불일치,
     가상불일치,
-    가상불일치
+    가상불일치,
+    가상불일치,
+    가상불일치,
+    가상일치(0.98, 150, 78),
+    가상일치(0.98, 154, 80)
   ];
   반복알림분석기.verifyPopupTemplateMatch = () => 반복알림응답.shift() || 가상불일치;
   const 반복알림전 = 알림.length;
   반복알림분석기.processPopupStructureFrame(노랑화면);
   가상시각 += 300;
   반복알림분석기.processPopupStructureFrame(연속이동화면);
+  가상시각 += 3000;
+  반복알림분석기.processPopupStructureFrame(노랑화면);
+  assert.equal(
+    알림.length,
+    반복알림전 + 2,
+    '실제 거탐을 한 번 확정하면 화면이 가려져도 3초 간격으로 총 2회 알려야 합니다.'
+  );
+  const 반복알림목록 = 알림.slice(반복알림전);
+  assert.notEqual(
+    반복알림목록[0].options.telegram,
+    false,
+    '최초 확정 알림은 텔레그램 사진을 보내야 합니다.'
+  );
+  assert.equal(
+    반복알림목록[1].options.telegram,
+    false,
+    '같은 사건의 두 번째 소리는 텔레그램 사진을 다시 보내면 안 됩니다.'
+  );
   for (let count = 0; count < 3; count++) {
     가상시각 += 3000;
-    반복알림분석기.processPopupStructureFrame(빈화면);
+    반복알림분석기.processPopupStructureFrame(노랑화면);
   }
   assert.equal(
     알림.length,
-    반복알림전 + 4,
-    '실제 거탐을 한 번 확정하면 화면이 가려져도 3초 간격으로 총 4회 알려야 합니다.'
+    반복알림전 + 2,
+    '같은 거탐 후보가 계속 보여도 두 번을 넘겨 알리면 안 됩니다.'
+  );
+  for (let count = 0; count < 5; count++) {
+    가상시각 += 3000;
+    반복알림분석기.processPopupStructureFrame(빈화면);
+  }
+  가상시각 += 300;
+  반복알림분석기.processPopupStructureFrame(노랑화면);
+  가상시각 += 300;
+  반복알림분석기.processPopupStructureFrame(연속이동화면);
+  assert.equal(
+    알림.length,
+    반복알림전 + 3,
+    '거탐 근거가 15초 동안 사라진 뒤 새 거탐이 확정되면 다시 알려야 합니다.'
+  );
+  assert.notEqual(
+    알림[반복알림전 + 2].options.telegram,
+    false,
+    '새 거탐의 최초 확정에서는 텔레그램 사진을 다시 보내야 합니다.'
   );
 
   const 시간상한분석기 = new global.imageAnalyzer.constructor();
@@ -427,4 +484,20 @@ try {
   Date.now = 원래시각;
 }
 
-console.log('✅ 발동 안내 거탐 회귀 통과: 다색·다크기·이동 양성, 전투변형 음성, 4회 재알림');
+const 분석알림모형 = global.audioNotifier;
+const 텔레그램전송 = [];
+global.telegramNotifier = {
+  sendAlert(message, category) { 텔레그램전송.push({ message, category }); }
+};
+delete require.cache[require.resolve(path.join(프로젝트, 'js/audioNotifier.js'))];
+require(path.join(프로젝트, 'js/audioNotifier.js'));
+const 실제알림기 = global.audioNotifier;
+실제알림기.initAudioContext = () => {};
+실제알림기.playSoundPreset = () => {};
+실제알림기.useFlash = false;
+실제알림기.notify('최초 거탐', 'popup');
+실제알림기.notify('같은 사건 재알림', 'popup', { telegram: false });
+assert.equal(텔레그램전송.length, 1, '알람은 두 번 울려도 텔레그램은 최초 한 번만 보내야 합니다.');
+global.audioNotifier = 분석알림모형;
+
+console.log('✅ 발동 안내 거탐 회귀 통과: 다색·다크기·이동 양성, 전투변형 음성, 2회 알림·텔레그램 1회');
