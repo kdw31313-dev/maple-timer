@@ -205,7 +205,12 @@ assert.notEqual(
   '상단 타이머·금색 시스템 문구·보라 테두리를 거탐 가로 배너로 잡으면 안 됩니다.'
 );
 
-const 가상일치 = (confidence, x = 30, y = 20) => ({
+const 가상일치 = (
+  confidence,
+  x = 30,
+  y = 20,
+  bandCounts = [8, 28, 32, 30, 34]
+) => ({
   found: true,
   verified: true,
   type: '거짓말 탐지기 팝업',
@@ -215,7 +220,8 @@ const 가상일치 = (confidence, x = 30, y = 20) => ({
   x,
   y,
   width: 57,
-  height: 57
+  height: 57,
+  structure: { bandCounts }
 });
 const 가상불일치 = {
   found: false,
@@ -225,9 +231,15 @@ const 가상불일치 = {
   confidence: 0,
   structuralEvidence: ''
 };
-const 가상레이아웃 = (confidence, x = 30, y = 20) => ({
-  ...가상일치(confidence, x, y),
-  structuralEvidence: 'floating-activation-layout'
+const 가상레이아웃 = (
+  confidence,
+  x = 30,
+  y = 20,
+  clusterCounts = [8, 28, 32, 30, 34]
+) => ({
+  ...가상일치(confidence, x, y, clusterCounts),
+  structuralEvidence: 'floating-activation-layout',
+  structure: { clusterCounts }
 });
 
 const 원래시각 = Date.now;
@@ -356,6 +368,49 @@ try {
     '같은 거탐 과정이 남아 있으면 3초 뒤 다시 알려야 합니다.'
   );
 
+  const 전투변형분석기 = new global.imageAnalyzer.constructor();
+  전투변형분석기.findPopupTemplateMatch = () => ({});
+  const 전투변형응답 = [
+    가상일치(0.96, 30, 20, [8, 28, 32, 30, 34]),
+    가상일치(0.96, 34, 22, [18, 12, 44, 15, 39]),
+    가상일치(0.96, 38, 24, [5, 46, 13, 41, 18])
+  ];
+  전투변형분석기.verifyPopupTemplateMatch = () => 전투변형응답.shift();
+  const 전투변형전 = 알림.length;
+  for (let index = 0; index < 3; index++) {
+    가상시각 += 300;
+    전투변형분석기.processPopupStructureFrame(노랑화면);
+  }
+  assert.equal(
+    알림.length,
+    전투변형전,
+    'MISS·콤보 숫자처럼 5줄 픽셀 비율이 바뀌는 전투 장면은 이동해도 알리면 안 됩니다.'
+  );
+
+  const 반복알림분석기 = new global.imageAnalyzer.constructor();
+  반복알림분석기.findPopupTemplateMatch = () => ({});
+  const 반복알림응답 = [
+    가상일치(0.98, 30, 20),
+    가상일치(0.98, 34, 22),
+    가상불일치,
+    가상불일치,
+    가상불일치
+  ];
+  반복알림분석기.verifyPopupTemplateMatch = () => 반복알림응답.shift() || 가상불일치;
+  const 반복알림전 = 알림.length;
+  반복알림분석기.processPopupStructureFrame(노랑화면);
+  가상시각 += 300;
+  반복알림분석기.processPopupStructureFrame(연속이동화면);
+  for (let count = 0; count < 3; count++) {
+    가상시각 += 3000;
+    반복알림분석기.processPopupStructureFrame(빈화면);
+  }
+  assert.equal(
+    알림.length,
+    반복알림전 + 4,
+    '실제 거탐을 한 번 확정하면 화면이 가려져도 3초 간격으로 총 4회 알려야 합니다.'
+  );
+
   const 시간상한분석기 = new global.imageAnalyzer.constructor();
   시간상한분석기.popupState.cooldownActive = true;
   시간상한분석기.popupState.isDetected = true;
@@ -372,4 +427,4 @@ try {
   Date.now = 원래시각;
 }
 
-console.log('✅ 발동 안내 거탐 회귀 통과: 다색·다크기·이동 양성, 전투광원 음성');
+console.log('✅ 발동 안내 거탐 회귀 통과: 다색·다크기·이동 양성, 전투변형 음성, 4회 재알림');
