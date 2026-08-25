@@ -569,7 +569,13 @@
       );
       const confirmedWithinWindow = isFloatingActivation
         && state.recentPopupEvidence.length >= 2
-        && floatingTrackMovement(state.recentPopupEvidence) >= minimumMovement;
+        && floatingTrackMovement(state.recentPopupEvidence) >= minimumMovement
+        // 색상 무관 경로는 색이 바뀌는 안내를 먼저 찾아 추적하는 용도다.
+        // 몬스터 윤곽만 오래 이어져도 확정되지 않도록 실제 글자형 근거가
+        // 한 번 이상 섞인 경우에만 알림으로 올린다.
+        && state.recentPopupEvidence.some((entry) => (
+          entry.match?.structuralEvidence === 'floating-activation-text'
+        ));
       const candidateConfirmed = isFloatingActivation
         ? confirmedWithinWindow
         : state.consecutiveCount >= requiredConsecutive;

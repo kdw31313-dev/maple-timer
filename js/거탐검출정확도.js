@@ -1107,6 +1107,7 @@
       const clusterSpans = lineClusters.map((cluster) => cluster.maxX - cluster.minX + 1);
       const clusterCenters = lineClusters.map((cluster) => (cluster.minX + cluster.maxX) / 2);
       const clusterHeights = lineClusters.map((cluster) => cluster.end - cluster.start + 1);
+      const clusterCounts = lineClusters.map((cluster) => cluster.count);
       const verticalCenters = lineClusters.map((cluster) => (cluster.start + cluster.end) / 2);
       const verticalGaps = verticalCenters.slice(1)
         .map((center, index) => center - verticalCenters[index]);
@@ -1116,17 +1117,27 @@
         .reduce((sum, value) => sum + value, 0) / 4;
       const minimumGap = Math.min(...verticalGaps);
       const maximumGap = Math.max(...verticalGaps);
+      const lowerCounts = clusterCounts.slice(1);
+      const meanLowerCount = lowerCounts.reduce((sum, value) => sum + value, 0) / 4;
+      const lowerCountUniformity = Math.max(...lowerCounts)
+        / Math.max(1, Math.min(...lowerCounts));
+      const topToLowerCountRatio = clusterCounts[0] / Math.max(1, meanLowerCount);
       const horizontalRatio = horizontalLinks / Math.max(1, candidate.totalSalient);
       const density = candidate.totalSalient / (candidate.width * candidate.height);
 
-      if (clusterSpans[0] > meanLowerSpan * 0.70
-        || lowerSpans.some((span) => span < candidate.width * 0.28)
+      if (clusterSpans[0] > meanLowerSpan * 0.62
+        || lowerSpans.some((span) => span < candidate.width * 0.32)
         || Math.abs(clusterCenters[0] - meanLowerCenter) > candidate.width * 0.23
         || clusterCenters.slice(1)
           .some((center) => Math.abs(center - meanLowerCenter) > candidate.width * 0.27)
         || clusterHeights.some((lineHeight) => lineHeight > candidate.height * 0.22)
+        // 색상 무관 경로에서도 맨 위 숫자는 작고, 아래 네 문장의 획 양은
+        // 서로 비슷해야 한다. 몬스터 몸체·검광·데미지 숫자가 우연히 다섯
+        // 덩어리가 된 경우는 줄별 픽셀 양이 크게 흔들려 여기서 제외된다.
+        || lowerCountUniformity > 1.50
+        || topToLowerCountRatio > 0.76
         || minimumGap < candidate.height * 0.085
-        || maximumGap / Math.max(1, minimumGap) > 2.6
+        || maximumGap / Math.max(1, minimumGap) > 2.05
         || horizontalRatio < 0.12) continue;
 
       const touchesEdge = Math.min(
@@ -1152,6 +1163,9 @@
           width: candidate.width,
           height: candidate.height,
           totalSalient: candidate.totalSalient,
+          clusterCounts,
+          lowerCountUniformity,
+          topToLowerCountRatio,
           topSpan: clusterSpans[0],
           meanLowerSpan,
           horizontalSalientRatio: horizontalRatio,
@@ -1163,20 +1177,16 @@
   };
 
   const findActivationBanner = (imageData) => {
-    const framed = findFramedActivationBanner(imageData);
     const warmFloating = findFloatingActivationText(imageData);
-    // 기존의 빠른 따뜻한 색 경로가 성공하면 추가 구조 검사를 건너뛰어
-    // 이미 학습된 발동 안내의 반응 속도와 계산량을 유지한다.
-    const floating = warmFloating || (
+    // 사용자가 확인한 실제 발동 안내는 숫자 한 줄과 문장 네 줄이 화면을
+    // 떠다니는 형태다. 화면 위쪽의 검은 타이머·금색 시스템 문구·보라
+    // 테두리가 예전 가로 배너 조건과 겹치므로 가로 배너는 확정 근거에서
+    // 제외하고, 떠다니는 5줄 구조만 반환한다.
+    return warmFloating || (
       imageData.skipColorIndependentActivation
         ? null
         : findColorIndependentFloatingActivation(imageData)
     );
-    if (!framed) return floating;
-    if (!floating) return framed;
-    return (floating.structuralStrength || 0) > (framed.structuralStrength || 0)
-      ? floating
-      : framed;
   };
 
   // 150ms 중간 틱의 절반 크기 화면에서 상태를 바꾸지 않고 떠다니는 안내만
