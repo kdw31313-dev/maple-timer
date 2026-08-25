@@ -873,13 +873,21 @@
         }
       }
       if (lineClusters.length !== 5) continue;
+      const clusterGaps = lineClusters.slice(1).map(
+        (cluster, index) => cluster.start - lineClusters[index].end - 1
+      );
+      const minimumClusterGap = Math.max(1, Math.min(...clusterGaps));
+      const lineGapUniformity = Math.max(...clusterGaps) / minimumClusterGap;
+      const meanLineGap = clusterGaps.reduce((sum, value) => sum + value, 0)
+        / clusterGaps.length;
       const clusterSpans = lineClusters.map((cluster) => cluster.maxX - cluster.minX + 1);
       const clusterCenters = lineClusters.map((cluster) => (cluster.minX + cluster.maxX) / 2);
       const lowerClusterSpans = clusterSpans.slice(1);
       const meanLowerClusterSpan = lowerClusterSpans.reduce((sum, value) => sum + value, 0) / 4;
       const meanLowerClusterCenter = clusterCenters.slice(1)
         .reduce((sum, value) => sum + value, 0) / 4;
-      if (clusterSpans[0] > meanLowerClusterSpan * 0.58
+      if (lineGapUniformity > 2.50
+        || clusterSpans[0] > meanLowerClusterSpan * 0.58
         || lowerClusterSpans.some((span) => span < candidate.width * 0.30)
         || Math.abs(clusterCenters[0] - meanLowerClusterCenter) > candidate.width * 0.22
         || clusterCenters.slice(1)
@@ -938,7 +946,9 @@
           topSpan: bands[0].span,
           meanLowerSpan,
           horizontalWarmRatio: horizontalLinks / Math.max(1, candidate.totalWarm),
-          lineClusterCount: lineClusters.length
+          lineClusterCount: lineClusters.length,
+          lineGapUniformity,
+          meanLineGap
         };
       }
     }
@@ -1361,10 +1371,11 @@
   };
 
   const originalTriggerPopupStructureAlert = proto.triggerPopupStructureAlert;
-  proto.triggerPopupStructureAlert = function triggerPopupWithSubtype(fallbackType) {
+  proto.triggerPopupStructureAlert = function triggerPopupWithSubtype(fallbackType, options = {}) {
     return originalTriggerPopupStructureAlert.call(
       this,
-      this.popupState.lastDetectedSubtype || fallbackType
+      this.popupState.lastDetectedSubtype || fallbackType,
+      options
     );
   };
 

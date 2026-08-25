@@ -1059,14 +1059,14 @@ class ImageAnalyzer {
     }
   }
 
-  triggerPopupStructureAlert(detectedType) {
+  triggerPopupStructureAlert(detectedType, options = {}) {
     this.popupState.isDetected = true;
     this.popupState.cooldownActive = true;
     if (this.onPopupStatusChange) {
       this.onPopupStatusChange(`🚨 ${detectedType} 감지`, true);
     }
     if (window.audioNotifier) {
-      window.audioNotifier.notify(`🚨 [메이플] ${detectedType}가 감지되었습니다. 화면을 확인하세요!`, 'popup');
+      window.audioNotifier.notify(`🚨 [메이플] ${detectedType}가 감지되었습니다. 화면을 확인하세요!`, 'popup', options);
     }
   }
 

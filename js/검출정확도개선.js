@@ -11,8 +11,10 @@
   const proto = Analyzer.prototype;
   const POPUP_EVIDENCE_WINDOW_MS = 2500;
   const POPUP_MAX_COOLDOWN_MS = 3000;
-  const POPUP_REPEAT_ALERT_COUNT = 4;
+  const POPUP_REPEAT_ALERT_COUNT = 2;
   const POPUP_REPEAT_WINDOW_MS = POPUP_MAX_COOLDOWN_MS * (POPUP_REPEAT_ALERT_COUNT - 1) + 600;
+  const POPUP_EVENT_CLEAR_MS = 15000;
+  const POPUP_EVENT_MAX_MS = 120000;
   const POPUP_STATUS_CLEAR_MISSES = 6;
 
   const copyMatch = (match) => ({
@@ -502,6 +504,25 @@
     if (!Number.isFinite(state.lastAlertAt)) state.lastAlertAt = 0;
     if (!Number.isFinite(state.repeatAlertUntil)) state.repeatAlertUntil = 0;
     if (!Number.isFinite(state.repeatAlertCount)) state.repeatAlertCount = 0;
+    if (typeof state.popupEventActive !== 'boolean') state.popupEventActive = false;
+    if (!Number.isFinite(state.popupEventStartedAt)) state.popupEventStartedAt = 0;
+    if (!Number.isFinite(state.popupEventLastEvidenceAt)) state.popupEventLastEvidenceAt = 0;
+    const popupEventExpired = state.popupEventActive && (
+      (state.repeatAlertCount >= POPUP_REPEAT_ALERT_COUNT
+        && state.popupEventLastEvidenceAt > 0
+        && now - state.popupEventLastEvidenceAt >= POPUP_EVENT_CLEAR_MS)
+      || (state.popupEventStartedAt > 0
+        && now - state.popupEventStartedAt >= POPUP_EVENT_MAX_MS)
+    );
+    if (popupEventExpired) {
+      state.popupEventActive = false;
+      state.popupEventStartedAt = 0;
+      state.popupEventLastEvidenceAt = 0;
+      state.repeatAlertUntil = 0;
+      state.repeatAlertCount = 0;
+      state.repeatAlertType = '';
+      clearPopupCooldown(this, state);
+    }
     const repeatAlertDue = state.repeatAlertUntil >= now
       && state.repeatAlertCount > 0
       && state.repeatAlertCount < POPUP_REPEAT_ALERT_COUNT
@@ -509,13 +530,13 @@
       && now - state.lastAlertAt >= POPUP_MAX_COOLDOWN_MS;
     if (repeatAlertDue) {
       // 최초 확정 뒤에는 전투 이펙트가 안내를 잠깐 가려도 3초 간격으로
-      // 네 번까지 알린다. 10초 안에 풀어야 하는 상황에서 한 번의 소리를
+      // 두 번까지 알린다. 10초 안에 풀어야 하는 상황에서 첫 소리를
       // 놓쳐도 다시 들을 수 있게 하되, 절대시간 창이 지나면 반드시 끝낸다.
       const repeatType = state.repeatAlertType || state.lastDetectedSubtype || '거짓말 탐지기';
       clearPopupCooldown(this, state, true);
       state.lastAlertAt = now;
       state.repeatAlertCount++;
-      this.triggerPopupStructureAlert(repeatType);
+      this.triggerPopupStructureAlert(repeatType, { telegram: false });
     } else if (state.cooldownActive
       && (!state.lastAlertAt || now - state.lastAlertAt >= POPUP_MAX_COOLDOWN_MS)) {
       // 다른 전투 이펙트가 계속 후보로 잡혀도 재알림 제한이 영구 연장되지 않는다.
@@ -523,8 +544,6 @@
     }
     if (state.repeatAlertUntil && now > state.repeatAlertUntil) {
       state.repeatAlertUntil = 0;
-      state.repeatAlertCount = 0;
-      state.repeatAlertType = '';
     }
     // 색상 무관 전 화면 탐색은 대기 중에는 두 프레임마다 한 번만 실행한다.
     // 첫 후보가 보이면 다음 프레임부터 연속 실행해 300ms 뒤 바로 재확인한다.
@@ -553,6 +572,7 @@
     }
     state.lastConfidence = match.confidence || 0;
     if (match.verified) {
+      if (state.popupEventActive) state.popupEventLastEvidenceAt = now;
       const isFloatingActivation = ['floating-activation-text', 'floating-activation-layout']
         .includes(match.structuralEvidence);
       const isColorIndependentLayout = match.structuralEvidence === 'floating-activation-layout';
@@ -617,16 +637,17 @@
         ? confirmedWithinWindow
         : state.consecutiveCount >= requiredConsecutive;
 
-      if (candidateConfirmed && !state.isDetected && !state.cooldownActive) {
+      if (candidateConfirmed && !state.isDetected && !state.cooldownActive
+        && !state.popupEventActive) {
         const alertType = match.detectedType || match.type;
         state.lastAlertAt = now;
         state.cooldownTrackMatch = copyMatch(match);
-        if (!state.repeatAlertUntil || now > state.repeatAlertUntil
-          || state.repeatAlertCount >= POPUP_REPEAT_ALERT_COUNT) {
-          state.repeatAlertUntil = now + POPUP_REPEAT_WINDOW_MS;
-          state.repeatAlertCount = 1;
-          state.repeatAlertType = alertType;
-        }
+        state.repeatAlertUntil = now + POPUP_REPEAT_WINDOW_MS;
+        state.repeatAlertCount = 1;
+        state.repeatAlertType = alertType;
+        state.popupEventActive = true;
+        state.popupEventStartedAt = now;
+        state.popupEventLastEvidenceAt = now;
         this.triggerPopupStructureAlert(alertType);
       }
 
