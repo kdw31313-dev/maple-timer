@@ -129,23 +129,26 @@ assert.equal(
 
 const 연속이동화면 = 새화면();
 발동안내(연속이동화면, 24, 14, [230, 125, 72]);
+const 초기상태검사시각 = Date.now;
+Date.now = () => 10000;
 분석기.processPopupStructureFrame(노랑화면);
 분석기.processPopupStructureFrame(연속이동화면);
-assert.equal(알림.length, 1, '색과 위치가 바뀌어도 두 프레임 확인 후 한 번 알려야 합니다.');
-assert.match(알림[0].message, /발동 안내형 거짓말 탐지기/);
+assert.equal(알림.length, 0, '색상 무관 5줄 후보 두 장만으로 알리면 안 됩니다.');
+for (const [x, y] of [[26, 15], [28, 16], [30, 17]]) {
+  const 추가이동화면 = 새화면();
+  발동안내(추가이동화면, x, y, [230, 125, 72]);
+  분석기.processPopupStructureFrame(추가이동화면);
+}
+assert.equal(
+  알림.length,
+  0,
+  '글자형 근거가 없는 색상 무관 5줄 후보는 오래 이동해도 알리면 안 됩니다.'
+);
+Date.now = 초기상태검사시각;
 
 const 전투광원 = 새화면();
 
 const 빈화면 = 새화면();
-for (let frame = 0; frame < 4; frame++) 분석기.processPopupStructureFrame(빈화면);
-분석기.processPopupStructureFrame(노랑화면);
-분석기.processPopupStructureFrame(연속이동화면);
-assert.equal(알림.length, 1, '잠깐 가려진 같은 발동 안내를 다시 알리면 안 됩니다.');
-
-분석기.popupState.lastAlertAt -= 3100;
-분석기.processPopupStructureFrame(노랑화면);
-분석기.processPopupStructureFrame(연속이동화면);
-assert.equal(알림.length, 2, '3초 상한 뒤 새 발동 안내는 다시 알려야 합니다.');
 for (let y = 32; y < 65; y++) {
   for (let x = 88; x < 142; x++) {
     if ((x + y) % 3 !== 0) 픽셀(전투광원, x, y, [235, 145, 55]);
@@ -175,6 +178,33 @@ assert.notEqual(
   '색색의 불규칙 공격 광원을 5줄 발동 안내로 잡으면 안 됩니다.'
 );
 
+const 다섯줄전투윤곽 = 새화면();
+가변선(다섯줄전투윤곽, 72, 22, 10, 2, [220, 220, 235]);
+가변선(다섯줄전투윤곽, 48, 31, 46, 3, [120, 80, 230]);
+가변선(다섯줄전투윤곽, 61, 42, 22, 5, [245, 180, 70]);
+가변선(다섯줄전투윤곽, 45, 54, 51, 2, [235, 235, 235]);
+가변선(다섯줄전투윤곽, 58, 67, 27, 6, [200, 75, 235]);
+const 다섯줄전투증거 = 분석기.findPopupUniqueStructureEvidence(다섯줄전투윤곽);
+assert.notEqual(
+  다섯줄전투증거?.kind,
+  'floating-activation-layout',
+  '크기와 획 양이 불규칙한 몬스터·검광 5줄을 발동 안내로 잡으면 안 됩니다.'
+);
+
+const 상단가로배너 = 새화면();
+for (let y = 4; y < 20; y++) {
+  for (let x = 20; x < 132; x++) 픽셀(상단가로배너, x, y, [12, 10, 18]);
+}
+가변선(상단가로배너, 20, 4, 112, 2, [105, 55, 145]);
+가변선(상단가로배너, 20, 18, 112, 2, [105, 55, 145]);
+가변선(상단가로배너, 54, 10, 58, 3, [205, 155, 70]);
+const 상단가로배너증거 = 분석기.findPopupUniqueStructureEvidence(상단가로배너);
+assert.notEqual(
+  상단가로배너증거?.kind,
+  'activation-banner',
+  '상단 타이머·금색 시스템 문구·보라 테두리를 거탐 가로 배너로 잡으면 안 됩니다.'
+);
+
 const 가상일치 = (confidence, x = 30, y = 20) => ({
   found: true,
   verified: true,
@@ -195,11 +225,30 @@ const 가상불일치 = {
   confidence: 0,
   structuralEvidence: ''
 };
+const 가상레이아웃 = (confidence, x = 30, y = 20) => ({
+  ...가상일치(confidence, x, y),
+  structuralEvidence: 'floating-activation-layout'
+});
 
 const 원래시각 = Date.now;
 let 가상시각 = 1000;
 Date.now = () => 가상시각;
 try {
+  const 색순환분석기 = new global.imageAnalyzer.constructor();
+  색순환분석기.findPopupTemplateMatch = () => ({});
+  const 색순환응답 = [가상레이아웃(0.94), 가상일치(0.96, 34, 22)];
+  색순환분석기.verifyPopupTemplateMatch = () => 색순환응답.shift();
+  const 색순환전 = 알림.length;
+  색순환분석기.processPopupStructureFrame(청록소형화면);
+  assert.equal(알림.length, 색순환전, '색상 무관 첫 후보만으로 알리면 안 됩니다.');
+  가상시각 += 300;
+  색순환분석기.processPopupStructureFrame(연속이동화면);
+  assert.equal(
+    알림.length,
+    색순환전 + 1,
+    '색상 무관 후보를 추적하다 글자형 근거가 확인되면 즉시 알려야 합니다.'
+  );
+
   const 누락복구분석기 = new global.imageAnalyzer.constructor();
   const 누락복구응답 = [가상일치(0.90), 가상불일치, 가상일치(0.91, 34, 22)];
   누락복구분석기.findPopupTemplateMatch = () => ({});
@@ -244,8 +293,25 @@ try {
   색상무관이동분석기.processPopupStructureFrame(이동한초록화면);
   assert.equal(
     알림.length,
-    색상무관이동전 + 1,
-    '색이 바뀌며 이동한 색상 무관 발동 안내는 두 번째 확인에서 알려야 합니다.'
+    색상무관이동전,
+    '색상 무관 발동 안내는 두 장만으로 알려선 안 됩니다.'
+  );
+  for (const [x, y, color] of [
+    [100, 43, [75, 220, 130]],
+    [104, 45, [85, 205, 150]],
+    [108, 47, [100, 190, 170]],
+    [112, 49, [115, 180, 190]],
+    [116, 51, [125, 170, 205]]
+  ]) {
+    가상시각 += 300;
+    const 추가색상무관화면 = 새화면();
+    색상무관발동안내(추가색상무관화면, x, y, 32, 2, 4, color);
+    색상무관이동분석기.processPopupStructureFrame(추가색상무관화면);
+  }
+  assert.equal(
+    알림.length,
+    색상무관이동전,
+    '글자형 근거가 없는 색상 무관 후보는 오래 이동해도 알리면 안 됩니다.'
   );
 
   const 색상무관정지분석기 = new global.imageAnalyzer.constructor();
