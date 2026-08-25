@@ -11,6 +11,8 @@
   const proto = Analyzer.prototype;
   const POPUP_EVIDENCE_WINDOW_MS = 2500;
   const POPUP_MAX_COOLDOWN_MS = 3000;
+  const POPUP_REPEAT_ALERT_COUNT = 4;
+  const POPUP_REPEAT_WINDOW_MS = POPUP_MAX_COOLDOWN_MS * (POPUP_REPEAT_ALERT_COUNT - 1) + 600;
   const POPUP_STATUS_CLEAR_MISSES = 6;
 
   const copyMatch = (match) => ({
@@ -41,11 +43,19 @@
     (right?.[key] || 1) / Math.max(1, left?.[key] || 1)
   );
 
+  const floatingProfileCounts = (match) => {
+    const structure = match?.structure;
+    if (!structure) return null;
+    if (Array.isArray(structure.bandCounts)) return structure.bandCounts;
+    if (Array.isArray(structure.clusterCounts)) return structure.clusterCounts;
+    return null;
+  };
+
   const floatingProfileDistance = (left, right) => {
-    const leftCounts = left?.structure?.bandCounts;
-    const rightCounts = right?.structure?.bandCounts;
+    const leftCounts = floatingProfileCounts(left);
+    const rightCounts = floatingProfileCounts(right);
     if (!Array.isArray(leftCounts) || !Array.isArray(rightCounts)
-      || leftCounts.length !== 5 || rightCounts.length !== 5) return 0;
+      || leftCounts.length !== 5 || rightCounts.length !== 5) return Infinity;
     const leftTotal = leftCounts.reduce((sum, value) => sum + value, 0);
     const rightTotal = rightCounts.reduce((sum, value) => sum + value, 0);
     return leftCounts.reduce((distance, value, index) => (
@@ -73,12 +83,18 @@
       Math.min(leftBox.width || 1, leftBox.height || 1, rightBox.width || 1, rightBox.height || 1)
         * 0.48
     );
+    const sameEvidenceKind = left.structuralEvidence === right.structuralEvidence;
+    // 색상 무관 마스크와 따뜻한 글자 마스크는 같은 안내도 픽셀 분포가 다르다.
+    // 같은 검출 경로끼리는 줄별 잉크 비율이 유지되어야 하고, 서로 다른 경로가
+    // 이어질 때만 조금 넓게 허용한다. 공격 숫자·MISS·몬스터 외곽선은 위치가
+    // 비슷해도 이 비율이 매 프레임 크게 달라져 한 사건으로 합쳐지지 않는다.
+    const profileLimit = sameEvidenceKind ? 0.30 : 0.50;
     // 전투 이펙트가 글자를 가리면 같은 안내의 검출 상자 폭이 한 프레임 사이
     // 32→50픽셀까지 바뀔 수 있다. 중심 이동·줄 분포는 별도로 엄격히 본다.
     return widthRatio <= 1.65
       && heightRatio <= 1.65
       && distance <= travelLimit
-      && floatingProfileDistance(left, right) <= 0.46;
+      && floatingProfileDistance(left, right) <= profileLimit;
   };
 
   const floatingTrackMovement = (entries) => {
@@ -484,10 +500,31 @@
     const now = Date.now();
     if (!Array.isArray(state.recentPopupEvidence)) state.recentPopupEvidence = [];
     if (!Number.isFinite(state.lastAlertAt)) state.lastAlertAt = 0;
-    if (state.cooldownActive
+    if (!Number.isFinite(state.repeatAlertUntil)) state.repeatAlertUntil = 0;
+    if (!Number.isFinite(state.repeatAlertCount)) state.repeatAlertCount = 0;
+    const repeatAlertDue = state.repeatAlertUntil >= now
+      && state.repeatAlertCount > 0
+      && state.repeatAlertCount < POPUP_REPEAT_ALERT_COUNT
+      && state.lastAlertAt > 0
+      && now - state.lastAlertAt >= POPUP_MAX_COOLDOWN_MS;
+    if (repeatAlertDue) {
+      // 최초 확정 뒤에는 전투 이펙트가 안내를 잠깐 가려도 3초 간격으로
+      // 네 번까지 알린다. 10초 안에 풀어야 하는 상황에서 한 번의 소리를
+      // 놓쳐도 다시 들을 수 있게 하되, 절대시간 창이 지나면 반드시 끝낸다.
+      const repeatType = state.repeatAlertType || state.lastDetectedSubtype || '거짓말 탐지기';
+      clearPopupCooldown(this, state, true);
+      state.lastAlertAt = now;
+      state.repeatAlertCount++;
+      this.triggerPopupStructureAlert(repeatType);
+    } else if (state.cooldownActive
       && (!state.lastAlertAt || now - state.lastAlertAt >= POPUP_MAX_COOLDOWN_MS)) {
       // 다른 전투 이펙트가 계속 후보로 잡혀도 재알림 제한이 영구 연장되지 않는다.
       clearPopupCooldown(this, state);
+    }
+    if (state.repeatAlertUntil && now > state.repeatAlertUntil) {
+      state.repeatAlertUntil = 0;
+      state.repeatAlertCount = 0;
+      state.repeatAlertType = '';
     }
     // 색상 무관 전 화면 탐색은 대기 중에는 두 프레임마다 한 번만 실행한다.
     // 첫 후보가 보이면 다음 프레임부터 연속 실행해 300ms 뒤 바로 재확인한다.
@@ -570,9 +607,9 @@
       const confirmedWithinWindow = isFloatingActivation
         && state.recentPopupEvidence.length >= 2
         && floatingTrackMovement(state.recentPopupEvidence) >= minimumMovement
-        // 색상 무관 경로는 색이 바뀌는 안내를 먼저 찾아 추적하는 용도다.
-        // 몬스터 윤곽만 오래 이어져도 확정되지 않도록 실제 글자형 근거가
-        // 한 번 이상 섞인 경우에만 알림으로 올린다.
+        // 실제 안내는 색이 계속 변하므로 따뜻한 색 횟수를 늘리지 않는다.
+        // 대신 직전 후보와의 5줄 잉크 비율 비교를 sameFloatingCandidate에서
+        // 반드시 통과시켜 MISS·콤보 숫자·몬스터 윤곽의 형태 변화를 차단한다.
         && state.recentPopupEvidence.some((entry) => (
           entry.match?.structuralEvidence === 'floating-activation-text'
         ));
@@ -581,9 +618,16 @@
         : state.consecutiveCount >= requiredConsecutive;
 
       if (candidateConfirmed && !state.isDetected && !state.cooldownActive) {
+        const alertType = match.detectedType || match.type;
         state.lastAlertAt = now;
         state.cooldownTrackMatch = copyMatch(match);
-        this.triggerPopupStructureAlert(match.detectedType || match.type);
+        if (!state.repeatAlertUntil || now > state.repeatAlertUntil
+          || state.repeatAlertCount >= POPUP_REPEAT_ALERT_COUNT) {
+          state.repeatAlertUntil = now + POPUP_REPEAT_WINDOW_MS;
+          state.repeatAlertCount = 1;
+          state.repeatAlertType = alertType;
+        }
+        this.triggerPopupStructureAlert(alertType);
       }
 
       if (state.isDetected && !sameCooldownEvent
