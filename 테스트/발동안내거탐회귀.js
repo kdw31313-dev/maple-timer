@@ -222,7 +222,8 @@ const 가상일치 = (
   confidence,
   x = 30,
   y = 20,
-  bandCounts = [8, 28, 32, 30, 34]
+  bandCounts = [8, 28, 32, 30, 34],
+  structureOverrides = {}
 ) => ({
   found: true,
   verified: true,
@@ -234,8 +235,34 @@ const 가상일치 = (
   y,
   width: 57,
   height: 57,
-  structure: { bandCounts }
+  structure: { bandCounts, ...structureOverrides }
 });
+const 강한가상일치 = (confidence, x = 30, y = 20) => 가상일치(
+  confidence,
+  x,
+  y,
+  [6, 30, 32, 31, 33],
+  {
+    lowerBandUniformity: 1.29,
+    topToLowerCountRatio: 0.19,
+    topSpan: 6,
+    meanLowerSpan: 19,
+    horizontalWarmRatio: 0.53
+  }
+);
+const 경계가상일치 = (confidence, x = 30, y = 20) => 가상일치(
+  confidence,
+  x,
+  y,
+  [13, 30, 32, 31, 33],
+  {
+    lowerBandUniformity: 1.18,
+    topToLowerCountRatio: 0.405,
+    topSpan: 6,
+    meanLowerSpan: 17.75,
+    horizontalWarmRatio: 0.77
+  }
+);
 const 가상불일치 = {
   found: false,
   verified: false,
@@ -261,7 +288,11 @@ Date.now = () => 가상시각;
 try {
   const 색순환분석기 = new global.imageAnalyzer.constructor();
   색순환분석기.findPopupTemplateMatch = () => ({});
-  const 색순환응답 = [가상레이아웃(0.94), 가상일치(0.96, 34, 22)];
+  const 색순환응답 = [
+    가상레이아웃(0.94),
+    가상일치(0.96, 34, 22),
+    가상레이아웃(0.95, 38, 24)
+  ];
   색순환분석기.verifyPopupTemplateMatch = () => 색순환응답.shift();
   const 색순환전 = 알림.length;
   색순환분석기.processPopupStructureFrame(청록소형화면);
@@ -270,12 +301,20 @@ try {
   색순환분석기.processPopupStructureFrame(연속이동화면);
   assert.equal(
     알림.length,
-    색순환전 + 1,
-    '색상 무관 후보를 추적하다 글자형 근거가 확인되면 즉시 알려야 합니다.'
+    색순환전,
+    '전투 윤곽처럼 두 프레임만 이어진 후보는 글자형 근거가 섞여도 알리면 안 됩니다.'
   );
+  가상시각 += 300;
+  색순환분석기.processPopupStructureFrame(연속이동화면);
+  assert.equal(알림.length, 색순환전 + 1, '색이 바뀌는 발동 안내가 세 프레임 이어지면 알려야 합니다.');
 
   const 누락복구분석기 = new global.imageAnalyzer.constructor();
-  const 누락복구응답 = [가상일치(0.90), 가상불일치, 가상일치(0.91, 34, 22)];
+  const 누락복구응답 = [
+    가상일치(0.90),
+    가상불일치,
+    가상일치(0.91, 34, 22),
+    가상일치(0.92, 38, 24)
+  ];
   누락복구분석기.findPopupTemplateMatch = () => ({});
   누락복구분석기.verifyPopupTemplateMatch = () => 누락복구응답.shift();
   const 누락복구전 = 알림.length;
@@ -289,13 +328,20 @@ try {
   누락복구분석기.processPopupStructureFrame(주황화면);
   assert.equal(
     알림.length,
-    누락복구전 + 1,
-    '2.5초 안의 두 발동 안내 증거는 중간 누락이 있어도 합쳐서 알려야 합니다.'
+    누락복구전,
+    '2.5초 안이라도 두 발동 안내 증거만으로는 알리면 안 됩니다.'
   );
+  가상시각 += 300;
+  누락복구분석기.processPopupStructureFrame(주황화면);
+  assert.equal(알림.length, 누락복구전 + 1, '중간 누락이 있어도 2.5초 안의 세 증거는 합쳐서 알려야 합니다.');
 
   const 즉시분석기 = new global.imageAnalyzer.constructor();
   즉시분석기.findPopupTemplateMatch = () => ({});
-  const 고신뢰응답 = [가상일치(0.99), 가상일치(0.99, 34, 22)];
+  const 고신뢰응답 = [
+    가상일치(0.99),
+    가상일치(0.99, 34, 22),
+    가상일치(0.99, 38, 24)
+  ];
   즉시분석기.verifyPopupTemplateMatch = () => 고신뢰응답.shift();
   const 즉시전 = 알림.length;
   즉시분석기.processPopupStructureFrame(노랑화면);
@@ -306,7 +352,25 @@ try {
   );
   가상시각 += 300;
   즉시분석기.processPopupStructureFrame(연속이동화면);
-  assert.equal(알림.length, 즉시전 + 1, '이동이 이어진 두 번째 확인에서는 바로 알려야 합니다.');
+  assert.equal(알림.length, 즉시전, '매우 강해도 두 프레임뿐인 전투형 후보는 알리면 안 됩니다.');
+  가상시각 += 300;
+  즉시분석기.processPopupStructureFrame(연속이동화면);
+  assert.equal(알림.length, 즉시전 + 1, '이동이 세 프레임 이어지면 약 0.6초 안에 알려야 합니다.');
+
+  const 강한두장분석기 = new global.imageAnalyzer.constructor();
+  강한두장분석기.findPopupTemplateMatch = () => ({});
+  const 강한두장응답 = [경계가상일치(0.90), 강한가상일치(0.91, 34, 22)];
+  강한두장분석기.verifyPopupTemplateMatch = () => 강한두장응답.shift();
+  const 강한두장전 = 알림.length;
+  강한두장분석기.processPopupStructureFrame(노랑화면);
+  assert.equal(알림.length, 강한두장전, '강한 발동 안내도 한 장만으로 알리면 안 됩니다.');
+  가상시각 += 300;
+  강한두장분석기.processPopupStructureFrame(연속이동화면);
+  assert.equal(
+    알림.length,
+    강한두장전 + 1,
+    '카운트 1줄과 균일한 문장 4줄이 분명한 실제 안내는 두 장으로 빠르게 알려야 합니다.'
+  );
 
   const 색상무관이동분석기 = new global.imageAnalyzer.constructor();
   const 색상무관이동전 = 알림.length;
@@ -362,19 +426,20 @@ try {
   const 사건분리응답 = [
     가상일치(0.92, 30, 20),
     가상일치(0.92, 34, 22),
-    가상일치(0.93, 150, 78),
-    가상일치(0.93, 154, 80)
+    가상일치(0.92, 38, 24),
+    가상일치(0.93, 42, 26)
   ];
   사건분리분석기.verifyPopupTemplateMatch = () => 사건분리응답.shift();
   const 사건분리전 = 알림.length;
   사건분리분석기.processPopupStructureFrame(노랑화면);
   가상시각 += 300;
   사건분리분석기.processPopupStructureFrame(연속이동화면);
+  assert.equal(알림.length, 사건분리전, '첫 발동 사건도 두 프레임만으로 알리면 안 됩니다.');
+  가상시각 += 300;
+  사건분리분석기.processPopupStructureFrame(연속이동화면);
   assert.equal(알림.length, 사건분리전 + 1, '첫 발동 사건을 알려야 합니다.');
   가상시각 += 3000;
   사건분리분석기.processPopupStructureFrame(노랑화면);
-  가상시각 += 300;
-  사건분리분석기.processPopupStructureFrame(연속이동화면);
   assert.equal(
     알림.length,
     사건분리전 + 2,
@@ -409,17 +474,21 @@ try {
     가상일치(0.98, 42, 26),
     가상일치(0.98, 46, 28),
     가상일치(0.98, 50, 30),
+    가상일치(0.98, 54, 32),
     가상불일치,
     가상불일치,
     가상불일치,
     가상불일치,
     가상불일치,
     가상일치(0.98, 150, 78),
-    가상일치(0.98, 154, 80)
+    가상일치(0.98, 154, 80),
+    가상일치(0.98, 158, 82)
   ];
   반복알림분석기.verifyPopupTemplateMatch = () => 반복알림응답.shift() || 가상불일치;
   const 반복알림전 = 알림.length;
   반복알림분석기.processPopupStructureFrame(노랑화면);
+  가상시각 += 300;
+  반복알림분석기.processPopupStructureFrame(연속이동화면);
   가상시각 += 300;
   반복알림분석기.processPopupStructureFrame(연속이동화면);
   가상시각 += 3000;
@@ -455,6 +524,8 @@ try {
   }
   가상시각 += 300;
   반복알림분석기.processPopupStructureFrame(노랑화면);
+  가상시각 += 300;
+  반복알림분석기.processPopupStructureFrame(연속이동화면);
   가상시각 += 300;
   반복알림분석기.processPopupStructureFrame(연속이동화면);
   assert.equal(
@@ -500,4 +571,4 @@ const 실제알림기 = global.audioNotifier;
 assert.equal(텔레그램전송.length, 1, '알람은 두 번 울려도 텔레그램은 최초 한 번만 보내야 합니다.');
 global.audioNotifier = 분석알림모형;
 
-console.log('✅ 발동 안내 거탐 회귀 통과: 다색·다크기·이동 양성, 전투변형 음성, 2회 알림·텔레그램 1회');
+console.log('✅ 발동 안내 거탐 회귀 통과: 강한 글자형 2프레임·일반형 3프레임 양성, 순간 전투변형 음성, 2회 알림·텔레그램 1회');

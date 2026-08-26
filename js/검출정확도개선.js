@@ -68,6 +68,29 @@
     ), 0);
   };
 
+  const isStrongWarmFloatingCandidate = (match) => {
+    if (match?.structuralEvidence !== 'floating-activation-text') return false;
+    const structure = match.structure;
+    if (!structure) return false;
+    const {
+      lowerBandUniformity,
+      topToLowerCountRatio,
+      topSpan,
+      meanLowerSpan,
+      horizontalWarmRatio
+    } = structure;
+    if (![lowerBandUniformity, topToLowerCountRatio, topSpan, meanLowerSpan, horizontalWarmRatio]
+      .every(Number.isFinite)) return false;
+    // 실제 발동 안내에서만 반복된 매우 강한 배열: 맨 위 카운트는 짧고,
+    // 아래 네 문장은 획 양과 폭이 고르며 가로 글자 획 비중이 높다.
+    // 이 조건을 모두 만족한 따뜻한 글자형 두 장은 빠르게 살리고,
+    // 하나라도 부족한 전투 윤곽·데미지 숫자는 세 장 확인으로 보낸다.
+    return lowerBandUniformity <= 1.45
+      && topToLowerCountRatio <= 0.42
+      && topSpan <= meanLowerSpan * 0.38
+      && horizontalWarmRatio >= 0.40;
+  };
+
   const sameFloatingCandidate = (left, right) => {
     if (!left || !right) return false;
     const leftBox = popupEvidenceBox(left);
@@ -614,9 +637,9 @@
       const requiredConsecutive = (
         match.structuralEvidence === 'circular-click-game' || isColorIndependentLayout
       ) ? Math.max(3, state.REQUIRED_CONSECUTIVE) : state.REQUIRED_CONSECUTIVE;
-      // 떠다니는 발동 안내는 신뢰도가 높아도 한 장만으로 확정하지 않는다.
-      // 같은 실제 증거 상자가 2.5초 안에 이어지고 조금이라도 이동해야 한다.
-      // 정지한 몬스터 윤곽과 화면 곳곳의 공격 숫자를 이어 붙이는 오탐을 막는다.
+      // 매우 강한 글자 배열은 두 장으로 빠르게 확정한다. 그 외 후보는 같은 상자가
+      // 2.5초 안에 세 장 이어져야 한다. 과거 실제 거탐 중 가까운 증거가 두 장뿐인
+      // 사례는 보존하면서, 몬스터 윤곽·공격 숫자의 짧은 겹침은 한 번 더 확인한다.
       const minimumMovement = Math.max(
         2,
         Math.min(
@@ -624,8 +647,16 @@
           popupEvidenceBox(match)?.height || 1
         ) * 0.04
       );
+      const lastTwoFloating = state.recentPopupEvidence.slice(-2);
+      const hasStrongWarmPair = lastTwoFloating.length === 2
+        && lastTwoFloating.every((entry) => isStrongWarmFloatingCandidate(entry.match))
+        // 두 장 모두 경계선에 걸린 전투 글자 조합은 빠른 예외로 올리지 않는다.
+        // 적어도 한 장은 실제 카운트 숫자가 확실히 짧은 강한 표본이어야 한다.
+        && lastTwoFloating.some((entry) => (
+          entry.match?.structure?.topToLowerCountRatio <= 0.38
+        ));
       const confirmedWithinWindow = isFloatingActivation
-        && state.recentPopupEvidence.length >= 2
+        && (state.recentPopupEvidence.length >= 3 || hasStrongWarmPair)
         && floatingTrackMovement(state.recentPopupEvidence) >= minimumMovement
         // 실제 안내는 색이 계속 변하므로 따뜻한 색 횟수를 늘리지 않는다.
         // 대신 직전 후보와의 5줄 잉크 비율 비교를 sameFloatingCandidate에서
