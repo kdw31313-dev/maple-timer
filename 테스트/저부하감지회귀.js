@@ -125,17 +125,17 @@ for (let 틱 = 0; 틱 < 12; 틱++) {
   게임영상.currentTime = 틱 * .15;
   예약함수();
 }
-assert.equal(야누스횟수, 4, '야누스 450ms 검사');
+assert.equal(야누스횟수, 12, '야누스 활성 확인은 150ms 기회, 대기 부하 제한은 Worker 연결부에서 처리');
 assert.equal(분석횟수.rune, 20, '야누스 활성 시 룬 검사 유지');
 assert.equal(분석횟수.popup, 12, '야누스 활성 시 거탐 검사 유지');
-게임영상.currentTime = .15 * 9;
+게임영상.currentTime = .15 * 11;
 시각 = 3000;
 예약함수();
-assert.equal(야누스횟수, 4, '같은 프레임 재분석 금지');
+assert.equal(야누스횟수, 12, '같은 프레임 재분석 금지');
 관리자.mediaStream = { getVideoTracks: () => [{ muted: true }] };
 게임영상.currentTime = 4;
 시각 = 4000;
 예약함수();
-assert.equal(야누스횟수, 4, '캡처 중단은 부재 증거 아님');
+assert.equal(야누스횟수, 12, '캡처 중단은 부재 증거 아님');
 assert.ok(초기화횟수 > 0);
 console.log('✅ 저부하·야누스 선택 검사 회귀 통과: 룬/거탐 주기 유지, 중복 프레임/공유 중단 방지');
