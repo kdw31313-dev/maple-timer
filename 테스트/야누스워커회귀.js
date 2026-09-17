@@ -8,7 +8,7 @@ context.self=context;
 context.addEventListener=()=>{};
 context.postMessage=m=>outputs.push(m);
 vm.createContext(context);
-context.importScripts=(...files)=>files.forEach(f=>vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),context,{filename:f}));
+context.importScripts=(...files)=>files.forEach(f=>vm.runInContext(fs.readFileSync(path.join(root,f.split('?')[0]),'utf8'),context,{filename:f}));
 vm.runInContext(fs.readFileSync(path.join(root,'야누스분석워커.js'),'utf8'),context);
 context.onmessage({data:{epoch:1,frame:{width:66,height:66,data:new Uint8ClampedArray(66*66*4)},now:0}});
 assert.ok(outputs.some(m=>m.done&&m.epoch===1));

@@ -792,10 +792,12 @@ class ScreenCaptureManager {
           const janusEnabled = document.getElementById('toggle-janus-detection')?.checked;
           const now = performance.now();
           const track = this.mediaStream?.getVideoTracks?.()[0];
-          if (!janusEnabled || track?.muted || track?.readyState === 'ended') {
+          if (!janusEnabled || track?.readyState === 'ended') {
             window.imageAnalyzer.resetJanusPresence?.();
             this.janusLastVideoTime = null;
-          } else if (now - this.janusLastCheck >= 450 && this.videoEl.currentTime !== this.janusLastVideoTime) {
+          } else if (track?.muted) {
+            window.imageAnalyzer.pauseJanusPresence?.();
+          } else if (now - this.janusLastCheck >= 150 && this.videoEl.currentTime !== this.janusLastVideoTime && (window.imageAnalyzer.canCheckJanus?.(now) ?? true)) {
             this.janusLastCheck = now;
             this.janusLastVideoTime = this.videoEl.currentTime;
             safelyAnalyze('야누스', () => {
@@ -812,7 +814,7 @@ class ScreenCaptureManager {
           }
         }
       } else {
-        window.imageAnalyzer?.resetJanusPresence?.();
+        window.imageAnalyzer?.pauseJanusPresence?.();
       }
     }, 150);
   }

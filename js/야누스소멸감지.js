@@ -17,18 +17,25 @@
       this.lastMatch = null;
     }
     update({ present = false, canStart = false, valid = true, match = null }, now) {
-      // 화면 중단/해상도 변경/긴 공백은 소멸의 증거가 아니다. 새 활성 확인부터 시작한다.
+      // 명시적인 공유 중단은 초기화하지만, 분석 지연만으로 이미 본 아이콘을 잊지 않는다.
       if (!valid || !Number.isFinite(now)) {
-        this.reset();
+        this.pause();
         this.onStatus('⚪ 화면 확인 대기');
         return;
       }
-      if (this.lastAt !== null && (now <= this.lastAt || now - this.lastAt > 2500)) this.reset();
+      if (this.lastAt !== null && now <= this.lastAt) this.reset();
+      else if (this.lastAt !== null && now - this.lastAt > 2500) {
+        this.missingAt = null;
+        this.missingCount = 0;
+        this.startAt = null;
+        this.startCount = 0;
+      }
       this.lastAt = now;
       if (!this.active) {
         if (!present || !canStart) {
           this.startAt = null;
           this.startCount = 0;
+          this.lastMatch = null;
           this.onStatus('⚪ 야누스 아이콘 대기');
           return;
         }
@@ -51,12 +58,19 @@
       if (this.missingAt === null) this.missingAt = now;
       this.missingCount++;
       this.onStatus('🟡 야누스 소멸 확인 중');
-      // 프레임 수만 세지 않는다. 최소 3장의 새 프레임 + 실제 1.2초 부재를 모두 요구한다.
-      if (this.missingCount >= 3 && now - this.missingAt >= 1200) {
+      // 최소 3장의 새 프레임과 1초 부재. 분석이 멎은 시간은 부재로 누적하지 않는다.
+      if (this.missingCount >= 3 && now - this.missingAt >= 1000) {
         this.reset(); // 알림 실패/재진입에도 동일 주기를 중복 발송하지 않는다.
         this.onStatus('🔔 야누스 소멸 감지 · 재사용 대기');
         this.onExpired();
       }
+    }
+    pause() {
+      this.missingAt = null;
+      this.missingCount = 0;
+      this.startAt = null;
+      this.startCount = 0;
+      this.lastAt = null;
     }
   }
   window.JanusPresenceTracker = JanusPresenceTracker;
@@ -70,6 +84,10 @@
     this.janusPresenceTracker?.reset();
     this.janusFrameSize = null;
     status('⚪ 야누스 아이콘 대기');
+  };
+  proto.pauseJanusPresence = function () {
+    this.janusPresenceTracker?.pause();
+    status('⚪ 화면 확인 대기 · 추적 보존');
   };
   proto.processJanusPresenceFrame = function (frame, now = performance.now()) {
     if (!this.janusPresenceTracker) this.janusPresenceTracker = new JanusPresenceTracker(
@@ -98,7 +116,7 @@
     // 이전 버프 판별·상태 처리 함수는 호출하지 않는다.
     const match = window.findJanusIcon(frame, tracker.lastMatch);
     const shape = match?.found ? this.measureBuffIconShape(frame, match.x, match.y, match.size) : {};
-    const canStart = Boolean(match?.found && shape.yellowDigitPixels >= 3 && shape.largestYellowDigitComponent >= 2);
+    const canStart = Boolean(match?.found && match.kind !== 'ending' && shape.yellowDigitPixels >= 3 && shape.largestYellowDigitComponent >= 2);
     let present = Boolean(match?.found);
     if (!present && tracker.active && tracker.lastMatch) {
       const ending = window.findJanusIcon(frame, tracker.lastMatch, true);
