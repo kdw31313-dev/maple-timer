@@ -160,6 +160,12 @@
           <div class="roi-tool-item">
             <label for="toggle-janus-detection"><strong>⚡ 야누스 소멸 알림</strong></label>
             <input type="checkbox" id="toggle-janus-detection" checked>
+            <div class="sound-select-box" style="display:inline-flex; align-items:center; gap:4px; margin-top:6px;">
+              <select id="select-sound-janus" class="select-sound-preset" style="padding:3px 6px; font-size:0.75rem; border-radius:4px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border-color);">
+                <option value="bell">🔔 딩동 벨</option><option value="chime">🎶 맑은 차임벨</option><option value="beep">⚡ 전자 삐삐음</option><option value="rune">🎵 룬 감지 전용음</option><option value="siren">🚨 경고 사이렌</option><option value="harp">🎵 하프 아르페지오</option>
+              </select>
+              <button class="btn btn-tiny btn-outline btn-test-sound" data-sound-cat="janus" style="padding:3px 6px; font-size:0.75rem;">🔊 테스트</button>
+            </div>
             <div style="font-size:0.75rem; color:var(--text-muted);">야누스 아이콘을 먼저 확인한 뒤, 1초 동안 사라진 상태가 확인되면 소리·텔레그램으로 1회 알립니다. 분석 주기·브라우저 상태에 따라 실제 알림은 조금 늦어질 수 있습니다. 고정 만료 타이머는 사용하지 않습니다.</div>
             <span class="status-pill" id="janus-status-pill">⚪ 야누스 아이콘 대기</span>
           </div>
@@ -392,7 +398,7 @@
   <!-- 스크립트 불러오기 모듈 -->
   <script src="js/storage.js?v=20260812-3"></script>
   <script src="js/telegramNotifier.js?v=20260730-1"></script>
-  <script src="js/audioNotifier.js?v=20260825-3"></script>
+  <script src="js/audioNotifier.js?v=20260918-1"></script>
   <script src="js/timerModule.js"></script>
   <script src="js/거탐인식기기준.js?v=20260818-1"></script>
   <script src="js/버프인식기기준.js?v=20260917-1"></script>
@@ -409,6 +415,6 @@
   <script src="js/야누스워커연결.js?v=20260917-2"></script>
   <script src="js/screenCapture.js?v=20260917-2"></script>
   <script src="js/pipController.js?v=20260820-1"></script>
-  <script src="js/app.js?v=20260820-1"></script>
+  <script src="js/app.js?v=20260918-1"></script>
 </body>
 </html>

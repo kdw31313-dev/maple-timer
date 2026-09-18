@@ -48,7 +48,8 @@
    if(best.score<=30)return {...best,found:true};
   }
   if(endingOnly)return {found:false};
-  const sizes=previous?[previous.size]:[Math.round(frame.width/864*44)];
+  const baseSize=Math.round(frame.width/864*44);
+  const sizes=previous ? [...new Set([previous.size, baseSize, Math.round(baseSize*.75), Math.round(baseSize*1.27)])] : [baseSize, Math.round(baseSize*.75), Math.round(baseSize*1.27)];
   const seeds=[];
   // 기본 버프 첫 줄을 먼저 검사. 전체 ROI 탐색은 첫 줄/이전 슬롯에서 실패할 때만 수행.
   for(const size of sizes){
