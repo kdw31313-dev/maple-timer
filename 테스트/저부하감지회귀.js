@@ -15,12 +15,18 @@ for (const 필수항목 of ['toggle-rune-detection', 'toggle-popup-detection']) 
 for (const 제거항목 of [
   'toggle-exp-detection',
   'js/버프영상수집기.js',
-  'js/야누스학습수집기.js'
+  'js/야누스학습수집기.js',
+  'toggle-janus-detection',
+  'select-sound-janus',
+  'janus-status-pill',
+  'js/야누스아이콘판별.js',
+  'js/야누스소멸감지.js',
+  'js/야누스워커연결.js',
+  'js/야누스곡선표본.js'
 ]) {
   assert.equal(html.includes(제거항목), false, `${제거항목}이 운영 화면에 남아 있습니다.`);
 }
-assert.doesNotMatch(화면분석코드, /processJanusTemplateFrame|processExpTemplateFrame/);
-assert.ok(html.includes('js/야누스소멸감지.js'));
+assert.doesNotMatch(화면분석코드, /processJanusTemplateFrame|processExpTemplateFrame|janusCanvas|toggle-janus-detection/);
 
 const 캔버스목록 = [];
 const 새캔버스 = () => {
@@ -113,29 +119,4 @@ for (let 틱 = 0; 틱 < 4; 틱++) 예약함수();
 assert.equal(분석횟수.rune, 8, '백그라운드에서 룬 검사가 유지되지 않았습니다.');
 assert.equal(분석횟수.popup, 6, '백그라운드 타이머 기회마다 거탐을 검사하지 않았습니다.');
 
-// 야누스를 켜도 거탐/룬 검사 횟수는 유지되고, 같은 영상 프레임은 중복 세지 않는다.
-요소.set('toggle-janus-detection', { checked: true });
-let 야누스횟수 = 0, 초기화횟수 = 0, 시각 = 0;
-global.performance = { now: () => 시각 };
-global.imageAnalyzer.processJanusPresenceFrame = () => 야누스횟수++;
-global.imageAnalyzer.resetJanusPresence = () => 초기화횟수++;
-document.hidden = false;
-for (let 틱 = 0; 틱 < 12; 틱++) {
-  시각 = 틱 * 150;
-  게임영상.currentTime = 틱 * .15;
-  예약함수();
-}
-assert.equal(야누스횟수, 12, '야누스 활성 확인은 150ms 기회, 대기 부하 제한은 Worker 연결부에서 처리');
-assert.equal(분석횟수.rune, 20, '야누스 활성 시 룬 검사 유지');
-assert.equal(분석횟수.popup, 12, '야누스 활성 시 거탐 검사 유지');
-게임영상.currentTime = .15 * 11;
-시각 = 3000;
-예약함수();
-assert.equal(야누스횟수, 12, '같은 프레임 재분석 금지');
-관리자.mediaStream = { getVideoTracks: () => [{ muted: true }] };
-게임영상.currentTime = 4;
-시각 = 4000;
-예약함수();
-assert.equal(야누스횟수, 12, '캡처 중단은 부재 증거 아님');
-assert.ok(초기화횟수 > 0);
-console.log('✅ 저부하·야누스 선택 검사 회귀 통과: 룬/거탐 주기 유지, 중복 프레임/공유 중단 방지');
+console.log('✅ 저부하 감지 회귀 통과: 룬/거탐 주기 유지, 야누스 감지 코드 완전 제거 확인');

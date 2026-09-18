@@ -134,67 +134,6 @@ class TelegramNotifier {
     }
   }
 
-  /**
-   * 야누스 학습용 원본 ROI 사진을 최대 10장씩 앨범으로 전송한다.
-   */
-  async sendJanusLearningAlbum(samples) {
-    if (!this.config.enabled || !this.config.botToken || !this.config.chatId) return false;
-    if (!Array.isArray(samples) || samples.length === 0) return true;
-
-    const album = samples.slice(0, 10);
-    const formData = new FormData();
-    formData.append('chat_id', this.config.chatId);
-    if (this.config.threadId && this.config.threadId.trim() !== '') {
-      formData.append('message_thread_id', String(parseInt(this.config.threadId.trim(), 10)));
-    }
-
-    // Telegram 앨범은 최소 2장이 필요하므로 마지막 1장은 일반 사진으로 보낸다.
-    if (album.length === 1) {
-      const sample = album[0];
-      formData.append('caption', sample.caption.slice(0, 1024));
-      formData.append('photo', sample.blob, `야누스-학습-${sample.id}.jpg`);
-      try {
-        const response = await fetch(
-          `https://api.telegram.org/bot${this.config.botToken}/sendPhoto`,
-          { method: 'POST', body: formData }
-        );
-        const result = await response.json();
-        if (!result.ok) console.warn('Telegram Janus learning photo failed:', result);
-        return Boolean(result.ok);
-      } catch (error) {
-        console.error('Telegram Janus learning photo network error:', error);
-        return false;
-      }
-    }
-
-    const media = album.map((sample, index) => {
-      const fieldName = `photo${index}`;
-      formData.append(fieldName, sample.blob, `야누스-학습-${sample.id}.jpg`);
-      return {
-        type: 'photo',
-        media: `attach://${fieldName}`,
-        caption: sample.caption.slice(0, 1024)
-      };
-    });
-    formData.append('media', JSON.stringify(media));
-
-    try {
-      const response = await fetch(
-        `https://api.telegram.org/bot${this.config.botToken}/sendMediaGroup`,
-        { method: 'POST', body: formData }
-      );
-      const result = await response.json();
-      if (!result.ok) {
-        console.warn('Telegram Janus learning album failed:', result);
-        return false;
-      }
-      return true;
-    } catch (error) {
-      console.error('Telegram Janus learning album network error:', error);
-      return false;
-    }
-  }
-
   async sendVideo(videoBlob, caption) {
     if (!this.config.enabled || !this.config.botToken || !this.config.chatId) return false;
     if (!videoBlob || videoBlob.size === 0) return false;
