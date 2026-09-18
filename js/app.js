@@ -251,7 +251,7 @@ function bindEvents() {
   });
 
   // 🔊 항목별 개별 사운드 선택 및 미리듣기 테스트 버튼 이벤트 바인딩
-  ['rune', 'popup'].forEach(cat => {
+  ['rune', 'popup', 'janus'].forEach(cat => {
     const selectEl = document.getElementById(`select-sound-${cat}`);
     if (selectEl) {
       selectEl.addEventListener('change', (e) => {
@@ -390,8 +390,8 @@ function applyConfigToUI(cfg) {
 
   // 항목별 커스텀 사운드 설정 반영
   if (cfg.customSounds) {
-    window.audioNotifier.customSounds = { ...cfg.customSounds };
-    ['rune', 'popup'].forEach(cat => {
+    window.audioNotifier.customSounds = { ...(window.audioNotifier.customSounds || {}), ...cfg.customSounds };
+    ['rune', 'popup', 'janus'].forEach(cat => {
       const selectEl = document.getElementById(`select-sound-${cat}`);
       if (selectEl && cfg.customSounds[cat]) {
         selectEl.value = cfg.customSounds[cat];
@@ -450,7 +450,7 @@ function saveCurrentConfig() {
   const activePresetBtn = document.querySelector('.btn-preset.active');
 
   const customSounds = {};
-  ['rune', 'popup'].forEach(cat => {
+  ['rune', 'popup', 'janus'].forEach(cat => {
     const selectEl = document.getElementById(`select-sound-${cat}`);
     if (selectEl) customSounds[cat] = selectEl.value;
   });
