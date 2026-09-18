@@ -32,7 +32,8 @@ global.audioNotifier = {
   }
 };
 
-const 프로젝트폴더 = path.resolve(__dirname, '..');
+// 같은 재생기로 변경 전후 코드를 비교할 때만 외부 체크아웃을 지정한다.
+const 프로젝트폴더 = process.env.MAPLE_ANALYZER_ROOT || path.resolve(__dirname, '..');
 [
   'js/거탐인식기기준.js',
   'js/imageAnalyzer.js',
@@ -84,6 +85,9 @@ const 프레임처리 = (상태, raw) => {
   if (정밀실행) {
     증거 = 상태.analyzer.findPopupUniqueStructureEvidence(화면);
     상태.analyzer.processPopupStructureFrame(화면);
+    if (증거?.found) {
+      상태.전체후보종류[증거.kind] = (상태.전체후보종류[증거.kind] || 0) + 1;
+    }
   }
 
   const 발동안내 = 증거?.found && 증거.type === '발동 안내형 거짓말 탐지기';
@@ -122,6 +126,7 @@ const 자료검사 = (입력) => new Promise((resolve, reject) => {
     빠른후보수: 0,
     첫후보시각: null,
     후보종류: {},
+    전체후보종류: {},
     후보표본: []
   };
   const 원래시각 = Date.now;
@@ -130,7 +135,8 @@ const 자료검사 = (입력) => new Promise((resolve, reject) => {
 
   const ffmpeg = process.env.MAPLE_FFMPEG || 'ffmpeg';
   const 사진 = /\.(?:png|jpe?g|webp|bmp)$/i.test(입력);
-  const 입력인수 = 사진 ? ['-loop', '1', '-t', '0.45', '-i', 입력] : ['-i', 입력];
+  // 원형의 정밀 3프레임(300ms 간격)까지 실제로 도달해야 음성 검사가 유효하다.
+  const 입력인수 = 사진 ? ['-loop', '1', '-t', '1.2', '-i', 입력] : ['-i', 입력];
   const child = spawn(ffmpeg, [
     '-hide_banner', '-loglevel', 'error', ...입력인수,
     '-vf', `fps=${초당프레임},scale=${분석너비}:${분석높이}:flags=area`,
@@ -167,6 +173,7 @@ const 자료검사 = (입력) => new Promise((resolve, reject) => {
       firstActivationCandidateAt: 상태.첫후보시각 === null
         ? null : Number(상태.첫후보시각.toFixed(2)),
       candidateKinds: 상태.후보종류,
+      allCandidateKinds: 상태.전체후보종류,
       alerts: 현재알림.map((알림) => ({
         ...알림,
         time: Number(알림.time.toFixed(2))

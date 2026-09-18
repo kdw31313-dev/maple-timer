@@ -14,6 +14,10 @@ class ScreenCaptureManager {
     // 초경량 마이크로 ROI 캔버스
     this.runeCanvas = document.createElement('canvas');
     this.runeCtx = this.runeCanvas.getContext('2d', { willReadFrequently: true });
+    this.janusCanvas = document.createElement('canvas');
+    this.janusCtx = this.janusCanvas.getContext('2d', { willReadFrequently: true });
+    this.janusLastCheck = -Infinity;
+    this.janusLastVideoTime = null;
 
     // 🚨 거탐 전체 화면 다운샘플링 캔버스 (240x135 해상도)
     this.popupCanvas = document.createElement('canvas');
@@ -32,7 +36,7 @@ class ScreenCaptureManager {
     this.analysisTick = 0;
     this.backgroundGuardPeers = null;
     this.backgroundGuardStarting = null;
-    // 룬은 150ms마다, 거탐은 300ms마다 검사한다. 버프 분석은 수행하지 않는다.
+    // 룬 150ms, 거탐 300ms. 선택한 야누스만 최대 450ms마다 추가 검사한다.
 
     // ⚡ 1사분면 무설정 자동 캡처 범위 (% 비율 단위 - 1사분면 최상단 1줄 제외)
     // 실제 1280x720 사냥 화면 기준 미니맵 내부 전체(제목줄 제외).
@@ -784,7 +788,31 @@ class ScreenCaptureManager {
               ));
             }
           }
+          // 거탐·룬을 먼저 처리하고 야누스를 검사한다. 익스트림 골드는 실행하지 않는다.
+          const janusEnabled = document.getElementById('toggle-janus-detection')?.checked;
+          const now = performance.now();
+          const track = this.mediaStream?.getVideoTracks?.()[0];
+          if (!janusEnabled || track?.muted || track?.readyState === 'ended') {
+            window.imageAnalyzer.resetJanusPresence?.();
+            this.janusLastVideoTime = null;
+          } else if (now - this.janusLastCheck >= 450 && this.videoEl.currentTime !== this.janusLastVideoTime) {
+            this.janusLastCheck = now;
+            this.janusLastVideoTime = this.videoEl.currentTime;
+            safelyAnalyze('야누스', () => {
+              const x = Math.round(vWidth * .55), w = vWidth - x;
+              const h = Math.max(1, Math.round(vHeight * .24));
+              if (this.janusCanvas.width !== w || this.janusCanvas.height !== h) {
+                this.janusCanvas.width = w;
+                this.janusCanvas.height = h;
+                window.imageAnalyzer.resetJanusPresence?.();
+              }
+              this.janusCtx.drawImage(this.videoEl, x, 0, w, h, 0, 0, w, h);
+              window.imageAnalyzer.processJanusPresenceFrame(this.janusCtx.getImageData(0, 0, w, h), now);
+            });
+          }
         }
+      } else {
+        window.imageAnalyzer?.resetJanusPresence?.();
       }
     }, 150);
   }

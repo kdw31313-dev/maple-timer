@@ -1,0 +1,1135 @@
+{
+  "file": "C:\\Users\\sch\\Documents\\카카오톡 받은 파일\\KakaoTalk_20260917_133329603.mp4",
+  "count": 92,
+  "alerts": [
+    {
+      "time": 11.25,
+      "args": [
+        "솔 야누스 아이콘이 사라졌습니다. 다시 사용해 주세요.",
+        "janus",
+        {
+          "telegram": true
+        }
+      ]
+    }
+  ],
+  "timing": {
+    "p50": 137.43440000000192,
+    "p95": 482.9376999999986,
+    "max": 575.9716000000008
+  },
+  "frames": [
+    {
+      "time": 0,
+      "active": false,
+      "pending": 1,
+      "missing": 0,
+      "match": {
+        "x": 472,
+        "y": 0,
+        "size": 44,
+        "score": 0.1,
+        "found": true
+      }
+    },
+    {
+      "time": 0.45,
+      "active": false,
+      "pending": 2,
+      "missing": 0,
+      "match": {
+        "x": 472,
+        "y": 1,
+        "size": 44,
+        "score": 18.725,
+        "found": true
+      }
+    },
+    {
+      "time": 0.9,
+      "active": true,
+      "pending": 3,
+      "missing": 0,
+      "match": {
+        "x": 472,
+        "y": 0,
+        "size": 44,
+        "score": 19.425,
+        "found": true
+      }
+    },
+    {
+      "time": 1.35,
+      "active": true,
+      "pending": 3,
+      "missing": 0,
+      "match": {
+        "x": 339,
+        "y": 46,
+        "size": 44,
+        "score": 17.808333333333334,
+        "found": true
+      }
+    },
+    {
+      "time": 1.8,
+      "active": true,
+      "pending": 3,
+      "missing": 1,
+      "match": {
+        "x": 339,
+        "y": 46,
+        "size": 44,
+        "score": 17.808333333333334,
+        "found": true
+      }
+    },
+    {
+      "time": 2.25,
+      "active": true,
+      "pending": 3,
+      "missing": 0,
+      "match": {
+        "x": 339,
+        "y": 46,
+        "size": 44,
+        "score": 17.808333333333334,
+        "found": true
+      }
+    },
+    {
+      "time": 2.7,
+      "active": true,
+      "pending": 3,
+      "missing": 0,
+      "match": {
+        "x": 339,
+        "y": 46,
+        "size": 44,
+        "score": 18.783333333333335,
+        "found": true
+      }
+    },
+    {
+      "time": 3.15,
+      "active": true,
+      "pending": 3,
+      "missing": 0,
+      "match": {
+        "x": 339,
+        "y": 44,
+        "size": 44,
+        "score": 18.45,
+        "found": true
+      }
+    },
+    {
+      "time": 3.6,
+      "active": true,
+      "pending": 3,
+      "missing": 0,
+      "match": {
+        "x": 339,
+        "y": 41,
+        "size": 44,
+        "score": 16.533333333333335,
+        "found": true
+      }
+    },
+    {
+      "time": 4.05,
+      "active": true,
+      "pending": 3,
+      "missing": 1,
+      "match": {
+        "x": 339,
+        "y": 41,
+        "size": 44,
+        "score": 16.533333333333335,
+        "found": true
+      }
+    },
+    {
+      "time": 4.5,
+      "active": true,
+      "pending": 3,
+      "missing": 2,
+      "match": {
+        "x": 339,
+        "y": 41,
+        "size": 44,
+        "score": 16.533333333333335,
+        "found": true
+      }
+    },
+    {
+      "time": 4.95,
+      "active": true,
+      "pending": 3,
+      "missing": 0,
+      "match": {
+        "x": 429,
+        "y": 41,
+        "size": 44,
+        "score": 19.05,
+        "found": true
+      }
+    },
+    {
+      "time": 5.4,
+      "active": true,
+      "pending": 3,
+      "missing": 0,
+      "match": {
+        "x": 429,
+        "y": 40,
+        "size": 44,
+        "score": 19,
+        "found": true
+      }
+    },
+    {
+      "time": 5.8500000000000005,
+      "active": true,
+      "pending": 3,
+      "missing": 0,
+      "match": {
+        "x": 429,
+        "y": 40,
+        "size": 44,
+        "score": 19,
+        "found": true
+      }
+    },
+    {
+      "time": 6.3,
+      "active": true,
+      "pending": 3,
+      "missing": 0,
+      "match": {
+        "x": 429,
+        "y": 40,
+        "size": 44,
+        "score": 19,
+        "found": true
+      }
+    },
+    {
+      "time": 6.75,
+      "active": true,
+      "pending": 3,
+      "missing": 0,
+      "match": {
+        "x": 429,
+        "y": 40,
+        "size": 44,
+        "score": 19,
+        "found": true
+      }
+    },
+    {
+      "time": 7.2,
+      "active": true,
+      "pending": 3,
+      "missing": 0,
+      "match": {
+        "x": 429,
+        "y": 40,
+        "size": 44,
+        "score": 19,
+        "found": true
+      }
+    },
+    {
+      "time": 7.65,
+      "active": true,
+      "pending": 3,
+      "missing": 0,
+      "match": {
+        "x": 429,
+        "y": 40,
+        "size": 44,
+        "score": 19,
+        "found": true
+      }
+    },
+    {
+      "time": 8.1,
+      "active": true,
+      "pending": 3,
+      "missing": 0,
+      "match": {
+        "x": 429,
+        "y": 34,
+        "size": 44,
+        "score": 16.65,
+        "found": true
+      }
+    },
+    {
+      "time": 8.55,
+      "active": true,
+      "pending": 3,
+      "missing": 0,
+      "match": {
+        "x": 429,
+        "y": 33,
+        "size": 44,
+        "score": 15.875,
+        "found": true
+      }
+    },
+    {
+      "time": 9,
+      "active": true,
+      "pending": 3,
+      "missing": 0,
+      "match": {
+        "x": 429,
+        "y": 32,
+        "size": 44,
+        "score": 19.708333333333332,
+        "found": true
+      }
+    },
+    {
+      "time": 9.450000000000001,
+      "active": true,
+      "pending": 3,
+      "missing": 0,
+      "match": {
+        "x": 429,
+        "y": 32,
+        "size": 44,
+        "score": 19.708333333333332,
+        "found": true
+      }
+    },
+    {
+      "time": 9.9,
+      "active": true,
+      "pending": 3,
+      "missing": 1,
+      "match": {
+        "x": 429,
+        "y": 32,
+        "size": 44,
+        "score": 19.708333333333332,
+        "found": true
+      }
+    },
+    {
+      "time": 10.35,
+      "active": true,
+      "pending": 3,
+      "missing": 2,
+      "match": {
+        "x": 429,
+        "y": 32,
+        "size": 44,
+        "score": 19.708333333333332,
+        "found": true
+      }
+    },
+    {
+      "time": 10.8,
+      "active": true,
+      "pending": 3,
+      "missing": 3,
+      "match": {
+        "x": 429,
+        "y": 32,
+        "size": 44,
+        "score": 19.708333333333332,
+        "found": true
+      }
+    },
+    {
+      "time": 11.25,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": null
+    },
+    {
+      "time": 11.700000000000001,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": null
+    },
+    {
+      "time": 12.15,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": null
+    },
+    {
+      "time": 12.6,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": null
+    },
+    {
+      "time": 13.05,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": null
+    },
+    {
+      "time": 13.5,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": null
+    },
+    {
+      "time": 13.950000000000001,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": null
+    },
+    {
+      "time": 14.4,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": null
+    },
+    {
+      "time": 14.85,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": null
+    },
+    {
+      "time": 15.3,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": null
+    },
+    {
+      "time": 15.75,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": null
+    },
+    {
+      "time": 16.2,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": null
+    },
+    {
+      "time": 16.650000000000002,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": null
+    },
+    {
+      "time": 17.1,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": null
+    },
+    {
+      "time": 17.55,
+      "active": false,
+      "pending": 1,
+      "missing": 0,
+      "match": {
+        "x": 462,
+        "y": 12,
+        "size": 56,
+        "score": 19.7,
+        "found": true
+      }
+    },
+    {
+      "time": 18,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 462,
+        "y": 12,
+        "size": 56,
+        "score": 19.7,
+        "found": true
+      }
+    },
+    {
+      "time": 18.45,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 462,
+        "y": 12,
+        "size": 56,
+        "score": 19.7,
+        "found": true
+      }
+    },
+    {
+      "time": 18.900000000000002,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 462,
+        "y": 12,
+        "size": 56,
+        "score": 19.7,
+        "found": true
+      }
+    },
+    {
+      "time": 19.35,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 462,
+        "y": 12,
+        "size": 56,
+        "score": 19.7,
+        "found": true
+      }
+    },
+    {
+      "time": 19.8,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 462,
+        "y": 12,
+        "size": 56,
+        "score": 19.7,
+        "found": true
+      }
+    },
+    {
+      "time": 20.25,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 462,
+        "y": 12,
+        "size": 56,
+        "score": 19.7,
+        "found": true
+      }
+    },
+    {
+      "time": 20.7,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 462,
+        "y": 12,
+        "size": 56,
+        "score": 19.7,
+        "found": true
+      }
+    },
+    {
+      "time": 21.150000000000002,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 462,
+        "y": 12,
+        "size": 56,
+        "score": 19.7,
+        "found": true
+      }
+    },
+    {
+      "time": 21.6,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 462,
+        "y": 12,
+        "size": 56,
+        "score": 19.7,
+        "found": true
+      }
+    },
+    {
+      "time": 22.05,
+      "active": false,
+      "pending": 1,
+      "missing": 0,
+      "match": {
+        "x": 417,
+        "y": 2,
+        "size": 56,
+        "score": 19.863247863247864,
+        "found": true
+      }
+    },
+    {
+      "time": 22.5,
+      "active": false,
+      "pending": 2,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 22.95,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 23.400000000000002,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 23.85,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 24.3,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 24.75,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 25.2,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 25.650000000000002,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 26.1,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 26.55,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 27,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 27.45,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 27.900000000000002,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 28.35,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 28.8,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 29.25,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 29.7,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 30.150000000000002,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 30.6,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 31.05,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 31.5,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 31.95,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 32.4,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 32.85,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 33.300000000000004,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 33.75,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 34.2,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 34.65,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 35.1,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 35.550000000000004,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 36,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 36.45,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 36.9,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 37.35,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 37.800000000000004,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 38.25,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 38.7,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 39.15,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 39.6,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 40.050000000000004,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 40.5,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    },
+    {
+      "time": 40.95,
+      "active": false,
+      "pending": 0,
+      "missing": 0,
+      "match": {
+        "x": 327,
+        "y": 1,
+        "size": 56,
+        "score": 18.491666666666667,
+        "found": true
+      }
+    }
+  ]
+}

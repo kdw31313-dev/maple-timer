@@ -152,11 +152,17 @@
               <span class="color-badge" style="background:#2ecc71; width:12px; height:12px; border-radius:50%; display:inline-block;"></span>
               <div>
                 <strong>🪶 저부하 집중 감지 모드</strong>
-                <div style="font-size:0.75rem; color:var(--text-muted);">야누스·익스트림 골드 화면 분석을 제거하고 룬과 거탐만 기존 주기로 검사합니다.</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">룬·거탐 검사 주기는 유지합니다. 야누스는 켰을 때만 우측 상단을 추가 검사합니다.</div>
               </div>
             </div>
           </div>
 
+          <div class="roi-tool-item">
+            <label for="toggle-janus-detection"><strong>⚡ 야누스 소멸 알림</strong></label>
+            <input type="checkbox" id="toggle-janus-detection" checked>
+            <div style="font-size:0.75rem; color:var(--text-muted);">우측 상단의 야누스 아이콘을 먼저 확인한 뒤, 1.2초 이상 사라지면 소리·텔레그램으로 1회 알립니다. 고정 만료 타이머는 사용하지 않습니다. 화면 공유가 끊기면 다시 아이콘 확인부터 시작합니다.</div>
+            <span class="status-pill" id="janus-status-pill">⚪ 야누스 아이콘 대기</span>
+          </div>
           <!-- 📱 텔레그램 봇 알림 연동 (실시간 메세지 전송) -->
           <div class="roi-tool-item" style="border:1px solid rgba(0, 136, 204, 0.4); background:rgba(0, 136, 204, 0.1);">
             <div class="tool-title">
@@ -389,11 +395,19 @@
   <script src="js/audioNotifier.js?v=20260825-3"></script>
   <script src="js/timerModule.js"></script>
   <script src="js/거탐인식기기준.js?v=20260818-1"></script>
+  <script src="js/버프인식기기준.js?v=20260917-1"></script>
+  <script src="js/야누스인식기준.js?v=20260917-1"></script>
+  <script src="js/익스트림골드인식기준.js?v=20260917-1"></script>
+  <script src="js/영상학습인식기준.js?v=20260917-1"></script>
   <script src="js/imageAnalyzer.js?v=20260825-3"></script>
   <script src="js/검출정확도개선.js?v=20260826-1"></script>
-  <script src="js/룬검출정확도.js?v=20260821-1"></script>
-  <script src="js/거탐검출정확도.js?v=20260825-3"></script>
-  <script src="js/screenCapture.js?v=20260824-4"></script>
+  <script src="js/룬검출정확도.js?v=20260917-1"></script>
+  <script src="js/거탐검출정확도.js?v=20260917-1"></script>
+  <script src="js/야누스추가표본.js?v=20260917-1"></script>
+  <script src="js/야누스아이콘판별.js?v=20260917-1"></script>
+  <script src="js/야누스소멸감지.js?v=20260917-1"></script>
+  <script src="js/야누스워커연결.js?v=20260917-1"></script>
+  <script src="js/screenCapture.js?v=20260917-1"></script>
   <script src="js/pipController.js?v=20260820-1"></script>
   <script src="js/app.js?v=20260820-1"></script>
 </body>

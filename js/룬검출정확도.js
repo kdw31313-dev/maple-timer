@@ -120,6 +120,32 @@
     };
   };
 
+  // 마름모처럼 뭉친 보라색 배경 광원은 중심만 진하고 주변은 연한 후광이다.
+  // 모양이나 밝기 하나만으로 제외하지 않고 가로 비율, 진한 seed 비율,
+  // 중심-외곽 밝기 차이가 모두 해당할 때만 장식으로 취급한다.
+  const runeGlowEvidence = (imageData, shape, strictCount, count) => {
+    const { data, width, height } = imageData;
+    let core = 0, shell = 0, coreCount = 0, shellCount = 0;
+    for (let y = Math.max(0, shape.y); y < Math.min(height, shape.y + shape.height); y++) {
+      for (let x = Math.max(0, shape.x); x < Math.min(width, shape.x + shape.width); x++) {
+        const distance = Math.abs(x - shape.centerX) / (shape.width / 2)
+          + Math.abs(y - shape.centerY) / (shape.height / 2);
+        const index = (y * width + x) * 4;
+        const value = (data[index] + data[index + 2]) / 2;
+        if (distance < 0.35) { core += value; coreCount++; }
+        else if (distance >= 0.70 && distance <= 1) { shell += value; shellCount++; }
+      }
+    }
+    const strictSeedRatio = strictCount / Math.max(1, count);
+    const coreGlowContrast = coreCount && shellCount ? core / coreCount - shell / shellCount : 0;
+    return {
+      strictSeedRatio,
+      coreGlowContrast,
+      isDiffuseRuneDecoration: shape.width / Math.max(1, shape.height) >= 1.15
+        && strictSeedRatio < 0.34 && coreGlowContrast > 45
+    };
+  };
+
   proto.findRuneDiamondCandidates = function findHysteresisRuneDiamonds(imageData) {
     if (!imageData?.data?.length || !imageData.width || !imageData.height) return [];
 
@@ -211,6 +237,7 @@
       );
       candidates.push({
         ...shape,
+        ...runeGlowEvidence(imageData, shape, strictPoints.length, points.length),
         pixelCount: points.length,
         strictSeedCount: strictPoints.length,
         density,
@@ -369,7 +396,7 @@
     imageData,
     isLearningBackground = false
   ) {
-    if (isLearningBackground || !candidate?.isHysteresisRune) return false;
+    if (isLearningBackground || !candidate?.isHysteresisRune || candidate.isDiffuseRuneDecoration) return false;
     const horizontal = candidate.centerX / Math.max(1, imageData.width);
     const vertical = candidate.centerY / Math.max(1, imageData.height);
     if (
@@ -392,7 +419,8 @@
     candidate,
     imageData
   ) {
-    if (!candidate?.isHysteresisRune || !imageData?.width || !imageData?.height) return false;
+    if (!candidate?.isHysteresisRune || candidate.isDiffuseRuneDecoration
+      || !imageData?.width || !imageData?.height) return false;
     const horizontal = candidate.centerX / imageData.width;
     const vertical = candidate.centerY / imageData.height;
     const aspect = candidate.width / Math.max(1, candidate.height);

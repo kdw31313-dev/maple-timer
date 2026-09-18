@@ -487,6 +487,14 @@
     return luminance;
   };
 
+  // 2026-09-16 배경 오탐(편차 2.02, 방향 일치 67%)은 두 경계 지표가
+  // 동시에 약했다. 이동 원판의 높은 방향 일치 경로는 그대로 보존한다.
+  proto.isCircularBoundaryConsistent = function isCircularBoundaryConsistent(deviation, polarity, scale = 1) {
+    if (![deviation, polarity, scale].every(Number.isFinite)
+      || scale <= 0 || deviation < 0 || polarity < 0 || polarity > 1) return false;
+    return polarity >= 0.62 && deviation <= (polarity >= 0.70 ? 2.45 : 1.90) * scale;
+  };
+
   const findCircularClickDetector = (imageData) => {
     const { data, width, height } = imageData;
     // 이 구조는 240x135 운영 입력에서 지름 약 84px이다. 다른 입력도 같은 비율로 환산한다.
@@ -622,16 +630,13 @@
           // 값이 흐트러지므로, 색 비율이 우연히 맞아도 확정하지 않는다. 반지름
           // 편차가 큰 이동 표본은 방향 일치가 더 강할 때만 추가 범위로 허용한다.
           const regularBoundary = edgeRadiusDeviation <= 2.05 * baseScale;
-          const movingBoundary = edgeRadiusDeviation <= 2.45 * baseScale
-            && polarityConsistency >= 0.70;
           const found = edge15 >= 46
             && edge25 >= 42
             && neutralEdge <= 11
             && brightEdge <= 16
             && innerMean <= 108
             && contrast <= 18
-            && (regularBoundary || movingBoundary)
-            && polarityConsistency >= 0.62;
+            && proto.isCircularBoundaryConsistent(edgeRadiusDeviation, polarityConsistency, baseScale);
           if (!found) continue;
 
           let blueSamples = 0;
