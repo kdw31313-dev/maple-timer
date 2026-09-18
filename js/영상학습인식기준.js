@@ -25,6 +25,7 @@
     return templates;
   };
 
+  window.BUFF_ICON_TEMPLATES.janusVariants = window.BUFF_ICON_TEMPLATES.janusVariants || [];
   window.BUFF_ICON_TEMPLATES.janusVariants.push(...decode(encodedTemplates.janus));
   window.BUFF_ICON_TEMPLATES.janusEndingVariants = decode(encodedTemplates.janusEnding);
   window.BUFF_ICON_TEMPLATES.extremeGoldVariants.push(
