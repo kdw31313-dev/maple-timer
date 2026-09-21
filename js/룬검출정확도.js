@@ -196,6 +196,9 @@
         || pinkCoreRatio < 0.55
         || shape.diamondFit < 0.76
         || shape.axisBalance < 0.52
+        // 비대칭 보라 장식은 색 중심도 약하다. 한 특징만으로는
+        // 표식에 가려지거나 압축된 실제 룬을 제외하지 않는다.
+        || (shape.axisBalance < 0.58 && pinkCoreRatio < 0.75)
         || shape.tipSharpness < 0.45
       ) continue;
 
