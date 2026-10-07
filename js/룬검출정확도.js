@@ -401,15 +401,16 @@
     const aspect = candidate.width / Math.max(1, candidate.height);
 
     /*
-     * 시작 양성 5장은 diamondFit=1.000, axisBalance>=0.671이었다.
+     * 시작 양성 5장은 diamondFit=1.000이었고, 신규 작은 룬 표본은
+     * diamondFit=0.957, tipSharpness=0.50, axisBalance=0.88이었다.
      * 시작 음성 19장 중 후보가 생긴 3장의 최대 diamondFit은 0.920이었다.
-     * 그 사이에 여유를 둔 0.96과 축 균형·밀도·끝점 조건을 함께 써서,
+     * 그 사이에 여유를 둔 0.95와 축 균형·밀도·끝점 조건을 함께 써서,
      * 배경 학습을 우회하는 경로가 단순 분홍색 덩어리에 열리지 않게 한다.
      */
     return candidate.repeatedStructureCount === 1
-      && candidate.diamondFit >= 0.96
+      && candidate.diamondFit >= 0.95
       && candidate.axisBalance >= 0.66
-      && candidate.tipSharpness >= 0.60
+      && candidate.tipSharpness >= 0.50
       && candidate.pinkCoreRatio >= 0.60
       && candidate.density >= 0.30
       && candidate.density <= 0.56
