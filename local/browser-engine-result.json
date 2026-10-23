@@ -1,0 +1,324 @@
+{
+  "positive": {
+    "type": "v15-detected",
+    "id": 4,
+    "result": {
+      "engine": "rune-cascade-v15-verifier",
+      "status": "available",
+      "frameId": "fixture:positive",
+      "sampledAt": 1792715991929,
+      "proposals": [
+        {
+          "proposalRank": 1,
+          "proposalScore": 0.47288053993131673,
+          "roiBox": {
+            "x": 117,
+            "y": 41,
+            "width": 10,
+            "height": 9
+          },
+          "shapeScore": 0.5491353428846529,
+          "appearanceScore": 0.9836936140144938,
+          "verifierScore": 0.5335333943367004,
+          "shapeLogit": 0.1971777379512787,
+          "appearanceLogit": 4.099757671356201,
+          "verifierLogit": 0.1343352198600769,
+          "route": null,
+          "reason": "shape"
+        },
+        {
+          "proposalRank": 2,
+          "proposalScore": 0.04308197154039759,
+          "roiBox": {
+            "x": 151,
+            "y": 4,
+            "width": 10,
+            "height": 10
+          },
+          "shapeScore": 3.919548461153124e-11,
+          "appearanceScore": 0.5389411361453698,
+          "verifierScore": 0.00003342680793139152,
+          "shapeLogit": -23.962459564208984,
+          "appearanceLogit": 0.15608063340187073,
+          "verifierLogit": -10.306118965148926,
+          "route": null,
+          "reason": "appearance"
+        },
+        {
+          "proposalRank": 3,
+          "proposalScore": 0.04157508303980345,
+          "roiBox": {
+            "x": 131,
+            "y": 8,
+            "width": 11,
+            "height": 11
+          },
+          "shapeScore": 2.868223314435544e-7,
+          "appearanceScore": 0.4471268772979647,
+          "verifierScore": 0.00012131737457821146,
+          "shapeLogit": -15.06440258026123,
+          "appearanceLogit": -0.21228614449501038,
+          "verifierLogit": -9.016979217529297,
+          "route": null,
+          "reason": "appearance"
+        },
+        {
+          "proposalRank": 4,
+          "proposalScore": 0.03456472886467777,
+          "roiBox": {
+            "x": 153,
+            "y": 10,
+            "width": 10,
+            "height": 11
+          },
+          "shapeScore": 5.851653472314271e-10,
+          "appearanceScore": 0.5667880213693988,
+          "verifierScore": 0.00009046377817867324,
+          "shapeLogit": -21.259126663208008,
+          "appearanceLogit": 0.26875820755958557,
+          "verifierLogit": -9.310470581054688,
+          "route": null,
+          "reason": "appearance"
+        },
+        {
+          "proposalRank": 5,
+          "proposalScore": 0.02924688598879618,
+          "roiBox": {
+            "x": 2,
+            "y": 66,
+            "width": 11,
+            "height": 9
+          },
+          "shapeScore": 8.090065466547312e-12,
+          "appearanceScore": 0.9943581958276582,
+          "verifierScore": 0.1041620597243309,
+          "shapeLogit": -25.54038429260254,
+          "appearanceLogit": 5.17189359664917,
+          "verifierLogit": -2.1518115997314453,
+          "route": null,
+          "reason": "shape"
+        }
+      ],
+      "objects": [],
+      "reason": "processed",
+      "inferenceMs": 55.599999994039536,
+      "sessionCount": 3,
+      "tensorCreated": 9,
+      "tensorDisposed": 9
+    }
+  },
+  "buff": {
+    "requestId": 3,
+    "ok": true,
+    "response": {
+      "countdownModelStatus": "ready",
+      "matcherModelStatus": "ready",
+      "matcherBundleStatuses": [
+        {
+          "group": "unionWealth",
+          "bundleId": "buff-group-unionwealth-deep-v1",
+          "modelVersion": "unionwealth-20260925-crop-reinforced-candidate-r1b-onnx-sanitized-v1",
+          "status": "ready",
+          "error": null
+        },
+        {
+          "group": "unionLuck",
+          "bundleId": "buff-group-unionluck-deep-v1",
+          "modelVersion": "unionluck-20260711-v1-onnx-sanitized-v1",
+          "status": "ready",
+          "error": null
+        },
+        {
+          "group": "potion",
+          "bundleId": "buff-group-potion-deep-v1",
+          "modelVersion": "potion-20260711-v1-onnx-sanitized-v1",
+          "status": "ready",
+          "error": null
+        },
+        {
+          "group": "expCoupon",
+          "bundleId": "buff-group-expcoupon-deep-v1",
+          "modelVersion": "expcoupon-20260711-v1-onnx-sanitized-v1",
+          "status": "ready",
+          "error": null
+        }
+      ],
+      "moduleVersions": {
+        "runtime": "buff-expiry-precision-runtime-v3",
+        "parser": "buff-icon-parser-3b71088+buff-detector-yolov8n-q1-544x960-fp16",
+        "matcher": "buff-group-bundle-v1",
+        "matcherModel": "buff-group-bundles-20260711",
+        "countdown": "center-ocr-v8@20260714-factorized-operational-120-r1",
+        "localizer": "buff-slot-cluster-localizer-v2",
+        "matcherBundles": [
+          {
+            "group": "unionWealth",
+            "bundleId": "buff-group-unionwealth-deep-v1",
+            "modelVersion": "unionwealth-20260925-crop-reinforced-candidate-r1b-onnx-sanitized-v1"
+          },
+          {
+            "group": "unionLuck",
+            "bundleId": "buff-group-unionluck-deep-v1",
+            "modelVersion": "unionluck-20260711-v1-onnx-sanitized-v1"
+          },
+          {
+            "group": "potion",
+            "bundleId": "buff-group-potion-deep-v1",
+            "modelVersion": "potion-20260711-v1-onnx-sanitized-v1"
+          },
+          {
+            "group": "expCoupon",
+            "bundleId": "buff-group-expcoupon-deep-v1",
+            "modelVersion": "expcoupon-20260711-v1-onnx-sanitized-v1"
+          }
+        ]
+      }
+    }
+  },
+  "fixture": "검은 합성 프레임; 실제 게임 정확도 검증 아님",
+  "v14": {
+    "type": "detected",
+    "id": 1,
+    "result": {
+      "detected": false,
+      "confidence": 1.1622772140496298e-7,
+      "candidates": [],
+      "debug": {
+        "proposalCount": 5,
+        "classifier": "rune-cascade-v14",
+        "detectorKind": "onnx-cascade",
+        "proposalScore": 0.007295442820100441,
+        "selectedProposalRank": 1,
+        "shapeScore": 2.068853441008341e-7,
+        "shapeThreshold": 0.89,
+        "shapePass": false,
+        "appearanceScore": 0.30669223695477743,
+        "appearanceThreshold": 0.88,
+        "appearancePass": false,
+        "modelScore": 1.1622772140496298e-7,
+        "modelThreshold": 0.5,
+        "modelCandidate": {
+          "x": 0,
+          "y": 110,
+          "width": 1,
+          "height": 10,
+          "pixelCount": 0,
+          "confidence": 1.1622772140496298e-7,
+          "source": "onnx-cascade"
+        },
+        "proposalInferenceMs": 24.19999998807907,
+        "gateInferenceMs": 6.9000000059604645,
+        "inferenceMs": 31.099999994039536,
+        "reason": "shape-and-appearance-below-threshold"
+      }
+    }
+  },
+  "v15": {
+    "type": "v15-detected",
+    "id": 2,
+    "result": {
+      "engine": "rune-cascade-v15-verifier",
+      "status": "available",
+      "frameId": "synthetic:1",
+      "sampledAt": 1792715991307,
+      "proposals": [
+        {
+          "proposalRank": 1,
+          "proposalScore": 0.007295442820100441,
+          "roiBox": {
+            "x": 0,
+            "y": 110,
+            "width": 1,
+            "height": 10
+          },
+          "shapeScore": 2.068853441008341e-7,
+          "appearanceScore": 0.30669223695477743,
+          "verifierScore": 0.00038262680754996836,
+          "shapeLogit": -15.391100883483887,
+          "appearanceLogit": -0.815629243850708,
+          "verifierLogit": -7.868067741394043,
+          "route": null,
+          "reason": "appearance"
+        },
+        {
+          "proposalRank": 2,
+          "proposalScore": 0.00605662355895692,
+          "roiBox": {
+            "x": 0,
+            "y": 105,
+            "width": 1,
+            "height": 15
+          },
+          "shapeScore": 1.7029305551137808e-7,
+          "appearanceScore": 0.30669223695477743,
+          "verifierScore": 0.00038292858516797423,
+          "shapeLogit": -15.585744857788086,
+          "appearanceLogit": -0.815629243850708,
+          "verifierLogit": -7.867279052734375,
+          "route": null,
+          "reason": "appearance"
+        },
+        {
+          "proposalRank": 3,
+          "proposalScore": 0.005946495425825992,
+          "roiBox": {
+            "x": 0,
+            "y": 0,
+            "width": 1,
+            "height": 16
+          },
+          "shapeScore": 1.844187278444619e-7,
+          "appearanceScore": 0.30669223695477743,
+          "verifierScore": 0.00038345862412825227,
+          "shapeLogit": -15.506056785583496,
+          "appearanceLogit": -0.815629243850708,
+          "verifierLogit": -7.8658952713012695,
+          "route": null,
+          "reason": "appearance"
+        },
+        {
+          "proposalRank": 4,
+          "proposalScore": 0.00579924846496035,
+          "roiBox": {
+            "x": 0,
+            "y": 7,
+            "width": 1,
+            "height": 17
+          },
+          "shapeScore": 1.9115582803649794e-7,
+          "appearanceScore": 0.30669223695477743,
+          "verifierScore": 0.00038338443846441805,
+          "shapeLogit": -15.470176696777344,
+          "appearanceLogit": -0.815629243850708,
+          "verifierLogit": -7.8660888671875,
+          "route": null,
+          "reason": "appearance"
+        },
+        {
+          "proposalRank": 5,
+          "proposalScore": 0.00579924846496035,
+          "roiBox": {
+            "x": 0,
+            "y": 15,
+            "width": 1,
+            "height": 16
+          },
+          "shapeScore": 1.9115582803649794e-7,
+          "appearanceScore": 0.30669223695477743,
+          "verifierScore": 0.00038338443846441805,
+          "shapeLogit": -15.470176696777344,
+          "appearanceLogit": -0.815629243850708,
+          "verifierLogit": -7.8660888671875,
+          "route": null,
+          "reason": "appearance"
+        }
+      ],
+      "objects": [],
+      "reason": "processed",
+      "inferenceMs": 59.30000001192093,
+      "sessionCount": 3,
+      "tensorCreated": 9,
+      "tensorDisposed": 9
+    }
+  }
+}
