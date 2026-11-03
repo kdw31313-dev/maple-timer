@@ -69,6 +69,7 @@ class TelegramNotifier {
     if (code === 401 || code === 404) message = '봇 토큰이 올바르지 않거나 만료되었습니다.';
     else if (data?.parameters?.migrate_to_chat_id != null) message = '그룹이 변경되었습니다. 새 Chat ID: ' + data.parameters.migrate_to_chat_id;
     else if (code === 403) message = '봇이 차단되었거나 채팅에 보낼 권한이 없습니다. 개인 채팅에서는 봇을 열어 시작을 누르세요.';
+    else if (code >= 500) message = 'Telegram 연결 경로에 오류가 발생했습니다 (HTTP ' + code + '). 채팅에서 수신 여부를 확인하세요.';
     else if (code === 429) message = '전송이 너무 잦습니다. 잠시 뒤 다시 시도하세요.';
     else if (/thread|topic/.test(description)) message = 'Topic ID가 잘못되었거나 토픽이 닫혀 있습니다.';
     else if (/chat not found|chat_id/.test(description)) message = 'Chat ID를 확인하고 봇을 채팅에 추가하세요.';
@@ -108,18 +109,8 @@ class TelegramNotifier {
 
   sendAlert(text, category = 'chime', force = false) {
     const message = formatTelegramAlert(text, category);
-    // Deduplicate by the detector event text, not the formatted timestamp.
-    return this.deliver(text, force, async target => {
-      let photo;
-      try { photo = await window.screenCaptureManager?.captureAlertScreenshot?.(category, text); }
-      catch { /* Capture failure still permits the text alert. */ }
-      if (!photo) return this.sendText(target, message);
-      const form = new FormData();
-      form.set('caption', message.slice(0, 1024));
-      form.set('photo', photo, 'maple-alert.jpg');
-      const result = await this.request('sendPhoto', target, form);
-      return result.ok || result.uncertain ? result : this.sendText(target, message);
-    });
+    // Deduplicate by the original event text so the timestamp does not affect it.
+    return this.deliver(text, force, target => this.sendText(target, message));
   }
 
   async sendVideo(videoBlob, caption) {

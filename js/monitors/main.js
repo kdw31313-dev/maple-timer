@@ -1,4 +1,4 @@
-import { bindPopupRecording } from './popup-recording.js?v=20261103-recording';
+import { bindPopupRecording } from './popup-recording.js?v=20261103-desktop';
 import { pickRegion } from './region-picker.js?v=20261103-zoom';
 import { LABELS, BUFFS, KEY, loadConfig, saveConfig, ExperienceTracker, AlertGate } from './state.js?v=20261103-rows';
 import { WorkerPool, cropVideo } from './workers.js?v=20261103-rows';

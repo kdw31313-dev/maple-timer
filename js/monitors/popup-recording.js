@@ -13,7 +13,7 @@ async function folderPreference(folder) {
     return await new Promise((resolve, reject) => {
       const transaction = database.transaction('preferences', folder ? 'readwrite' : 'readonly');
       const store = transaction.objectStore('preferences');
-      const request = folder ? store.put(folder, 'drive-folder') : store.get('drive-folder');
+      const request = folder ? store.put(folder, 'desktop-folder') : store.get('desktop-folder');
       transaction.oncomplete = () => resolve(request.result);
       transaction.onabort = () => reject(transaction.error);
     });
@@ -44,18 +44,18 @@ export function bindPopupRecording(panel) {
       if (folder && await folder.queryPermission(WRITE_PERMISSION) === 'granted') {
         show('저장 폴더: ' + folder.name);
       } else if (folder) {
-        show('자동 저장하려면 폴더 접근을 다시 허용하세요.');
+        show('폴더 접근을 다시 허용하세요. 권한이 없으면 브라우저 다운로드 위치에 저장합니다.');
       } else {
-        show('Drive 동기화 폴더를 선택하면 자동 저장됩니다.');
+        show('바탕화면 폴더를 선택하세요. 미선택 시 브라우저 다운로드 위치에 저장합니다.');
       }
     } catch {
-      show('Drive 동기화 폴더를 선택해주세요.');
+      show('바탕화면 폴더를 선택하세요. 미선택 시 브라우저 다운로드 위치에 저장합니다.');
     } finally {
       initialized = true;
       toggle.disabled = typeof MediaRecorder !== 'function';
       choose.disabled = toggle.disabled || typeof window.showDirectoryPicker !== 'function';
       if (toggle.disabled) show('이 브라우저는 화면 녹화를 지원하지 않습니다.');
-      else if (choose.disabled) show('자동 저장은 폴더 접근을 지원하는 Chrome 또는 Edge에서 사용할 수 있습니다.');
+      else if (choose.disabled) show('이 브라우저에서는 기본 다운로드 위치에 저장합니다.');
     }
   }
 
@@ -69,7 +69,7 @@ export function bindPopupRecording(panel) {
     selecting = true;
     choose.disabled = true;
     try {
-      const selected = await window.showDirectoryPicker({ ...WRITE_PERMISSION, id: 'maple-drive-recordings' });
+      const selected = await window.showDirectoryPicker({ ...WRITE_PERMISSION, id: 'maple-desktop-recordings', startIn: 'desktop' });
       folder = selected;
       try { await folderPreference(selected); }
       catch {
@@ -78,45 +78,46 @@ export function bindPopupRecording(panel) {
       }
       show('저장 폴더: ' + selected.name);
     } catch (error) {
-      if (error.name !== 'AbortError') show('폴더를 열 수 없습니다. Drive 안의 하위 폴더를 선택해주세요.');
+      if (error.name !== 'AbortError') show('폴더를 열 수 없습니다. 바탕화면의 하위 폴더를 선택해주세요.');
     } finally {
       selecting = false;
       choose.disabled = Boolean(current);
     }
   });
 
-  download.addEventListener('click', () => {
-    if (!latestClip) return;
+  function downloadClip(clip) {
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(latestClip.blob);
-    link.download = latestClip.name;
+    link.href = URL.createObjectURL(clip.blob);
+    link.download = clip.name;
+    document.body.append(link);
     link.click();
+    link.remove();
     setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  }
+
+  download.addEventListener('click', () => {
+    if (latestClip) downloadClip(latestClip);
   });
 
   async function saveClip(clip, destination) {
     latestClip = clip;
     download.hidden = false;
-    if (!destination) {
-      show('녹화 완료 · 다운로드하거나 Drive 폴더를 연결하세요.');
-      return;
-    }
     let output;
     try {
-      if (await destination.queryPermission(WRITE_PERMISSION) !== 'granted') {
-        show('녹화 완료 · 폴더 권한이 필요합니다. 영상은 다운로드할 수 있습니다.');
+      if (destination && await destination.queryPermission(WRITE_PERMISSION) === 'granted') {
+        show('선택한 폴더에 저장 중…');
+        const file = await destination.getFileHandle(clip.name, {create:true});
+        output = await file.createWritable();
+        await output.write(clip.blob);
+        await output.close();
+        show('녹화 저장 완료 · ' + destination.name);
         return;
       }
-      show('Drive 폴더에 저장 중…');
-      const file = await destination.getFileHandle(clip.name, {create:true});
-      output = await file.createWritable();
-      await output.write(clip.blob);
-      await output.close();
-      show('Drive 폴더에 저장 완료 · 동기화는 Google Drive에서 확인하세요.');
     } catch {
       try { await output?.abort(); } catch { /* The stream may already be closed. */ }
-      show('Drive 폴더 저장 실패 · 최근 영상을 다운로드할 수 있습니다.');
     }
+    downloadClip(clip);
+    show('브라우저 다운로드 요청 완료 · 차단되면 최근 영상 다운로드를 눌러주세요.');
   }
 
   function stop() {
