@@ -42,18 +42,22 @@ test('browser test and rune alerts use the relay and receive the Telegram receip
   t.mock.method(globalThis, 'fetch', async (address, options) => {
     const url = new URL(address);
     assert.equal(url.origin, 'https://api.telegram.org');
-    assert.equal(options.redirect, 'error');
+    assert.equal(options.redirect, 'manual');
     assert.ok(url.pathname.startsWith('/bot'+env.TELEGRAM_BOT_TOKEN+'/'));
     const method = url.pathname.split('/').at(-1);
     calls.push(method);
     if (method === 'getMe') return Response.json({ok:true,result:{id:123}});
-    assert.equal(options.body.get('chat_id'), env.TELEGRAM_CHAT_ID);
     if (method === 'getChat') {
-      assert.equal(options.body.has('message_thread_id'),false);
+      assert.equal(options.method,'GET');
+      assert.equal(url.searchParams.get('chat_id'),env.TELEGRAM_CHAT_ID);
+      assert.equal(url.searchParams.has('message_thread_id'),false);
       return Response.json({ok:true,result:{type:'supergroup',is_forum:true}});
     }
-    assert.equal(options.body.get('message_thread_id'),env.TELEGRAM_THREAD_ID);
-    assert.match(options.body.get('text'),calls.length===3 ? /알림 전송 테스트/ : /룬 발견/);
+    assert.equal(options.method,'POST');
+    const body = JSON.parse(options.body);
+    assert.equal(body.chat_id,env.TELEGRAM_CHAT_ID);
+    assert.equal(body.message_thread_id,env.TELEGRAM_THREAD_ID);
+    assert.match(body.text,calls.length===3 ? /알림 전송 테스트/ : /룬 발견/);
     return Response.json({ok:true,result:{
       chat:{id:-1002468},message_id:42,is_topic_message:true,message_thread_id:27,
     }});
@@ -79,8 +83,9 @@ test('browser test and rune alerts use the relay and receive the Telegram receip
 
 test('relay controls the destination and marks upstream timeouts as uncertain', async t => {
   t.mock.method(globalThis, 'fetch', async (_, options) => {
-    assert.equal(options.body.get('chat_id'),env.TELEGRAM_CHAT_ID);
-    assert.equal(options.body.get('message_thread_id'),env.TELEGRAM_THREAD_ID);
+    const body = JSON.parse(options.body);
+    assert.equal(body.chat_id,env.TELEGRAM_CHAT_ID);
+    assert.equal(body.message_thread_id,env.TELEGRAM_THREAD_ID);
     throw new DOMException('timeout','TimeoutError');
   });
   const response = await relay.fetch(browserRequest({

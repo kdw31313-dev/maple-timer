@@ -122,11 +122,12 @@ class TelegramNotifier {
         bad_request: '중계 서버가 요청 형식을 받지 못했습니다.',
         telegram_timeout: '중계 서버에서 Telegram API 응답 시간이 초과됐습니다.',
         telegram_network: '중계 서버에서 Telegram API에 연결하지 못했습니다.',
+        telegram_response: '중계 서버가 Telegram API에서 예상과 다른 응답을 받았습니다.',
       };
       return {
         ok: false,
         message: Object.hasOwn(errors, data.relay_error) ? errors[data.relay_error] : '중계 서버 오류가 발생했습니다.',
-        uncertain: sending && ['telegram_timeout', 'telegram_network'].includes(data.relay_error),
+        uncertain: sending && ['telegram_timeout', 'telegram_network', 'telegram_response'].includes(data.relay_error),
       };
     }
     const code = data?.error_code ?? response.status;

@@ -33,13 +33,32 @@ async function telegram(method, text, env) {
   }
 
   try {
-    const response = await fetch('https://api.telegram.org/bot' + env.TELEGRAM_BOT_TOKEN + '/' + method, {
-      method: 'POST',
-      body,
-      redirect: 'error',
+    const url = new URL('https://api.telegram.org/bot' + env.TELEGRAM_BOT_TOKEN + '/' + method);
+    const sending = method === 'sendMessage';
+    if (!sending) url.search = body.toString();
+    const response = await fetch(url.href, {
+      method: sending ? 'POST' : 'GET',
+      ...(sending ? {
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(Object.fromEntries(body)),
+      } : {}),
+      redirect: 'manual',
       signal: AbortSignal.timeout(12000),
     });
-    const data = await response.json();
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('Location');
+      const target = location ? new URL(location, url) : null;
+      const telegramHost = target?.hostname === 'api.telegram.org' || target?.hostname === 'core.telegram.org' ||
+        target?.hostname === 'telegram.org' || target?.hostname === 't.me';
+      return json({
+        ok:false, relay_error:'telegram_response', upstream_status:response.status,
+        redirect_host:telegramHost ? target.hostname : (target ? 'other' : 'missing'),
+        redirect_path:target?.pathname === '/' ? 'root' : target?.pathname === '/bots' ? 'bot_docs' :
+          target?.pathname === url.pathname ? 'same' : 'different',
+        redirect_https:target?.protocol === 'https:',
+      }, 502);
+    }
+    const data = await response.json().catch(() => null);
     if (response.ok && data?.ok === true) {
       const result = data.result;
       if (method === 'getMe') return json({ok:true});
@@ -57,7 +76,7 @@ async function telegram(method, text, env) {
       }});
     }
     if (data?.ok !== false || response.status < 400) {
-      return json({ok:false, relay_error:'telegram_network'}, 502);
+      return json({ok:false, relay_error:'telegram_response', upstream_status:response.status}, 502);
     }
     return json({
       ok:false,
@@ -68,7 +87,25 @@ async function telegram(method, text, env) {
     }, response.status);
   } catch (error) {
     const timeout = error.name === 'TimeoutError' || error.name === 'AbortError';
-    return json({ok:false, relay_error:timeout ? 'telegram_timeout' : 'telegram_network'}, timeout ? 504 : 502);
+    const failure = {ok:false, relay_error:timeout ? 'telegram_timeout' : 'telegram_network'};
+    if (method === 'getMe' && !timeout) {
+      const detail = String(error.message ?? '');
+      if (/dns|resolve|name lookup/i.test(detail)) failure.network_stage = 'dns';
+      else if (/certificate|tls|ssl/i.test(detail)) failure.network_stage = 'tls';
+      else if (/connect|socket|network/i.test(detail)) failure.network_stage = 'connection';
+      else if (/redirect/i.test(detail)) failure.network_stage = 'redirect';
+      else failure.network_stage = 'unknown';
+      try {
+        const control = await fetch('https://api.telegram.org/bot123:invalid_control_token/getMe', {
+          redirect: 'error',
+          signal: AbortSignal.timeout(3000),
+        });
+        failure.control_status = control.status;
+      } catch {
+        failure.control_status = 0;
+      }
+    }
+    return json(failure, timeout ? 504 : 502);
   }
 }
 
