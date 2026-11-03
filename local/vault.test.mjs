@@ -35,7 +35,7 @@ if (privatePath) {
   await browserEvents.hashchange();
   assert.equal(cleared, true);
   assert.equal(test.disabled, false);
-  assert.match(status.textContent, /연결 완료/);
+  assert.match(status.textContent, /설정 완료/);
   await test.events.click();
   assert.equal(sent, 1);
   assert.equal(status.textContent, 'Test sent');
