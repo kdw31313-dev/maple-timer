@@ -63,8 +63,6 @@ function bindEvents() {
     };
   }
 
-  bindTelegramSettings();
-
   document.getElementById('toggle-tts-voice')?.addEventListener('change', e => {
     window.audioNotifier.setTTS(e.target.checked);
     saveCurrentConfig();

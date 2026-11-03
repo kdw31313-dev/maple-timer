@@ -125,3 +125,15 @@
 
 .app-header, .header-actions { flex-wrap: wrap; }
 .header-actions { max-width: 100%; }
+.monitor-telegram { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.monitor-telegram label { display: inline-flex; align-items: center; gap: 5px; }
+.monitor-roi-dialog { margin: auto; box-sizing: border-box; }
+.monitor-roi-dialog h3 { margin: 0 0 5px; }
+.monitor-roi-hint { margin: 0 0 12px; color: #c7d6cd; font-size: .84rem; }
+.monitor-roi-toolbar, .monitor-roi-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.monitor-roi-toolbar output { min-width: 50px; text-align: center; font-variant-numeric: tabular-nums; }
+.monitor-roi-toolbar button[aria-pressed="true"] { border-color: #83dbad; color: #a2f1c5; }
+.monitor-roi-dialog canvas { width: 100%; height: clamp(150px, 55vh, 660px); background: #08110d; border-radius: 7px; cursor: crosshair; }
+.monitor-roi-dialog canvas.pan-mode { cursor: grab; }
+.monitor-roi-dialog canvas.is-panning { cursor: grabbing; }
+.monitor-roi-dialog button { margin-right: 0; }

@@ -1,2 +1,43 @@
-import fs from 'node:fs';import assert from 'node:assert/strict';import {unlockTelegram} from '../js/monitors/telegram-vault.js';
-const privatePath=process.env.MAPLE_PRIVATE_LINK; if(!privatePath){console.log('Vault integration test skipped: set MAPLE_PRIVATE_LINK to the local private link file.');process.exit(0);}const url=fs.readFileSync(privatePath,'utf8').split('\n')[0];const real=new URL(url);let saved=null,cleared=false;const elements=new Map();globalThis.location={hash:real.hash,pathname:real.pathname,search:''};globalThis.history={replaceState(){cleared=true;}};globalThis.document={getElementById(id){if(!elements.has(id))elements.set(id,{});return elements.get(id);}};globalThis.window={telegramNotifier:{saveConfig(c){saved=c;return true;}}};globalThis.fetch=async()=>({ok:true,json:async()=>JSON.parse(fs.readFileSync(new URL('../js/monitors/telegram-vault.json',import.meta.url),'utf8'))});await unlockTelegram();assert(saved&&saved.enabled&&saved.chatId==='-1004469995076');assert(cleared);assert(elements.get('telegram-status-pill').textContent.includes('설정 완료'));saved=null;location.hash='#telegram-key='+'A'.repeat(43);await unlockTelegram();assert.equal(saved,null);console.log('Vault: authorized link opens; wrong key rejected; address cleared; no message sent.');
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+const privatePath = process.env.MAPLE_PRIVATE_LINK;
+const vault = JSON.parse(fs.readFileSync(new URL('../js/monitors/telegram-vault.json', import.meta.url), 'utf8'));
+const elements = new Map(['toggle-telegram-alert', 'telegram-status-pill', 'btn-telegram-test']
+  .map(id => [id, { disabled: true, events: {}, addEventListener(name, fn) { this.events[name] = fn; } }]));
+const browserEvents = {};
+let sent = 0;
+let cleared = false;
+const notifier = {
+  config: {},
+  saveConfig(update) { this.config = { ...this.config, ...update }; return true; },
+  getTarget() { if (!this.config.botToken || !this.config.chatId) throw Error('Not connected'); },
+  async sendTestMessage() { sent++; this.onStatus({ok:true, message:'Test sent'}); return {ok:true}; },
+};
+globalThis.location = { hash: '', pathname: '/maple-timer/', search: '' };
+globalThis.history = { replaceState() { cleared = true; location.hash = ''; } };
+globalThis.document = { getElementById(id) { return elements.get(id); } };
+globalThis.window = { telegramNotifier: notifier, addEventListener(name, fn) { browserEvents[name] = fn; } };
+globalThis.fetch = async () => ({ok:true, json:async () => vault});
+
+await import('../js/telegramSettings.js');
+const status = elements.get('telegram-status-pill');
+const test = elements.get('btn-telegram-test');
+assert.equal(test.disabled, true);
+assert.equal(sent, 0);
+location.hash = '#telegram-key=' + 'A'.repeat(43);
+await browserEvents.hashchange();
+assert.equal(test.disabled, true);
+assert.match(status.textContent, /연결하지 못했습니다/);
+if (privatePath) {
+  const privateLink = new URL(fs.readFileSync(privatePath, 'utf8').split(/\r?\n/)[0]);
+  location.hash = privateLink.hash;
+  await browserEvents.hashchange();
+  assert.equal(cleared, true);
+  assert.equal(test.disabled, false);
+  assert.match(status.textContent, /연결 완료/);
+  await test.events.click();
+  assert.equal(sent, 1);
+  assert.equal(status.textContent, 'Test sent');
+}
+console.log('Private link bootstrap, hash navigation and settings-free UI verified with a simulated send.');

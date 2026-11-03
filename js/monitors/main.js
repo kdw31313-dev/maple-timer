@@ -1,4 +1,4 @@
-import { unlockTelegram } from './telegram-vault.js';
+import { pickRegion } from './region-picker.js?v=20261103-zoom';
 import { LABELS, BUFFS, KEY, loadConfig, saveConfig, ExperienceTracker, AlertGate } from './state.js?v=20261103-rows';
 import { WorkerPool, cropVideo } from './workers.js?v=20261103-rows';
 
@@ -246,7 +246,29 @@ root.addEventListener('click', event => {
   }
 });
 
-function selectRegion(key){const video=window.screenCaptureManager?.videoEl;if(!video?.videoWidth||!window.screenCaptureManager.isStreaming){setStatus(key,'먼저 게임 창을 공유해주세요.');return;}const dialog=document.createElement('dialog');dialog.className='monitor-roi-dialog';dialog.innerHTML='<h3>감지할 영역을 드래그하세요</h3><canvas></canvas><p role="status">드래그 후 저장을 누르세요.</p><button class="btn btn-primary" data-save>영역 저장</button><button class="btn btn-secondary" data-cancel>취소</button>';document.body.append(dialog);const canvas=dialog.querySelector('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;const ctx=canvas.getContext('2d'),frame=document.createElement('canvas');frame.width=canvas.width;frame.height=canvas.height;frame.getContext('2d').drawImage(video,0,0);ctx.drawImage(frame,0,0);let start=null,roi={...config.items[key].roi};const paint=()=>{ctx.drawImage(frame,0,0);ctx.strokeStyle=colors[key];ctx.lineWidth=3;ctx.strokeRect(roi.x/100*canvas.width,roi.y/100*canvas.height,roi.w/100*canvas.width,roi.h/100*canvas.height);};paint();const pos=e=>{const r=canvas.getBoundingClientRect();return {x:Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100)),y:Math.max(0,Math.min(100,(e.clientY-r.top)/r.height*100))};};canvas.onpointerdown=e=>{start=pos(e);canvas.setPointerCapture(e.pointerId);};canvas.onpointermove=e=>{if(!start)return;const p=pos(e);roi={x:Math.min(p.x,start.x),y:Math.min(p.y,start.y),w:Math.abs(p.x-start.x),h:Math.abs(p.y-start.y)};paint();};canvas.onpointerup=()=>start=null;dialog.querySelector('[data-cancel]').onclick=()=>dialog.close();dialog.querySelector('[data-save]').onclick=()=>{if(!roi||roi.w<.1||roi.h<.1)return;config.items[key].roi=roi;generation++;exp.reset();gate.reset();persist();synchronize();render();dialog.close();};dialog.onclose=()=>dialog.remove();dialog.showModal();}
+function selectRegion(key) {
+  const capture = window.screenCaptureManager;
+  if (!capture?.isStreaming || !capture.videoEl?.videoWidth || capture.videoEl.readyState < 2) {
+    setStatus(key, '먼저 게임 창을 공유해주세요.');
+    return;
+  }
+  const hints = {
+    rune: '미니맵 안쪽을 드래그하세요.',
+    buff: '버프 아이콘과 남은 시간이 표시되는 곳을 드래그하세요.',
+    exp: '하단의 현재 경험치 숫자와 퍼센트를 함께 드래그하세요.',
+  };
+  pickRegion(capture.videoEl, {
+    label: LABELS[key], color: colors[key], initial: config.items[key].roi, hint: hints[key],
+    onSave(roi) {
+      config.items[key].roi = roi;
+      generation++;
+      exp.reset();
+      gate.reset();
+      persist();
+      synchronize();
+    },
+  });
+}
 async function analyze(key,video,epoch){const item=config.items[key];if(!item.enabled)return;const capture=cropVideo(video,item.roi);const now=Date.now();let result;
  if(key==='rune'){if(item.mode==='legacy')return;result=await pool.call(key,{type:'detect-v15',...capture,context:{engine:'v15',frameId:'native:'+now,sampledAt:now,roi:capture.roi,sourceSize:capture.sourceSize}});if(epoch!==generation||!window.screenCaptureManager?.isStreaming)return;const active=result.result?.objects?.length>0;if(stable('rune-model',active)){lastRune=now;emit('rune','미니맵에서 룬이 감지됐어요.',item);}else if(!active&&now-Math.max(lastRune,lastLegacyRune)>5000)gate.reset('rune');setStatus(key,active?'룬 발견':'정밀 미니맵 감시 중');}
  if(key==='buff'){if(!item.groups.length){setStatus(key,'감시할 버프 그룹을 선택해주세요.');return;}result=await pool.call(key,{type:'process',imageData:capture.imageData,sourceSize:{width:capture.imageData.width,height:capture.imageData.height},activeGroups:item.groups,buffSlotInputMode:'croppedRoi',sampledAt:now});if(epoch!==generation||!window.screenCaptureManager?.isStreaming)return;const rows=result.bestByGroup||[];let found=0;for(const row of Array.isArray(rows)?rows:Object.values(rows)){if(!row.accepted||!item.groups.includes(row.group))continue;const seconds=row.countdown?.totalSeconds;if(!Number.isFinite(seconds))continue;found++;const id='buff:'+row.group,active=seconds<=item.lead;if(stable(id,active))emit(id,(BUFFS.find(x=>x.id===row.group)?.name||'버프')+' 종료까지 '+seconds+'초',item);if(!active)gate.reset(id);}setStatus(key,result.performance?.matcherModelStatus==='loading'?'버프 모델 준비 중':found+'개 버프 시간 인식 · 감시 중');}
