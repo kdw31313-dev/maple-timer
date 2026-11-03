@@ -29,11 +29,11 @@ function telegramMessageUrl(message) {
   return 'https://t.me/c/' + chatId + '/' + topic + messageId;
 }
 
-/** Browser-side Telegram Bot API client. Credentials stay in this browser. */
+/** Send alerts through the configured relay or directly to Telegram. */
 class TelegramNotifier {
   constructor() {
     this.storageKey = 'maple_timer_telegram_config';
-    const defaults = { enabled: true, botToken: '', chatId: '', threadId: '' };
+    const defaults = { enabled: true, botToken: '', chatId: '', threadId: '', relayUrl: '', relayKey: '' };
     try { this.config = { ...defaults, ...JSON.parse(localStorage.getItem(this.storageKey)) }; }
     catch { this.config = defaults; }
     this.sent = new Map();
@@ -46,10 +46,22 @@ class TelegramNotifier {
     catch { return false; }
   }
 
-  getTarget() {
-    const botToken = String(this.config.botToken ?? '').trim();
-    const chatId = String(this.config.chatId ?? '').trim();
-    const threadId = String(this.config.threadId ?? '').trim();
+  getTarget(config = this.config) {
+    const relayUrl = String(config.relayUrl ?? '').trim();
+    const relayKey = String(config.relayKey ?? '').trim();
+    if (relayUrl || relayKey) {
+      let url;
+      try { url = new URL(relayUrl); } catch { /* The profile needs a valid endpoint. */ }
+      if (url?.protocol !== 'https:' || url.username || url.password || url.search || url.hash ||
+          url.pathname !== '/telegram' || !/^[A-Za-z0-9_-]{43}$/.test(relayKey)) {
+        throw Error('개인 링크의 텔레그램 중계 설정을 확인하세요.');
+      }
+      return { relayUrl: url.href, relayKey };
+    }
+
+    const botToken = String(config.botToken ?? '').trim();
+    const chatId = String(config.chatId ?? '').trim();
+    const threadId = String(config.threadId ?? '').trim();
     if (!botToken || !chatId) throw Error('봇 토큰과 Chat ID를 입력하세요.');
     if (!/^\d+:[\w-]+$/.test(botToken)) throw Error('봇 토큰 형식을 확인하세요.');
     if (threadId && (!/^[1-9]\d*$/.test(threadId) || !Number.isSafeInteger(Number(threadId)))) {
@@ -60,25 +72,41 @@ class TelegramNotifier {
 
   async request(method, target, body) {
     const sending = Boolean(body);
-    const url = new URL('https://api.telegram.org/bot' + target.botToken + '/' + method);
-    if (sending) {
-      body.set('chat_id', target.chatId);
-      if (target.threadId) body.set('message_thread_id', target.threadId);
-    } else if (method === 'getChat') {
-      url.searchParams.set('chat_id', target.chatId);
+    const relay = Boolean(target.relayUrl);
+    let url, options;
+    if (relay) {
+      if (sending && method !== 'sendMessage') {
+        return { ok: false, message: '텔레그램 중계는 텍스트 메시지를 지원합니다.' };
+      }
+      url = new URL(target.relayUrl);
+      options = {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + target.relayKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method, text: body?.get('text') }),
+      };
+    } else {
+      url = new URL('https://api.telegram.org/bot' + target.botToken + '/' + method);
+      if (sending) {
+        body.set('chat_id', target.chatId);
+        if (target.threadId) body.set('message_thread_id', target.threadId);
+      } else if (method === 'getChat') {
+        url.searchParams.set('chat_id', target.chatId);
+      }
+      options = { method: sending ? 'POST' : 'GET', body };
     }
+
     let response;
     try {
       response = await fetch(url.href, {
-        method: sending ? 'POST' : 'GET', body, credentials: 'omit', redirect: 'error',
-        cache: 'no-store',
-        signal: AbortSignal.timeout(!sending || method === 'sendMessage' ? 15000 : 45000)
+        ...options, credentials: 'omit', redirect: 'error', cache: 'no-store',
+        signal: AbortSignal.timeout(relay ? 18000 : (!sending || method === 'sendMessage' ? 15000 : 45000))
       });
     } catch (error) {
       const timeout = error.name === 'TimeoutError' || error.name === 'AbortError';
-      const message = timeout
-        ? (sending ? '전송 시간 초과. 채팅에 도착했는지 먼저 확인하세요.' : 'Telegram API 응답 시간 초과.')
-        : 'Telegram 연결 실패. 네트워크 또는 브라우저 차단 설정을 확인하세요.';
+      let message;
+      if (relay) message = timeout ? '중계 서버 응답 시간 초과.' : '중계 서버에 연결하지 못했습니다.';
+      else if (timeout) message = sending ? '전송 시간 초과. 채팅에 도착했는지 먼저 확인하세요.' : 'Telegram API 응답 시간 초과.';
+      else message = 'Telegram 연결 실패. 네트워크 또는 브라우저 차단 설정을 확인하세요.';
       return { ok: false, uncertain: sending, message };
     }
     const data = await response.json().catch(() => null);
@@ -86,6 +114,20 @@ class TelegramNotifier {
       return sending
         ? { ok: true, message: '텔레그램 전송 성공', messageUrl: telegramMessageUrl(data.result) }
         : { ok: true, data: data.result };
+    }
+    if (relay && data?.relay_error) {
+      const errors = {
+        unauthorized: '중계 인증 실패. 개인 실행 링크를 다시 열어주세요.',
+        configuration: '중계 서버의 텔레그램 설정을 확인하세요.',
+        bad_request: '중계 서버가 요청 형식을 받지 못했습니다.',
+        telegram_timeout: '중계 서버에서 Telegram API 응답 시간이 초과됐습니다.',
+        telegram_network: '중계 서버에서 Telegram API에 연결하지 못했습니다.',
+      };
+      return {
+        ok: false,
+        message: Object.hasOwn(errors, data.relay_error) ? errors[data.relay_error] : '중계 서버 오류가 발생했습니다.',
+        uncertain: sending && ['telegram_timeout', 'telegram_network'].includes(data.relay_error),
+      };
     }
     const code = data?.error_code ?? response.status;
     const description = String(data?.description ?? '').toLowerCase();
@@ -109,7 +151,8 @@ class TelegramNotifier {
     let target;
     try { target = this.getTarget(); }
     catch (error) { return this.report({ ok: false, message: error.message }); }
-    const key = target.chatId + ':' + target.threadId + ':' + text;
+    const destination = target.relayUrl || (target.chatId + ':' + target.threadId);
+    const key = destination + ':' + text;
     const now = Date.now();
     for (const [entry, at] of this.sent) if (now - at >= 3000) this.sent.delete(entry);
     if (this.pending.has(key) || (!force && this.sent.has(key))) return { ok: false, skipped: true };

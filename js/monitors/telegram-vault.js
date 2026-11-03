@@ -13,16 +13,13 @@ export async function unlockTelegram(notifier) {
   const key = await crypto.subtle.importKey('raw', decode(encoded), 'AES-GCM', false, ['decrypt']);
   const bytes = await crypto.subtle.decrypt({ name:'AES-GCM', iv:decode(vault.iv) }, key, decode(vault.ciphertext));
   const config = JSON.parse(new TextDecoder().decode(bytes));
-  if (!/^\d+:[\w-]+$/.test(config.botToken) || !/^-\d+$/.test(config.chatId) ||
-      (config.threadId && !/^[1-9]\d*$/.test(config.threadId))) {
-    throw Error('Invalid connection profile');
-  }
+  const target = notifier.getTarget(config);
+  if (!target.relayUrl && !/^-\d+$/.test(target.chatId)) throw Error('Invalid connection profile');
 
   const saved = notifier.saveConfig({
-    botToken: config.botToken,
-    chatId: config.chatId,
-    threadId: config.threadId || '',
-    enabled: notifier.config?.botToken ? notifier.config.enabled : true,
+    botToken: '', chatId: '', threadId: '', relayUrl: '', relayKey: '',
+    ...target,
+    enabled: notifier.config?.enabled ?? true,
   });
   history.replaceState(null, '', location.pathname + location.search);
   return saved;

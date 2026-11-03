@@ -11,14 +11,18 @@ let cleared = false;
 const notifier = {
   config: {},
   saveConfig(update) { this.config = { ...this.config, ...update }; return true; },
-  getTarget() { if (!this.config.botToken || !this.config.chatId) throw Error('Not connected'); },
+  getTarget(config = this.config) {
+    if (!config.relayUrl && (!config.botToken || !config.chatId)) throw Error('Not connected');
+    return config;
+  },
   async sendTestMessage() { sent++; this.onStatus({ok:true, message:'Test sent'}); return {ok:true}; },
 };
 globalThis.location = { hash: '', pathname: '/maple-timer/', search: '' };
 globalThis.history = { replaceState() { cleared = true; location.hash = ''; } };
 globalThis.document = { getElementById(id) { return elements.get(id); } };
 globalThis.window = { telegramNotifier: notifier, addEventListener(name, fn) { browserEvents[name] = fn; } };
-globalThis.fetch = async () => ({ok:true, json:async () => vault});
+let activeVault = vault;
+globalThis.fetch = async () => ({ok:true, json:async () => activeVault});
 
 await import('../js/telegramSettings.js');
 const status = elements.get('telegram-status-pill');
@@ -40,4 +44,22 @@ if (privatePath) {
   assert.equal(sent, 1);
   assert.equal(status.textContent, 'Test sent');
 }
-console.log('Private link bootstrap, hash navigation and settings-free UI verified with a simulated send.');
+const profile = {relayUrl:'https://maple-test.workers.dev/telegram', relayKey:'R'.repeat(43)};
+const rawKey = crypto.getRandomValues(new Uint8Array(32));
+const key = await crypto.subtle.importKey('raw', rawKey, 'AES-GCM', false, ['encrypt']);
+const iv = crypto.getRandomValues(new Uint8Array(12));
+const data = await crypto.subtle.encrypt({name:'AES-GCM',iv}, key, new TextEncoder().encode(JSON.stringify(profile)));
+const base64url = value => Buffer.from(value).toString('base64url');
+activeVault = {version:1,iv:base64url(iv),ciphertext:base64url(data)};
+notifier.config = {botToken:'123:fixture',chatId:'-100123',threadId:'27',enabled:false};
+location.hash = '#telegram-key=' + base64url(rawKey);
+await browserEvents.hashchange();
+assert.equal(location.hash, '');
+assert.equal(notifier.config.relayUrl, profile.relayUrl);
+assert.equal(notifier.config.relayKey, profile.relayKey);
+assert.equal(notifier.config.botToken, '');
+assert.equal(notifier.config.chatId, '');
+assert.equal(notifier.config.threadId, '');
+assert.equal(notifier.config.enabled, false);
+assert.equal(test.disabled, false);
+console.log('Private link bootstraps direct and relay profiles and preserves the user toggle.');

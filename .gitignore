@@ -4,3 +4,7 @@ local-cache/
 local/preparation.json
 local/server-*.log
 precise/pack/
+
+relay/.wrangler/
+relay/.dev.vars*
+relay/.env*

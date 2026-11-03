@@ -1,4 +1,4 @@
-import { unlockTelegram } from './monitors/telegram-vault.js?v=20261103-link';
+import { unlockTelegram } from './monitors/telegram-vault.js?v=20261103-relay';
 
 /** Connect and test the private Telegram destination. */
 async function bindTelegramSettings() {
