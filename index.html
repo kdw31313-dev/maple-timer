@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/monitors.css?v=20261103-native">
 </head>
 <body>
   <div id="app-container">
@@ -16,8 +17,8 @@
       <div class="logo-area">
         <div class="logo-icon">🍁</div>
         <div>
-          <h1>메이플 룬·거탐 저부하 감지기</h1>
-          <p class="subtitle">룬 150ms · 거탐 300ms 집중 감시 · 변조/자동화 없음</p>
+          <h1>메이플 사냥 도우미</h1>
+          <p class="subtitle">룬 · 거탐 · 스킬 · 버프 · 경험치 맞춤 감시</p>
         </div>
       </div>
       <div class="header-actions">
@@ -42,7 +43,7 @@
     </header>
 
     <!-- 🌟 상단 메인 탭 네비게이션 -->
-    <nav class="main-tabs-nav"><a id="precision-panel-link" class="btn btn-secondary" href="#precision-panel">🔬 정밀 알림</a>
+    <nav class="main-tabs-nav"><a id="precision-panel-link" class="btn btn-secondary" href="#monitor-toolbox">🍄 감시 도구함</a>
       <button class="tab-btn active" data-tab="tab-timer">
         <span class="icon">⏱️</span> 사냥 타이머 HUD
       </button>
@@ -50,6 +51,7 @@
 
     <!-- 📌 Tab 1: 기존 사냥 타이머 HUD -->
     <div id="tab-timer" class="tab-content active">
+    <section id="monitor-toolbox" class="card"></section>
     <!-- 메인 컨텐츠 레이아웃 -->
     <main class="main-content">
       <!-- 좌측: 화면 공유 및 ROI (화면 감지 영역) 지정 -->
@@ -341,11 +343,7 @@
       </section>
     </main>
 
-    <section id="precision-panel" class="card" style="margin-top:16px">
-      <div class="card-header"><h2>🔬 정밀 알림</h2></div>
-      <p id="precision-load-status" role="status">룬·스킬·버프·경험치 감지를 준비하는 중입니다.</p>
-      <iframe id="maple-precision-frame" title="정밀 감지 설정과 알림" data-src="./precise/" allow="display-capture; autoplay; picture-in-picture" style="display:block;width:100%;height:850px;border:0;border-radius:12px"></iframe>
-    </section>
+
     </div> <!-- /#tab-timer -->
 
     <!-- 시각 알림용 오버레이 플래시 -->
@@ -404,5 +402,6 @@
   <script src="js/screenCapture.js?v=20261103"></script>
   <script src="js/pipController.js?v=20260820-1"></script>
   <script src="js/app.js?v=20261103"></script>
+  <script type="module" src="js/monitors/main.js?v=20261103-native"></script>
 </body>
 </html>

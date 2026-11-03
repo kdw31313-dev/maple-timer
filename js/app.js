@@ -2,13 +2,6 @@
  * App.js - 메인 애플리케이션 진입점 및 이벤트 바인딩
  */
 document.addEventListener('DOMContentLoaded', () => {
-  const precisionFrame = document.getElementById('maple-precision-frame');
-  if (precisionFrame && location.pathname.startsWith('/maple-timer/') && /^https?:$/.test(location.protocol)) {
-    precisionFrame.src = precisionFrame.dataset.src;
-  } else {
-    document.getElementById('precision-panel')?.setAttribute('hidden', '');
-    document.getElementById('precision-panel-link')?.setAttribute('hidden', '');
-  }
   // 1. 상단 탭 (Tab) 네비게이션 전환 이벤트
   const tabBtns = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
