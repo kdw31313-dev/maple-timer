@@ -1,184 +1,122 @@
-/**
- * TelegramNotifier - 메이플 사냥 타이머 텔레그램 봇 알림 연동 모듈
- */
+/** Browser-side Telegram Bot API client. Credentials stay in this browser. */
 class TelegramNotifier {
   constructor() {
     this.storageKey = 'maple_timer_telegram_config';
-
-    // 비밀키는 소스에 넣지 않고 사용자의 브라우저에만 저장한다.
-    const defaultConfig = {
-      enabled: true,
-      botToken: '',
-      chatId: '',
-      threadId: ''
-    };
-
-    this.config = this.loadConfig(defaultConfig);
-    this.lastSentTimeMap = new Map(); // 동일 메시지 도배 방지 쿨다운 (3초)
+    const defaults = { enabled: true, botToken: '', chatId: '', threadId: '' };
+    try { this.config = { ...defaults, ...JSON.parse(localStorage.getItem(this.storageKey)) }; }
+    catch { this.config = defaults; }
+    this.sent = new Map();
+    this.pending = new Set();
   }
 
-  loadConfig(defaultConfig) {
-    try {
-      const saved = localStorage.getItem(this.storageKey);
-      if (saved) {
-        return { ...defaultConfig, ...JSON.parse(saved) };
-      }
-    } catch (e) {
-      console.warn('Telegram config load error:', e);
-    }
-    return defaultConfig;
+  saveConfig(settings) {
+    this.config = { ...this.config, ...settings };
+    try { localStorage.setItem(this.storageKey, JSON.stringify(this.config)); return true; }
+    catch { return false; }
   }
 
-  saveConfig(newConfig) {
-    this.config = { ...this.config, ...newConfig };
-    try {
-      localStorage.setItem(this.storageKey, JSON.stringify(this.config));
-    } catch (e) {
-      console.warn('Telegram config save error:', e);
+  getTarget() {
+    const botToken = String(this.config.botToken ?? '').trim();
+    const chatId = String(this.config.chatId ?? '').trim();
+    const threadId = String(this.config.threadId ?? '').trim();
+    if (!botToken || !chatId) throw Error('봇 토큰과 Chat ID를 입력하세요.');
+    if (!/^\d+:[\w-]+$/.test(botToken)) throw Error('봇 토큰 형식을 확인하세요.');
+    if (threadId && (!/^[1-9]\d*$/.test(threadId) || !Number.isSafeInteger(Number(threadId)))) {
+      throw Error('Topic ID는 양의 정수만 입력하세요. 일반 채팅이면 비워두세요.');
     }
+    return { botToken, chatId, threadId };
   }
 
-  /**
-   * 텔레그램 메세지 전송
-   * @param {string} text - 전송할 메세지 내용 (간결한 문구)
-   * @param {boolean} force - 쿨다운 무시 여부 (테스트 버튼 등)
-   */
-  async send(text, force = false) {
-    if (!this.config.enabled && !force) return;
-    if (!this.config.botToken || !this.config.chatId) return;
-
-    const now = Date.now();
-    const lastSent = this.lastSentTimeMap.get(text) || 0;
-    if (!force && now - lastSent < 3000) {
-      // 3초 내 중복 메시지는 전송 억제
-      return;
-    }
-    this.lastSentTimeMap.set(text, now);
-
-    const url = `https://api.telegram.org/bot${this.config.botToken}/sendMessage`;
-    const payload = {
-      chat_id: this.config.chatId,
-      text: text
-    };
-
-    if (this.config.threadId && this.config.threadId.trim() !== '') {
-      payload.message_thread_id = parseInt(this.config.threadId.trim(), 10);
-    }
-
+  async request(method, target, body) {
+    body.set('chat_id', target.chatId);
+    if (target.threadId) body.set('message_thread_id', target.threadId);
+    let response;
     try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8'
-        },
-        body: JSON.stringify(payload)
+      response = await fetch('https://api.telegram.org/bot' + target.botToken + '/' + method, {
+        method: 'POST', body, credentials: 'omit', redirect: 'error',
+        signal: AbortSignal.timeout(method === 'sendMessage' ? 15000 : 45000)
       });
-      const resData = await response.json();
-      if (!resData.ok) {
-        console.warn('Telegram send failed:', resData);
-      } else {
-        console.log('📱 Telegram alert sent successfully:', text);
-      }
-    } catch (err) {
-      console.error('Telegram notification network error:', err);
+    } catch (error) {
+      const timeout = error.name === 'TimeoutError' || error.name === 'AbortError';
+      return { ok: false, uncertain: true, message: timeout ? '전송 시간 초과. 채팅에 도착했는지 먼저 확인하세요.' : 'Telegram 연결 실패. 네트워크 또는 브라우저 차단 설정을 확인하세요.' };
     }
+    const data = await response.json().catch(() => null);
+    if (response.ok && data?.ok === true) return { ok: true, message: '텔레그램 전송 성공' };
+    const code = data?.error_code ?? response.status;
+    const description = String(data?.description ?? '').toLowerCase();
+    let message;
+    if (code === 401 || code === 404) message = '봇 토큰이 올바르지 않거나 만료되었습니다.';
+    else if (data?.parameters?.migrate_to_chat_id != null) message = '그룹이 변경되었습니다. 새 Chat ID: ' + data.parameters.migrate_to_chat_id;
+    else if (code === 403) message = '봇이 차단되었거나 채팅에 보낼 권한이 없습니다. 개인 채팅에서는 봇을 열어 시작을 누르세요.';
+    else if (code === 429) message = '전송이 너무 잦습니다. 잠시 뒤 다시 시도하세요.';
+    else if (/thread|topic/.test(description)) message = 'Topic ID가 잘못되었거나 토픽이 닫혀 있습니다.';
+    else if (/chat not found|chat_id/.test(description)) message = 'Chat ID를 확인하고 봇을 채팅에 추가하세요.';
+    else message = 'Telegram이 전송을 거부했습니다 (HTTP ' + code + ').';
+    return { ok: false, message, uncertain: !data || code >= 500 };
   }
 
-  /**
-   * 탐지 순간의 화면을 사진으로 전송한다.
-   * 화면 캡처가 불가능하면 기존 문자 알림으로 자동 대체한다.
-   */
-  async sendAlert(text, category = 'chime', force = false) {
-    if (!this.config.enabled && !force) return;
-    if (!this.config.botToken || !this.config.chatId) return;
-
+  async deliver(text, force, action) {
+    if (!this.config.enabled && !force) return { ok: false, skipped: true };
+    let target;
+    try { target = this.getTarget(); }
+    catch (error) { return this.report({ ok: false, message: error.message }); }
+    const key = target.chatId + ':' + target.threadId + ':' + text;
     const now = Date.now();
-    const lastSent = this.lastSentTimeMap.get(text) || 0;
-    if (!force && now - lastSent < 3000) return;
-    this.lastSentTimeMap.set(text, now);
-
+    for (const [entry, at] of this.sent) if (now - at >= 3000) this.sent.delete(entry);
+    if (this.pending.has(key) || (!force && this.sent.has(key))) return { ok: false, skipped: true };
+    this.pending.add(key);
     try {
-      const captureManager = window.screenCaptureManager;
-      const photoBlob = await captureManager?.captureAlertScreenshot?.(category, text);
-      if (!photoBlob) {
-        this.lastSentTimeMap.delete(text);
-        await this.send(text, force);
-        return;
-      }
+      const result = await action(target);
+      if (result.ok) this.sent.set(key, Date.now());
+      return this.report(result);
+    } finally { this.pending.delete(key); }
+  }
 
-      const formData = new FormData();
-      formData.append('chat_id', this.config.chatId);
-      formData.append('caption', text.slice(0, 1024));
-      formData.append('photo', photoBlob, `메이플-탐지-${Date.now()}.jpg`);
+  report(result) {
+    this.onStatus?.(result);
+    return result;
+  }
 
-      if (this.config.threadId && this.config.threadId.trim() !== '') {
-        formData.append('message_thread_id', String(parseInt(this.config.threadId.trim(), 10)));
-      }
+  sendText(target, text) {
+    return this.request('sendMessage', target, new URLSearchParams({ text: String(text) }));
+  }
 
-      const response = await fetch(
-        `https://api.telegram.org/bot${this.config.botToken}/sendPhoto`,
-        { method: 'POST', body: formData }
-      );
-      const resData = await response.json();
-      if (!resData.ok) {
-        console.warn('Telegram photo send failed:', resData);
-        this.lastSentTimeMap.delete(text);
-        await this.send(text, force);
-      } else {
-        console.log('Telegram alert photo sent successfully:', text);
-      }
-    } catch (err) {
-      console.error('Telegram photo notification error:', err);
-      this.lastSentTimeMap.delete(text);
-      await this.send(text, force);
-    }
+  send(text, force = false) {
+    return this.deliver(text, force, target => this.sendText(target, text));
+  }
+
+  sendAlert(text, category = 'chime', force = false) {
+    return this.deliver(text, force, async target => {
+      let photo;
+      try { photo = await window.screenCaptureManager?.captureAlertScreenshot?.(category, text); }
+      catch { /* Capture failure still permits the text alert. */ }
+      if (!photo) return this.sendText(target, text);
+      const form = new FormData();
+      form.set('caption', String(text).slice(0, 1024));
+      form.set('photo', photo, 'maple-alert.jpg');
+      const result = await this.request('sendPhoto', target, form);
+      return result.ok || result.uncertain ? result : this.sendText(target, text);
+    });
   }
 
   async sendVideo(videoBlob, caption) {
-    if (!this.config.enabled || !this.config.botToken || !this.config.chatId) return false;
-    if (!videoBlob || videoBlob.size === 0) return false;
-
-    const makeFormData = (fieldName) => {
-      const formData = new FormData();
-      formData.append('chat_id', this.config.chatId);
-      formData.append('caption', String(caption || '').slice(0, 1024));
-      formData.append(fieldName, videoBlob, `메이플-버프-${Date.now()}.webm`);
-      if (fieldName === 'video') formData.append('supports_streaming', 'true');
-      if (this.config.threadId && this.config.threadId.trim() !== '') {
-        formData.append('message_thread_id', String(parseInt(this.config.threadId.trim(), 10)));
-      }
-      return formData;
-    };
-
-    try {
-      const response = await fetch(
-        `https://api.telegram.org/bot${this.config.botToken}/sendVideo`,
-        { method: 'POST', body: makeFormData('video') }
-      );
-      const result = await response.json();
-      if (result.ok) return true;
-
-      // Chrome의 MediaRecorder는 WebM을 생성한다. Telegram이 동영상으로
-      // 받지 않는 환경에서는 같은 파일을 문서로 다시 보내 수집물이 유실되지 않게 한다.
-      console.warn('Telegram buff video failed; retrying as document:', result);
-      const fallbackResponse = await fetch(
-        `https://api.telegram.org/bot${this.config.botToken}/sendDocument`,
-        { method: 'POST', body: makeFormData('document') }
-      );
-      const fallbackResult = await fallbackResponse.json();
-      if (!fallbackResult.ok) console.warn('Telegram buff document failed:', fallbackResult);
-      return Boolean(fallbackResult.ok);
-    } catch (error) {
-      console.error('Telegram buff video network error:', error);
-      return false;
-    }
+    if (!videoBlob?.size) return false;
+    const result = await this.deliver(String(caption), false, async target => {
+      const send = field => {
+        const form = new FormData();
+        form.set('caption', String(caption || '').slice(0, 1024));
+        form.set(field, videoBlob, 'maple-alert.webm');
+        if (field === 'video') form.set('supports_streaming', 'true');
+        return this.request(field === 'video' ? 'sendVideo' : 'sendDocument', target, form);
+      };
+      const first = await send('video');
+      return first.ok || first.uncertain ? first : send('document');
+    });
+    return result.ok;
   }
 
-  /**
-   * 테스트 메세지 보내기
-   */
-  async sendTestMessage() {
-    await this.send('[메이플 타이머] 🔔 텔레그램 알림 연동 테스트 성공!', true);
+  sendTestMessage() {
+    return this.send('[메이플 타이머] 🔔 텔레그램 알림 테스트입니다.', true);
   }
 }
 

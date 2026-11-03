@@ -1,0 +1,1 @@
+self.onmessage=async s=>{try{const{width:e,height:t,data:o}=s.data,a=new OffscreenCanvas(e,t),n=a.getContext("2d");if(!n)throw new Error("incident-canvas-unavailable");n.putImageData(new ImageData(new Uint8ClampedArray(o),e,t),0,0);const r=await a.convertToBlob({type:"image/png"});self.postMessage({blob:r}),a.width=0,a.height=0}catch(e){self.postMessage({error:String(e)})}};

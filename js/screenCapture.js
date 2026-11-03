@@ -306,6 +306,8 @@ class ScreenCaptureManager {
       window.audioNotifier.initAudioContext();
     }
 
+    if (window.maplePrecisionStart?.()) return;
+
     if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
       alert('현재 브라우저 환경에서 화면 공유(WebRTC)를 지원하지 않거나 보안 연결이 아닙니다.');
       return;
@@ -325,30 +327,7 @@ class ScreenCaptureManager {
         audio: false
       });
     })
-    .then((stream) => {
-      this.mediaStream = stream;
-      this.videoEl.srcObject = stream;
-      this.isStreaming = true;
-
-      const videoTrack = stream.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.onended = () => {
-          this.stopCapture();
-        };
-      }
-
-      this.videoEl.play().catch(e => console.log('비디오 재생:', e));
-
-      const placeholder = document.getElementById('screen-placeholder');
-      if (placeholder) placeholder.classList.add('hidden');
-      if (this.videoEl) this.videoEl.classList.remove('hidden');
-      if (this.analysisCanvas) this.analysisCanvas.classList.remove('hidden');
-
-      this.updateStatusBadge(true);
-      this.resizeCanvas();
-      this.startBackgroundTimerGuard();
-      this.startLoop();
-    })
+    .then(stream => this.attachSharedCapture(stream))
     .catch((err) => {
       console.error('화면 공유 실패/취소:', err);
       if (err.name !== 'NotAllowedError' && !err.message?.includes('Permission denied')) {
@@ -357,11 +336,48 @@ class ScreenCaptureManager {
     });
   }
 
-  stopCapture() {
-    if (this.mediaStream) {
-      this.mediaStream.getTracks().forEach(track => track.stop());
-      this.mediaStream = null;
+  // The precision panel and existing detectors consume the same chosen stream.
+  attachSharedCapture(stream, stopExternal = null) {
+    if (this.mediaStream === stream) return;
+    if (this.mediaStream) this.stopCapture();
+    this.mediaStream = stream;
+    this.sharedStop = stopExternal;
+    this.sharedCleanups = [];
+    this.videoEl.srcObject = stream;
+    this.isStreaming = true;
+    const ended = () => { if (this.mediaStream === stream) this.stopCapture(); };
+    stream.getVideoTracks()[0]?.addEventListener('ended', ended, {once:true});
+    if (stopExternal) {
+      this.sharedWatch = setInterval(() => {
+        if (!stream.getVideoTracks().some(track => track.readyState === 'live')) ended();
+      }, 250);
     }
+    this.videoEl.play().catch(e => console.log('비디오 재생:', e));
+    document.getElementById('screen-placeholder')?.classList.add('hidden');
+    this.videoEl.classList.remove('hidden');
+    this.analysisCanvas?.classList.remove('hidden');
+    this.updateStatusBadge(true);
+    this.resizeCanvas();
+    this.startBackgroundTimerGuard();
+    this.startLoop();
+  }
+
+  addSharedCaptureCleanup(cleanup) {
+    this.sharedCleanups?.push(cleanup);
+  }
+
+  stopCapture() {
+    const stream = this.mediaStream;
+    const stopExternal = this.sharedStop;
+    this.mediaStream = null;
+    this.sharedStop = null;
+    if (this.sharedWatch) clearInterval(this.sharedWatch);
+    this.sharedWatch = null;
+    for (const cleanup of this.sharedCleanups ?? []) cleanup();
+    this.sharedCleanups = [];
+    if (stopExternal) stopExternal();
+    else stream?.getTracks().forEach(track => track.stop());
+    if (this.videoEl) this.videoEl.srcObject = null;
 
     this.isStreaming = false;
     this.stopBackgroundTimerGuard();

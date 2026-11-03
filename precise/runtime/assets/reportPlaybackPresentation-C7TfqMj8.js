@@ -1,0 +1,1 @@
+const t=e=>e==="started"?3:e==="failed"?2:e==="requested"?1:e==="approved"?-1:0,a=e=>({started:"재생 시작",failed:"재생 실패",requested:"재생 요청",finished:"재생 완료",cancelled:"재생 취소",approved:"알림 결정","no-start":"재생 미시작","terminal-timeout":"재생 종료 시간 초과"})[e]??"재생 단계 미기록";export{t as a,a as r};

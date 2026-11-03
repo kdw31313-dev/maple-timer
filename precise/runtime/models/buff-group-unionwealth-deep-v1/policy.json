@@ -1,0 +1,85 @@
+{
+  "contractVersion": 1,
+  "bundleId": "buff-group-unionwealth-deep-v1",
+  "modelId": "buff-group-unionwealth-deep-v1",
+  "modelVersion": "unionwealth-20260925-crop-reinforced-candidate-r1b-onnx-sanitized-v1",
+  "variantId": "fixed-logitMargin5+positive-gate192-threshold0.99-crop-reinforced",
+  "source": {
+    "checkpoint": "upstream:matcher/reports/unionwealth-reinforcement-20260925/candidate-r1b/candidate.pt",
+    "trainingSpec": "upstream:matcher/reports/unionwealth-reinforcement-20260925/candidate-r1b/training-spec.json",
+    "positiveGate": "same 192 historical positive inputs re-encoded with candidate CNN"
+  },
+  "files": {
+    "onnx": "buff-group-unionwealth-deep-v1.onnx",
+    "onnxData": "buff-group-unionwealth-deep-v1.onnx.data",
+    "policy": "policy.json",
+    "positiveGate": "unionwealth-positive-gate.json"
+  },
+  "labels": [
+    "unionWealth",
+    "background"
+  ],
+  "groups": [
+    "unionWealth"
+  ],
+  "backgroundLabel": "background",
+  "scoreKind": "logitMargin",
+  "thresholdPolicy": "fixed-production-threshold",
+  "thresholds": {
+    "unionWealth": 5.0
+  },
+  "input": {
+    "shape": [
+      1,
+      3,
+      32,
+      32
+    ],
+    "layout": "CHW",
+    "color": "RGB",
+    "normalization": "rgb = rgba.rgb / 255; input = (rgb - 0.5) / 0.5"
+  },
+  "output": {
+    "logits": {
+      "name": "logits",
+      "shape": [
+        1,
+        2
+      ],
+      "order": [
+        "unionWealth",
+        "background"
+      ]
+    },
+    "embedding": {
+      "name": "embedding",
+      "shape": [
+        1,
+        96
+      ],
+      "normalization": "L2 normalized by the ONNX model"
+    }
+  },
+  "runtimeContract": {
+    "input": "parser-normalized 32x32 icon",
+    "outputKind": "target | unknown",
+    "targetGroups": [
+      "unionWealth"
+    ],
+    "doesNotReadCountdownSeconds": true,
+    "doesNotTrackFrames": true,
+    "doesNotScheduleAlerts": true
+  },
+  "decision": "Accept the target group when target logit minus background logit reaches its threshold and the embedding reaches the positive prototype cosine threshold; otherwise return unknown.",
+  "postGates": {
+    "unionWealth": {
+      "kind": "positivePrototypeCosine",
+      "artifact": "unionwealth-positive-gate.json",
+      "score": "max cosine similarity between embedding and positive prototypes",
+      "threshold": 0.99,
+      "prototypeCount": 192,
+      "embeddingDim": 96,
+      "failureDecision": "unknown"
+    }
+  }
+}

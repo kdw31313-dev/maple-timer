@@ -3,3 +3,4 @@
 local-cache/
 local/preparation.json
 local/server-*.log
+precise/pack/

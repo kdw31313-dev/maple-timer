@@ -2,6 +2,13 @@
  * App.js - 메인 애플리케이션 진입점 및 이벤트 바인딩
  */
 document.addEventListener('DOMContentLoaded', () => {
+  const precisionFrame = document.getElementById('maple-precision-frame');
+  if (precisionFrame && location.pathname.startsWith('/maple-timer/') && /^https?:$/.test(location.protocol)) {
+    precisionFrame.src = precisionFrame.dataset.src;
+  } else {
+    document.getElementById('precision-panel')?.setAttribute('hidden', '');
+    document.getElementById('precision-panel-link')?.setAttribute('hidden', '');
+  }
   // 1. 상단 탭 (Tab) 네비게이션 전환 이벤트
   const tabBtns = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
@@ -93,53 +100,7 @@ function bindEvents() {
     window.screenCaptureManager.openRoiModal('rune');
   });
 
-  // --- 📲 텔레그램 봇 알림 이벤트 바인딩 ---
-  const btnTelegramTest = document.getElementById('btn-telegram-test');
-  const btnTelegramSave = document.getElementById('btn-telegram-save');
-  const toggleTelegram = document.getElementById('toggle-telegram-alert');
-  const pillTelegram = document.getElementById('telegram-status-pill');
-  const telegramBotToken = document.getElementById('telegram-bot-token');
-  const telegramChatId = document.getElementById('telegram-chat-id');
-  const telegramThreadId = document.getElementById('telegram-thread-id');
-
-  if (window.telegramNotifier?.config) {
-    if (telegramBotToken) telegramBotToken.value = window.telegramNotifier.config.botToken || '';
-    if (telegramChatId) telegramChatId.value = window.telegramNotifier.config.chatId || '';
-    if (telegramThreadId) telegramThreadId.value = window.telegramNotifier.config.threadId || '';
-  }
-
-  if (toggleTelegram) {
-    toggleTelegram.checked = window.telegramNotifier?.config?.enabled ?? true;
-    toggleTelegram.addEventListener('change', (e) => {
-      const isEnabled = e.target.checked;
-      window.telegramNotifier?.saveConfig({ enabled: isEnabled });
-      if (pillTelegram) {
-        pillTelegram.textContent = isEnabled ? '🟢 연동 완료' : '⚪ 알림 끔';
-        pillTelegram.className = isEnabled ? 'status-pill active' : 'status-pill';
-      }
-    });
-  }
-
-  btnTelegramTest?.addEventListener('click', () => {
-    if (window.telegramNotifier) {
-      window.telegramNotifier.sendTestMessage();
-    }
-  });
-
-  btnTelegramSave?.addEventListener('click', () => {
-    const botToken = telegramBotToken?.value.trim() || '';
-    const chatId = telegramChatId?.value.trim() || '';
-    const threadId = telegramThreadId?.value.trim() || '';
-    if (!botToken || !chatId) {
-      alert('봇 토큰과 Chat ID를 입력해 주세요.');
-      return;
-    }
-    window.telegramNotifier?.saveConfig({ botToken, chatId, threadId });
-    if (pillTelegram) {
-      pillTelegram.textContent = '🟢 설정 저장됨';
-      pillTelegram.className = 'status-pill active';
-    }
-  });
+  bindTelegramSettings();
 
   // --- 경험치 쿠폰 타이머 버튼 ---
   const expStartBtn = document.getElementById('btn-exp-start');

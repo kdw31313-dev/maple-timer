@@ -1,0 +1,1208 @@
+{
+  "build": {
+    "branch": "main",
+    "buildTime": "2026-10-22T17:19:14.391Z",
+    "channel": "production",
+    "commitSha": "81f181e70837c343bf3e09a8bb90ac0ce45fe650",
+    "shortCommit": "81f181e"
+  },
+  "generatedAt": "2026-10-22T17:19:14.391Z",
+  "notes": [
+    {
+      "content": "어두운 맵에서 룬 알림이 울리지 않던 문제를 수정했습니다.",
+      "contentHash": "49706e9ff0ca5ec5b8fff71b4a981d4b4605f75f09eb33b3fa90e1b23731f6cd",
+      "date": "2026-10-21",
+      "id": "rune-dark-map-cap-2026-10-21"
+    },
+    {
+      "content": "감지 제보 창을 개선했어요.",
+      "contentHash": "1ace1be6e76729f74924d278fb7098c261075ac4436271a44bd50311851fd765",
+      "date": "2026-10-20",
+      "id": "report-dialog-v2-2026-10-20"
+    },
+    {
+      "content": "부스터 감지를 초기화하거나 프리셋을 불러온 뒤 다음 부스터 종료 알림이 소리 없이 지나갈 수 있던 문제를 고쳤어요.",
+      "contentHash": "fb90fc6eef36aa9983879042e92567282b24fa5e4b184193254f9e5655c07475",
+      "date": "2026-10-20",
+      "id": "booster-expiry-reset-missed-alert-2026-10-20"
+    },
+    {
+      "content": "부스터 종료 알림 시각에 감지가 잠깐 실패하면 알림이 소리 없이 지나가던 문제를 고쳤어요.",
+      "contentHash": "7bf77dcf0d86b650ce0f0e7b064030a5add81949bbfd4a521184043b10c8fc76",
+      "date": "2026-10-20",
+      "id": "booster-expiry-due-tick-failure-alert-2026-10-20"
+    },
+    {
+      "content": "소식 버튼에 안 읽은 항목 수를 표시합니다. 새 항목이 생기면 배지가 가볍게 나타나고, 읽은 뒤에는 사라져요.",
+      "contentHash": "748b7a994cc003520853fc2eefd3879cdcbf042c57a8f236e677471e77b4ce62",
+      "date": "2026-10-20",
+      "id": "news-notification-badge-2026-10-20"
+    },
+    {
+      "content": "모든 알림의 감지 제보가 문제 직전 화면과 알림 기록을 함께 보내도록 바뀌어, 원인을 더 정확하게 확인할 수 있어요.",
+      "contentHash": "0188021cc548d41423f310eae2ad02beb4a3831ef7efdb9fc451e5a654a7282e",
+      "date": "2026-10-17",
+      "id": "report-v2-all-alerts-2026-10-17"
+    },
+    {
+      "content": "비약 두 개를 함께 쓸 때 다시 먹어도 버프 종료 반복 알림이 멈추지 않던 문제를 고쳤습니다. 버프가 끝난 뒤 울리도록 설정한 경우에도 비약 보충을 확인합니다.",
+      "contentHash": "e937c8dbe4aca9c53dc065848aa9ffd9ea53748b88b5c4331ef48819dfb62a22",
+      "date": "2026-10-08",
+      "id": "buff-expiry-potion-repeat-stop-2026-10-08"
+    },
+    {
+      "content": "일부 환경에서 룬 감지가 시작되지 않던 문제를 수정했습니다.",
+      "contentHash": "4a537f7775eda03d719d1df66b7b3514ea38f40d7a734d757b7013a7a484dc8f",
+      "date": "2026-10-08",
+      "id": "rune-v15-slow-start-2026-10-08"
+    },
+    {
+      "content": "룬 패치 후 PiP 타이머에서 룬 알림이 한 번만 강조되던 문제를 수정했습니다.",
+      "contentHash": "d67451128f6e39c3122cfe5264c9369efdccbd1460b298b8b3ca3c0acda0ae11",
+      "date": "2026-10-08",
+      "id": "rune-pip-persistent-alert-2026-10-08"
+    },
+    {
+      "content": "소식과 패치 기록을 화면 가장자리의 소식 버튼에서 볼 수 있어요. 버튼은 원하는 자리로 끌어 옮길 수 있고, 소식은 항목별로 숨기거나 다시 볼 수 있어요.",
+      "contentHash": "067856683ecc89d7b5cc3ba443631794873e763448acc2cf90fbf14adc3daf08",
+      "date": "2026-10-07",
+      "id": "news-hub-and-patch-history-2026-10-07"
+    },
+    {
+      "content": "룬이 보이면 더 빨리 알려주도록 알림을 개선했습니다. 다른 사람 위치 표시 등을 룬으로 잘못 알리는 일을 줄였습니다.",
+      "contentHash": "e23c556d3c9255739f2e21ab7737d07eb003f760bbf9cc230fa34ee5fd4b73a1",
+      "date": "2026-10-06",
+      "id": "rune-v15-alert-release-2026-10-06"
+    },
+    {
+      "content": "사냥 멈춤 알림에 임펠 인식을 추가했습니다. 임펠 버프가 꺼지면 알려줍니다.",
+      "contentHash": "188bedefbae250b9345511f2eff9bd9c14b1a0f7c604eb664c9f0fe4ba5b2f24",
+      "date": "2026-10-03",
+      "id": "hunt-stall-impel-beta-2026-10-03"
+    },
+    {
+      "content": "일반 타이머가 자동 재시작되어도 PIP에서 완료 알림을 잠시 강조합니다.",
+      "contentHash": "fdaa533dfc837a9a4a47c6c32bae61b0ac9af62cd9594b05f133a7781c90532f",
+      "date": "2026-09-30",
+      "id": "general-timer-pip-completion-emphasis-2026-09-30"
+    },
+    {
+      "content": "사냥 멈춤 알림에 무아 인식을 추가했습니다.",
+      "contentHash": "2bb9e4951eb0638efa851a47a1d6cd66c8133cf8162166dced664546bcf279ea",
+      "date": "2026-09-29",
+      "id": "hunt-stall-mua-beta-2026-09-29"
+    },
+    {
+      "content": "화면 공유에서 ‘다음부터 이 방식으로 바로 공유’를 켜면, 다음부터 안내를 건너뛰고 화면 선택창을 바로 열 수 있습니다.",
+      "contentHash": "5113a8d9e5082f6db76bdb5c20129002066efb4bbb3ce5879fd7c798892899bf",
+      "date": "2026-09-28",
+      "id": "screen-share-quick-start-2026-09-28"
+    },
+    {
+      "content": "정밀 스킬 알림에서 버프 즐겨찾기를 사용할 수 있습니다. 스킬 설정의 감지 위치에서 즐겨찾기를 선택하고, 게임 화면의 왼쪽 아래 또는 오른쪽 아래에 배치해주세요.",
+      "contentHash": "b28962d4c1224fb800310d1a46dd401a5d647905f0b6868f59f7dc4d458187a7",
+      "date": "2026-09-26",
+      "id": "precision-skill-buff-favorites-2026-09-26"
+    },
+    {
+      "content": "버프 보충이 확인되면 반복 알림을 멈추도록 개선했습니다. 다음 버프 종료 시점에는 다시 알려드립니다.",
+      "contentHash": "c84ff2b982f0da929e082729dbef7b8c0b152aafc4186483e25cc775c94dec6a",
+      "date": "2026-09-25",
+      "id": "buff-expiry-repeat-replenishment-2026-09-25"
+    },
+    {
+      "content": "일부 환경에서 유니온의 부를 인식하지 못하던 문제를 개선했습니다.",
+      "contentHash": "4bdff97768c34b2d55dc2bde26e14b6caa0405f42748cec36a0485419613addb",
+      "date": "2026-09-25",
+      "id": "unionwealth-recognition-2026-09-25"
+    },
+    {
+      "content": "여기저기 이쁘게 재디자인했습니다.",
+      "contentHash": "434f4e5acf25f04bfe544fb321f65d904f04bcb985ed6ca1595fcb35b484f73a",
+      "date": "2026-09-24",
+      "id": "feedback-remote-dialog-design-2026-09-24"
+    },
+    {
+      "content": "원격 처리 버튼을 상단으로 옮겼습니다.",
+      "contentHash": "2cac6ff2b6f7f0b6d285fe84edb4f90cc79858334d6f40ca0b35cd86a09d8108",
+      "date": "2026-09-24",
+      "id": "remote-processing-toolbar-2026-09-24"
+    },
+    {
+      "content": "상단 설정에서 프리셋, 내 알림음, 테마를 한곳에서 관리할 수 있습니다.",
+      "contentHash": "292361c589e5ac640f5b7c9a0d1662430579035d79b0b60542d143f13181ac18",
+      "date": "2026-09-24",
+      "id": "unified-settings-presets-sounds-2026-09-24"
+    },
+    {
+      "content": "게임 화면 맞추기를 새로 정리했습니다. 네 모서리를 확대해 보면서 방향키로 위치를 조절하고, 공유 설정의 기억 여부도 선택할 수 있습니다.",
+      "contentHash": "fa3e30165a49a12a507e451368b9e364fdf553b8f64d8104708a3cd5179e1142",
+      "date": "2026-09-23",
+      "id": "game-viewport-corner-previews-2026-09-23"
+    },
+    {
+      "content": "Windows 10에서 창 공유가 불안정할 때 사용할 수 있는 호환 공유를 추가했습니다. 모니터를 공유한 뒤 메이플 영역을 지정할 수 있습니다.",
+      "contentHash": "e320ca6e5e49ba08f6c45319bed145b9bd7faaf776156bf2c182d78f1e595368",
+      "date": "2026-09-23",
+      "id": "screen-share-compatibility-mode-2026-09-23"
+    },
+    {
+      "content": "정밀 감지 준비 오류를 더 빨리 파악할 수 있도록 화면 자료 없이 준비 결과를 수집합니다. 자세한 내용은 개인정보 및 데이터 안내에서 확인할 수 있습니다.",
+      "contentHash": "10893ece04ec784aace39bedc636c05e6b2b073472b0c289d519fcf987c4001e",
+      "date": "2026-09-23",
+      "id": "precision-parser-initialization-health-2026-09-23"
+    },
+    {
+      "content": "정밀 감지를 준비하지 못했을 때 ‘다시 확인’을 바로 누를 수 있고, 재확인 진행 상태를 볼 수 있습니다.",
+      "contentHash": "9c95568ea8a93f94618c4e56b24e2175c730c779a6b705ce1401ab88e02454fa",
+      "date": "2026-09-23",
+      "id": "precision-parser-visible-retry-2026-09-23"
+    },
+    {
+      "content": "일반 타이머마다 버프 연계를 설정할 수 있습니다. 대상 버프를 확인할 수 없으면 일시정지하며, 다시 진행하려면 재개를 눌러주세요.",
+      "contentHash": "d1493dd1f7b0252c84b1ab5896f1582d93f630c36727617e3e9b0b70d24683fa",
+      "date": "2026-09-21",
+      "id": "general-timer-buff-link-2026-09-21"
+    },
+    {
+      "content": "반복 알림 설정에서 첫 알림을 포함한 총 횟수와 알림 사이 대기를 확인할 수 있습니다.",
+      "contentHash": "04693e92ac7597d8796ba281006a834e7b868867d2fd3730cce2d1bd317adac4",
+      "date": "2026-09-21",
+      "id": "repeat-alert-settings-total-count-2026-09-21"
+    },
+    {
+      "content": "일반 타이머에 첫 알림과 자동 재시작을 함께 최대 2초 늦추는 랜덤 지연 옵션을 추가했습니다.",
+      "contentHash": "ea5faf4a91f2041c10c3bf3b46fab4fc1aa43bf886256d5f5716113e6b6b7271",
+      "date": "2026-09-21",
+      "id": "general-timer-initial-random-delay-2026-09-21"
+    },
+    {
+      "content": "스킬 알림에 흡성와류 VI 버프칸 감지를 추가했습니다.",
+      "contentHash": "7a3ddccd6615ceee30f92da058f72d4a6b24dff0ea3bc8ff050f5a21ff625630",
+      "date": "2026-09-21",
+      "id": "heupseong-waryu-vi-precision-2026-09-21"
+    },
+    {
+      "content": "속사기 사용 직업을 위해 사냥 멈춤 알림에 마나 인식을 추가했습니다.",
+      "contentHash": "125115bb11c1cb6aa8588b51b3cf664e56657bac4aea7d1fb9a72276b38584d7",
+      "date": "2026-09-15",
+      "id": "hunt-stall-mana-mode-2026-09-15"
+    },
+    {
+      "content": "다른 탭을 보는 동안 화면 이미지가 쌓여 메모리가 늘어나던 문제를 수정했습니다.",
+      "contentHash": "d3ad49b2bfdd88d5b6a5cf33bdaf9eaf54130853b844bceadf624dc0a2bc4170",
+      "date": "2026-09-14",
+      "id": "background-tab-memory-2026-09-14"
+    },
+    {
+      "content": "일반 타이머가 끝난 뒤 자동 재시작까지 기다릴 시간을 설정할 수 있습니다.",
+      "contentHash": "66baa8d1103ff9a873745d159d10d8d973848e65b8d17cdf195e96cbab503499",
+      "date": "2026-09-12",
+      "id": "general-timer-restart-delay-2026-09-12"
+    },
+    {
+      "content": "부스터 종료 알림이 남은 시간 1분 미만에서도 타이머 흐름을 확인하도록 개선했습니다. 일시적인 오독으로 흐름 확인이 끊기는 경우를 줄였습니다.",
+      "contentHash": "4f5664c3f1f3fc1fdc0b57f557bd2405f56cb9156ed216df3aad9d58a989f596",
+      "date": "2026-09-11",
+      "id": "booster-countdown-flow-2026-09-11"
+    },
+    {
+      "content": "알림 시각이 지난 뒤 부스터 타이머 흐름이 확인되면, 뒤늦게 소리를 재생하지 않고 상태를 안내합니다. 기능을 껐다 켠 뒤 다음 부스터 알림까지 막히던 문제도 수정했습니다.",
+      "contentHash": "91c90cd8c0038e0001de9b20d7192370b789e167585a52cb316227aec2424a7a",
+      "date": "2026-09-11",
+      "id": "booster-late-alert-state-2026-09-11"
+    },
+    {
+      "content": "부스터 감지 제보에 여러 시점의 화면과 기록을 함께 보낼 수 있도록 개선했습니다.",
+      "contentHash": "7b020f705c5b7fccc395ab7b729aad16023515c49b55c04701a7a770b5916065",
+      "date": "2026-09-11",
+      "id": "booster-multiple-report-frames-2026-09-11"
+    },
+    {
+      "content": "원격 처리 초대 코드를 이 브라우저에 기억할 수 있습니다. 다음 연결 때 코드를 다시 입력하지 않아도 됩니다.",
+      "contentHash": "3de4cb9ec1413cdb41d8881ff83beb3c0e0273ec98197a866cff89bf2b389a4c",
+      "date": "2026-09-08",
+      "id": "remember-remote-invite-2026-09-08"
+    },
+    {
+      "content": "원격 처리 연결 화면을 새롭게 정리했습니다. 연결 진행 단계와 완료 상태를 더 쉽게 확인할 수 있습니다.",
+      "contentHash": "d171ca4e50ab0d88ec2b9769605900ff602ed0ea63447e0d71dea926a57e9965",
+      "date": "2026-09-08",
+      "id": "remote-connection-setup-design-2026-09-08"
+    },
+    {
+      "content": "부스터 종료 감지를 새 엔진으로 교체했습니다. 게임 UI 크기와 창 상단 표시줄에 따른 타이머 인식을 개선하고, 인식이 끊긴 뒤 이전 알림이 갑자기 울리거나 중복 재생되는 문제를 수정했습니다.",
+      "contentHash": "180ce05b5b8fb05d553821f20c07b37b7417ce772bcc613d157a63ba368a31fd",
+      "date": "2026-09-07",
+      "id": "booster-expiry-v3-2026-09-01"
+    },
+    {
+      "content": "버프 종료 알림에 반복 기능이 추가되었습니다.",
+      "contentHash": "5d93ee3a1452110278abba3e09a264ad9d63b8246c14d1103cc43fe70e7f9e32",
+      "date": "2026-09-07",
+      "id": "buff-expiry-repeat-alerts-2026-09-07"
+    },
+    {
+      "content": "버프 종료 알림에서 선택한 버프가 감지될 때만 사냥 멈춤을 감시하는 기능이 추가되었습니다.",
+      "contentHash": "0c31ad8f5da7a1f8628ce3d00eaba1dcc2294ed06de2984841f3c8f766af93ec",
+      "date": "2026-09-07",
+      "id": "hunt-stall-require-tracked-buff-2026-09-05"
+    },
+    {
+      "content": "화면 공유 변경 중 선택을 취소해도 기존 공유가 유지되고, 화면 공유를 시작하지 못한 이유를 안내합니다.",
+      "contentHash": "7832a1e0c8a8915cc2462c325ab4bae53152fc01d2b72f42356f5fef4e4f958d",
+      "date": "2026-09-05",
+      "id": "screen-share-failure-guidance-2026-09-05"
+    },
+    {
+      "content": "스킬 알림에 프로즌 그라운드 VI 버프칸 감지를 추가했습니다.",
+      "contentHash": "de3d76aa8e65e4b5e2880d3871c8f0422e1ce46a3fb1bbe3f69f4cdbe6c1d32b",
+      "date": "2026-09-03",
+      "id": "frozen-ground-vi-precision-2026-09-03"
+    },
+    {
+      "content": "스킬 알림에 소드 오브 버닝 소울 버프칸 감지를 추가했습니다.",
+      "contentHash": "df65d90e6be6975620be1bebc4e8d9985581bc05790836952066be69315bc953",
+      "date": "2026-09-02",
+      "id": "sword-of-burning-soul-precision-2026-09-02"
+    },
+    {
+      "content": "사냥 멈춤 알림의 쿨타임 인식에서도 첫 알림 뒤 반복 횟수와 간격을 설정할 수 있습니다.",
+      "contentHash": "3de9901ea27ba27b830e22d69bdce713f709ff6e3c36d333760a7cc32d224998",
+      "date": "2026-08-30",
+      "id": "hunt-stall-cooldown-repeat-alerts-2026-08-30"
+    },
+    {
+      "content": "스킬 알림에 진리의 문과 리버레이션 오브 버프칸 감지를 추가했습니다.",
+      "contentHash": "46590c61af1d214ec4fed1af1b1413646cffc45772479ab3aa0dff1bcb685eed",
+      "date": "2026-08-28",
+      "id": "luminous-precision-skills-2026-08-28"
+    },
+    {
+      "content": "화면 분석이 한 번 늦어져도 같은 룬 감지가 이어지도록 개선해, 룬 알림을 놓치는 경우를 줄였습니다.",
+      "contentHash": "3a00cb53ba0276349a9bdce1d0170ae627ddad3a263808598ea0f5c8d265df33",
+      "date": "2026-08-27",
+      "id": "rune-skipped-monitoring-tick-2026-08-27"
+    },
+    {
+      "content": "확장 UI에서 설정한 게임 영역을 이 브라우저에 기억합니다. 같은 크기의 창을 다시 공유하면 이전 위치를 자동으로 불러옵니다.",
+      "contentHash": "a8ca135ab12e82691af0877a7112c1a3d0329a41b903f2395cbb3f522f5a787e",
+      "date": "2026-08-26",
+      "id": "remember-expanded-ui-game-area-2026-08-26"
+    },
+    {
+      "content": "제보와 문의에 첨부한 자료는 자동으로 삭제되지 않고 운영자가 지울 때까지 보관된다는 사실을 개인정보 안내에 바로잡아 적었습니다.",
+      "contentHash": "2d9188f39355d92fd0cfc652ed8671b49234a0007a6300f7a08380152698b1b6",
+      "date": "2026-08-26",
+      "id": "privacy-retention-notice-2026-08-26"
+    },
+    {
+      "content": "타이머를 다른 창 뒤에 오래 켜두면 메모리가 계속 늘어나 브라우저가 탭을 종료하던 문제를 해결했습니다. 화면 분석에 쓰는 임시 데이터를 재사용하도록 바꿨습니다.",
+      "contentHash": "07461218fd8dc1f9f88d279b2ea3684ed3bf8600bb86c69b1ee38e3dcdd2a80d",
+      "date": "2026-08-25",
+      "id": "background-memory-2026-08-25"
+    },
+    {
+      "content": "특수 코어를 비롯한 여러 알림에서 감지 제보를 보낼 수 없었던 문제를 해결했습니다. 어떤 상황에서 제보하더라도 화면과 함께 전송됩니다.",
+      "contentHash": "8fbd6853aef29576081dae8d6e5b1bd58ee7bd8e39954505170486efdbad0875",
+      "date": "2026-08-24",
+      "id": "alert-issue-report-delivery-2026-08-24"
+    },
+    {
+      "content": "부스터 종료 알림이 타이머를 찾는 동안 CPU를 훨씬 덜 쓰도록 개선했고, 타이머를 찾지 못한 상태에서도 감지 제보를 보낼 수 있습니다.",
+      "contentHash": "911f67603cfe517fd3a09625b4a960a1b103328fab7a6daad8212d6fbecc6ff3",
+      "date": "2026-08-24",
+      "id": "booster-expiry-cpu-and-report-2026-08-24"
+    },
+    {
+      "content": "일반 타이머 완료 알림을 여러 번 받을 수 있습니다. 자동 재시작과 함께 사용하거나 각각 설정할 수 있습니다.",
+      "contentHash": "8af17005dc2608131b1f217e2371e3a9f33137f74d03799cf823bdec0839ec4d",
+      "date": "2026-08-23",
+      "id": "general-timer-completion-actions-2026-08-23"
+    },
+    {
+      "content": "알림 패널의 순서를 바꿔 자주 쓰는 알림을 위에 둘 수 있습니다.",
+      "contentHash": "a673a5da8d3f0b361a5dd28876fa855027fcea7f1e674618d3fba819b3729fc0",
+      "date": "2026-08-23",
+      "id": "alert-panel-reordering-2026-08-23"
+    },
+    {
+      "content": "버프 시간이 1분 미만에서만 표시되는 설정에서도 지속시간 연장이 반영되며, 연장 구간에는 남은 시간이 잠시 비어 보입니다.",
+      "contentHash": "600bca6d6f732d516e15c1914f3b4f9a609764af88c9f4fa8628f2407b706fe9",
+      "date": "2026-08-23",
+      "id": "skill-precision-hidden-countdown-2026-08-23"
+    },
+    {
+      "content": "울티마 스쿼드 알림 관련 내용들이 삭제되었습니다.",
+      "contentHash": "b411d9bd1f41741333e06da093eb107b74879cb349bb2314d94256d94ee3aede",
+      "date": "2026-08-18",
+      "id": "ultima-raid-equipment-removed-2026-08-18"
+    },
+    {
+      "content": "사냥 멈춤 · 경험치 인식 속도를 개선해 CPU 사용량을 줄였습니다.",
+      "contentHash": "4cb5e5fd0951437ef350c11a6cc89e61d87722f6428f7c4b72ffd2d47420d92f",
+      "date": "2026-08-18",
+      "id": "hunt-stall-experience-recognition-speedup-2026-08-18"
+    },
+    {
+      "content": "정밀 스킬에서 버프 지속시간이 연장되어도 연장 전 시간에 알림이 울리던 문제를 수정했습니다.",
+      "contentHash": "b30e511089ab2dfcccad66314060aae8818e66f49449da16e1390c91567514b7",
+      "date": "2026-08-17",
+      "id": "skill-precision-extended-buff-alert-2026-08-17"
+    },
+    {
+      "content": "우상단 [캐릭터 연동]에서 캐릭터명을 조회해, 보유한 지원 스킬에 맞춰 스킬 알림을 한 번에 설정할 수 있습니다.",
+      "contentHash": "4fc4187c4ca83d5a4d4c72e1aee650090ba69f4ce1195fa570c80d4e94135cc5",
+      "date": "2026-08-16",
+      "id": "character-sync-launch-2026-08-16"
+    },
+    {
+      "content": "연결된 원격 처리는 서버 업데이트 중 로컬 처리로 전환하고, 업데이트가 끝나면 자동 재연결을 시도합니다.",
+      "contentHash": "8c7357861cc6996ff4a495938700fd98a866dde49c94ce2ad4e90da1d8be10c4",
+      "date": "2026-08-13",
+      "id": "remote-recognition-maintenance-recovery-2026-08-13"
+    },
+    {
+      "content": "원격 처리 상태에서 전체 시간과 전송·경유 시간, 서버 처리 시간을 나눠 표시해 지연 원인을 더 쉽게 확인할 수 있습니다.",
+      "contentHash": "2f11558cc8801596e2006989e6a64018010ae0f7ed1b785924e31c69f58f64c2",
+      "date": "2026-08-12",
+      "id": "remote-recognition-latency-breakdown-2026-08-12"
+    },
+    {
+      "content": "중요한 변경이 있을 때만 업데이트 배너가 표시됩니다.",
+      "contentHash": "f7a5e85a16b937432bbd76080fe62aa75a67d3104c18a614b239bde86486e4eb",
+      "date": "2026-08-12",
+      "id": "update-notice-quiet-2026-08-12"
+    },
+    {
+      "content": "여러 소식이 한 번에 올라올 때 디스코드 알림이 한 번만 울리도록 수정되었습니다.",
+      "contentHash": "b692d1b384949a03662edb37a00e40384a5c4eb15f2f2f530665604932edb67c",
+      "date": "2026-08-12",
+      "id": "update-notice-batch-2026-08-12"
+    },
+    {
+      "content": "목록에서 이미 선택한 스킬을 다시 골라도 인식이 처음부터 다시 시작되거나 알림음이 되돌아가지 않습니다.",
+      "contentHash": "e7795b24dd687be89f911ae7818b373b2a9cc857e4572a35f4aded392210da24",
+      "date": "2026-08-11",
+      "id": "skill-preset-reselect-2026-08-11"
+    },
+    {
+      "content": "예인에서 다른 스킬로 바꿀 때 남은 횟수 설정이 초 단위로 잘못 넘어가던 문제를 수정했습니다.",
+      "contentHash": "d8cbee2fd139a8a1865fd9ca0a795411e210a4c7fe918ef8ac738b5825fb7dd9",
+      "date": "2026-08-11",
+      "id": "skill-threshold-unit-2026-08-11"
+    },
+    {
+      "content": "스킬 알림에 페트리파이드 VI 버프칸 감지를 추가했습니다.",
+      "contentHash": "c9ade1912ec3879e8ac7029200e785805b554679ba194d1f231166ee75852f7d",
+      "date": "2026-08-11",
+      "id": "petrified-vi-precision-2026-08-11"
+    },
+    {
+      "content": "정밀 스킬 옆 안내 칩을 [설정 영상]으로 바꾸고, 정밀 스킬을 처음 선택하면 버프 즐겨찾기 설정 영상을 한 번 펼쳐 보여줍니다.",
+      "contentHash": "e3d22db5b4f8f3d33a67d7d5b16da4f105761a478d2495993ee168c53c1d5818",
+      "date": "2026-08-10",
+      "id": "precision-guide-video-chip-2026-08-10"
+    },
+    {
+      "content": "그래픽 가속을 사용할 수 없어 버프칸 인식이 꺼져 있으면 해당 알림에 사용 불가 상태를 표시하고, CPU 모드 전환을 바로 안내합니다.",
+      "contentHash": "86211d2e30f6e014dae0e83ef8b35c53311c5080181049cd8ea773d399c63b08",
+      "date": "2026-08-10",
+      "id": "precision-unavailable-guidance-2026-08-10"
+    },
+    {
+      "content": "버프 아이콘 줄 아래에 즐겨찾기 같은 분리된 창이 떠 있으면 버프를 놓치던 문제를 수정하고, 남은 시간 숫자를 더 정확하게 읽도록 개선했습니다.",
+      "contentHash": "95090e59c04ef8a3f13896886703bb2b17f0ae1406a92cbcbefcc00f7d170b94",
+      "date": "2026-08-10",
+      "id": "buff-expiry-detection-improvements-2026-08-10"
+    },
+    {
+      "content": "화면을 작게 공유하거나 전투 효과가 시간 표시와 겹칠 때 부스터 남은 시간을 놓치거나 잘못 읽던 문제를 개선했습니다.",
+      "contentHash": "b697aa3202d0c2051e2a99e85072f628adb521b83addc4a501c3e98666b0bb46",
+      "date": "2026-08-10",
+      "id": "booster-expiry-reading-improvements-2026-08-10"
+    },
+    {
+      "content": "화면 공유 영역이나 게임 창 배치가 바뀐 뒤 특수 코어를 인식하고도 알림이 울리지 않던 문제를 수정했습니다.",
+      "contentHash": "bba41464600884b08caada20cbbb6c6d5625f78bd1cd3a4d926ec09e8ed0256f",
+      "date": "2026-08-09",
+      "id": "special-core-schedule-after-layout-reset-2026-08-09"
+    },
+    {
+      "content": "전체 비활성화로 멈췄던 일반 타이머가 비활성화를 해제하면 남은 시간부터 다시 시작됩니다. 직접 멈춰둔 타이머는 그대로 유지됩니다.",
+      "contentHash": "df3de965b97e5f7f0b3f2c16e41f4baf99c35720f23a7622005d0f305a23fd53",
+      "date": "2026-08-07",
+      "id": "general-timer-disable-resume-2026-08-07"
+    },
+    {
+      "content": "PIP 타이머의 알림 깜빡임이 10초 뒤 멈추고 강조 색상만 남습니다. 쿨타임이 길어 알림이 오래 유지되는 스킬에서도 화면이 계속 깜빡이지 않습니다.",
+      "contentHash": "c6cb4bf7b017abf66af414b3a2869bcec59afca9990a66258edc2524a3e70c47",
+      "date": "2026-08-07",
+      "id": "pip-alert-blink-settle-2026-08-07"
+    },
+    {
+      "content": "일반 타이머에 이름을 설정할 수 있습니다. 설정한 이름은 PIP 타이머에도 표시됩니다.",
+      "contentHash": "7681ee4b27ed804a777c823a1461a11648a83b2455d4bd7a3dd35cc9a6392033",
+      "date": "2026-08-07",
+      "id": "general-timer-names-2026-08-07"
+    },
+    {
+      "content": "문의/피드백의 연락처 입력을 없앴습니다. 답장이 필요한 문의는 디스코드나 카카오톡을 이용해주세요.",
+      "contentHash": "ab628efe87eeab2a7038663fbb9c613706d318c0dfc6fc00016599cfd79c6e0a",
+      "date": "2026-08-06",
+      "id": "feedback-contact-removal-2026-08-06"
+    },
+    {
+      "content": "원격 처리 기능(베타)을 추가했습니다. 초대된 테스터에게 순차적으로 제공됩니다.",
+      "contentHash": "a8f175ad97ecda41364ee5ba8bf46c340eedbb56ad62aa3fe96d6f46c146b8bb",
+      "date": "2026-08-06",
+      "id": "remote-recognition-beta-2026-08-06"
+    },
+    {
+      "content": "Discord 커뮤니티와 1:1 문의 채널을 추가했습니다.",
+      "contentHash": "ade08c47e31b5454c1885420c4f54c006cb82bd327f77255030f7b00555ed454",
+      "date": "2026-07-31",
+      "id": "discord-community-2026-07-31"
+    },
+    {
+      "content": "룬 알림의 오작동을 줄이기 위해 확인 시간을 늘렸습니다. 알림은 이전보다 약 1초 늦게 울릴 수 있습니다.",
+      "contentHash": "0d48920016e56630796accb005d99fd67d58b2a084e598758480297db838dd0f",
+      "date": "2026-07-29",
+      "id": "legacy-2026-07-29-0d48920016e56630"
+    },
+    {
+      "content": "전투 효과를 가득 찬 장비 가방으로 잘못 판단하거나, 시작부터 보스가 보일 때 알림이 울리지 않던 문제를 수정했습니다.",
+      "contentHash": "b2a4b482daea6472d87fe66ec2a82be4704f1d98579c3ab020c8046daa256119",
+      "date": "2026-07-29",
+      "id": "legacy-2026-07-29-b2a4b482daea6472"
+    },
+    {
+      "content": "화면 오른쪽 위에 버프 즐겨찾기 창이 있을 때 버프 종료 알림이 정상적으로 작동하지 않던 문제를 수정했습니다.",
+      "contentHash": "552247df36b579df741723f686b0b9c2293b4b2b0013a9787238ece9fb323322",
+      "date": "2026-07-29",
+      "id": "legacy-2026-07-29-552247df36b579df"
+    },
+    {
+      "content": "확장 UI에서도 알림을 사용할 수 있도록 게임 영역 설정을 추가했습니다.",
+      "contentHash": "57bf769cbf304cfbc4ce82d71398e4f6cb512056bf10bfb64db9f83da8156a2f",
+      "date": "2026-07-28",
+      "id": "legacy-2026-07-28-57bf769cbf304cfb"
+    },
+    {
+      "content": "울티마 스쿼드 장비 가방 감지 정확도를 개선했습니다.",
+      "contentHash": "3433302140a2b35a2256b93f204e9be64adfc8b8b78c08acf8ee6efb9d4a0b0d",
+      "date": "2026-07-27",
+      "id": "legacy-2026-07-27-3433302140a2b35a"
+    },
+    {
+      "content": "울티마 스쿼드 알림에 반복 설정을 추가했습니다.",
+      "contentHash": "5b3ba4e7e3f6b04780e5fc2ce9008f3741b3a693cc662edc9d32f4c1acd1d15a",
+      "date": "2026-07-27",
+      "id": "legacy-2026-07-27-5b3ba4e7e3f6b047"
+    },
+    {
+      "content": "울티마 스쿼드 보스 등장 알림을 추가했습니다.",
+      "contentHash": "6b433f870051f34e919da6d09d4769c2c4f9e5ecd062863ab80bd420c08df452",
+      "date": "2026-07-26",
+      "id": "legacy-2026-07-26-6b433f870051f34e"
+    },
+    {
+      "content": "울티마 스쿼드 장비 알림이 실제보다 일찍 울릴 수 있던 문제를 수정했습니다.",
+      "contentHash": "5ba7d0c0c675b2fd9b8058a8bc5008e6e8e2421cd3953da6d1870e56ff132dab",
+      "date": "2026-07-26",
+      "id": "legacy-2026-07-26-5ba7d0c0c675b2fd"
+    },
+    {
+      "content": "울티마 스쿼드 장비 가방이 가득 차면 알려주는 기능을 추가했습니다.",
+      "contentHash": "0f22af286373c072a815df9a8855da5f9bd51dea20189306c0c20dc7eec0dbf0",
+      "date": "2026-07-26",
+      "id": "legacy-2026-07-26-0f22af286373c072"
+    },
+    {
+      "content": "일부 분홍색 미니맵 표식을 룬으로 잘못 감지하던 문제를 수정했습니다.",
+      "contentHash": "d7db667ad31f4ac0eab58a3d9bf71946174d0cf2f4fe564df2de7b769df88d7a",
+      "date": "2026-07-26",
+      "id": "legacy-2026-07-26-d7db667ad31f4ac0"
+    },
+    {
+      "content": "일부 미니맵 표시를 룬으로 잘못 감지하던 문제를 수정했습니다.",
+      "contentHash": "13c8a98f0bb1c156f72757308d16573a8e53e95e5e4bb3a7c0fbe048bd0f1229",
+      "date": "2026-07-20",
+      "id": "legacy-2026-07-20-13c8a98f0bb1c156"
+    },
+    {
+      "content": "감지 제보에서 문제 상황을 더 정확히 선택할 수 있도록 개선했습니다.",
+      "contentHash": "26a9fd198916261eed6a626188fea36e3f2a63f2dae538f599412d55bf619ddf",
+      "date": "2026-07-18",
+      "id": "legacy-2026-07-18-26a9fd198916261e"
+    },
+    {
+      "content": "일부 그래픽 환경에서 정밀 감지를 시작하지 못하던 문제를 수정했습니다.",
+      "contentHash": "11f078ebce7fa3c494de7a9b1b85a1b97185552cd717f4471f5c8ccd212b30bd",
+      "date": "2026-07-18",
+      "id": "legacy-2026-07-18-11f078ebce7fa3c4"
+    },
+    {
+      "content": "그래픽 가속을 사용할 수 없는 환경에서도 기기 성능에 따라 정밀 감지를 사용할 수 있습니다.",
+      "contentHash": "74a2adc4d280f5d1c040cca4453d3ee11543601bc1ad1e651b3fbec45042be46",
+      "date": "2026-07-18",
+      "id": "legacy-2026-07-18-74a2adc4d280f5d1"
+    },
+    {
+      "content": "정밀 감지가 준비 중에 멈출 수 있던 문제를 수정했습니다.",
+      "contentHash": "1fb7be837e80d76b11944fed917ffbf372856a459de7a4c3eba4319e53664ab0",
+      "date": "2026-07-17",
+      "id": "legacy-2026-07-17-1fb7be837e80d76b"
+    },
+    {
+      "content": "정밀 감지에 필요한 그래픽 설정을 확인할 수 있도록 안내를 추가했습니다.",
+      "contentHash": "b5db03897c29d0dfa44750ed499eabe1377b86bca21990b968ae8be29650c711",
+      "date": "2026-07-15",
+      "id": "legacy-2026-07-15-b5db03897c29d0df"
+    },
+    {
+      "content": "사냥 멈춤 알림이 설정한 간격보다 빠르게 반복되던 문제를 수정했습니다.",
+      "contentHash": "a11ef0dc113f575ffbd489bade17449a535246eedffc4b0622ff2960bcedb019",
+      "date": "2026-07-12",
+      "id": "legacy-2026-07-12-a11ef0dc113f575f"
+    },
+    {
+      "content": "일부 맵 장식을 룬으로 잘못 감지하던 문제를 수정했습니다.",
+      "contentHash": "88799cd25e7c7608ccfc8c27380b26832765fce9a18a7969c30766a190f6c957",
+      "date": "2026-07-12",
+      "id": "legacy-2026-07-12-88799cd25e7c7608"
+    },
+    {
+      "content": "예인 남은 횟수가 갑자기 잘못 읽혔을 때 알림이 너무 일찍 울릴 수 있던 문제를 수정했습니다.",
+      "contentHash": "0b37f726fbd5ea3a5f36a699633c8a029effe1e37f5b3462fe985ce9cfa1ecc5",
+      "date": "2026-07-12",
+      "id": "legacy-2026-07-12-0b37f726fbd5ea3a"
+    },
+    {
+      "content": "역장 정밀 감지 정확도를 개선했습니다.",
+      "contentHash": "46cf31f6f1c50ad149373ec9334280e816331e27d821ed708d6bf91b13a1f244",
+      "date": "2026-07-12",
+      "id": "legacy-2026-07-12-46cf31f6f1c50ad1"
+    },
+    {
+      "content": "일부 화면과 맵 이동 후 새 룬을 놓칠 수 있던 문제를 수정했습니다.",
+      "contentHash": "58b40000a0e1685c7655154077ea3328bec61b129f70ec3276a4a7599c6c6771",
+      "date": "2026-07-12",
+      "id": "legacy-2026-07-12-58b40000a0e1685c"
+    },
+    {
+      "content": "사이트를 오래 켜둔 뒤 일부 감지가 시작되지 않던 문제를 수정했습니다.",
+      "contentHash": "e630033f4fcff987fd178a818466a76cd108519ec5baa369b8168307ca619d55",
+      "date": "2026-07-12",
+      "id": "legacy-2026-07-12-e630033f4fcff987"
+    },
+    {
+      "content": "PIP에서도 모든 알림과 마스터 볼륨을 조절할 수 있습니다.",
+      "contentHash": "1cdbdc385405bb4fc4711c6f60718b87997e3fa24fa5e8976bc9be58c6b9694e",
+      "date": "2026-07-11",
+      "id": "legacy-2026-07-11-1cdbdc385405bb4f"
+    },
+    {
+      "content": "회수하세요 아담 음성이 추가되었습니다.",
+      "contentHash": "7445db69c6731b2862a3b0f38a28ab4e23320ab82640d2e034fbc8a190e26cd4",
+      "date": "2026-07-11",
+      "id": "legacy-2026-07-11-7445db69c6731b28"
+    },
+    {
+      "content": "일부 환경에서 버프칸 정밀 감지가 제대로 준비되지 않을 수 있던 문제를 수정했습니다.",
+      "contentHash": "d455f7fb40cac6937fd842d4bf6032b3bef919948ddffa95e7b932226bbe10fb",
+      "date": "2026-07-11",
+      "id": "legacy-2026-07-11-d455f7fb40cac693"
+    },
+    {
+      "content": "특수 코어 알림의 아이콘 감지를 개선했습니다.",
+      "contentHash": "997972ba9442e9858c1cff2c45d1076cd331ff54b54761acb89d75cd07ea47bf",
+      "date": "2026-07-11",
+      "id": "legacy-2026-07-11-997972ba9442e985"
+    },
+    {
+      "content": "버프 종료 알림의 버프 아이콘 감지를 개선했습니다.",
+      "contentHash": "de0eacfbb97af78ce29e79b914ca1c624c6996ea255f356f5bc0328e8e2d6791",
+      "date": "2026-07-11",
+      "id": "legacy-2026-07-11-de0eacfbb97af78c"
+    },
+    {
+      "content": "정밀 스킬 알림의 아이콘 감지를 개선했습니다.",
+      "contentHash": "bc203a64549de4d3988277c3de28ffb87c68e5e90f6e0ec1c1b567978a2a34d9",
+      "date": "2026-07-10",
+      "id": "legacy-2026-07-10-bc203a64549de4d3"
+    },
+    {
+      "content": "버프칸을 읽는 정밀 감지 방식을 개선했습니다.",
+      "contentHash": "3cbdba5799a3e0eb07f3c34de267676920a53a0feb6f539e65a918c2f6437f16",
+      "date": "2026-07-07",
+      "id": "legacy-2026-07-07-3cbdba5799a3e0eb"
+    },
+    {
+      "content": "버프 종료 알림이 준비 중에 머물 수 있던 문제를 수정했습니다.",
+      "contentHash": "5a3ba517bffccac2ab162de266354a96d167c353d7da689402fdbca665883d5c",
+      "date": "2026-07-07",
+      "id": "legacy-2026-07-07-5a3ba517bffccac2"
+    },
+    {
+      "content": "메모리 사용량이 필요 이상으로 유지되던 문제를 수정했습니다.",
+      "contentHash": "06f826365deea07833d77bf4dde14f558361a36b84df53a61a25572fc62d27c6",
+      "date": "2026-07-06",
+      "id": "legacy-2026-07-06-06f826365deea078"
+    },
+    {
+      "content": "사이트 곳곳의 디자인을 수정했습니다.",
+      "contentHash": "c4b40fde8c0cec0e2716d0c44b506ed9d2811d12dd904fa23acd20987836d897",
+      "date": "2026-07-05",
+      "id": "legacy-2026-07-05-c4b40fde8c0cec0e"
+    },
+    {
+      "content": "알림 편집줄 배치와 마스터 볼륨/설치기 시간 팝오버, 화면 공유 상세 패널을 큰 화면에서 보기 좋게 정리했습니다.",
+      "contentHash": "77360f59cd9c954b008dd32876851f5c5a3078fc83cb707eccac3027c4d63bd3",
+      "date": "2026-07-04",
+      "id": "legacy-2026-07-04-77360f59cd9c954b"
+    },
+    {
+      "content": "스킬 알림에 매화검 3초식 : 예인 VI를 남은 횟수 기준으로 감지하는 항목을 추가했습니다.",
+      "contentHash": "90c94c211c397ed4861485a3a1922267e8b7df9a6048241d17611b1d52aa9b3c",
+      "date": "2026-07-03",
+      "id": "legacy-2026-07-03-90c94c211c397ed4"
+    },
+    {
+      "content": "사용 가이드를 최신 알림 기능과 정밀 감지 흐름에 맞게 정리했습니다.",
+      "contentHash": "144d97b3c58081053d47f10215cd4f0613937d54c51c002f599ced47858b4034",
+      "date": "2026-07-03",
+      "id": "legacy-2026-07-03-144d97b3c5808105"
+    },
+    {
+      "content": "신규 사용자의 야누스/파운틴 기본 알림을 정밀 감지로 변경했습니다.",
+      "contentHash": "26d7d979dab770c8292bba729515aaf9d54675831d8cfc51d0bcb679a4e8ed24",
+      "date": "2026-07-03",
+      "id": "legacy-2026-07-03-26d7d979dab770c8"
+    },
+    {
+      "content": "사이트 여기저기 소소한 디자인 작업을 진행했습니다.",
+      "contentHash": "7fcd7dcb31902995ca07d64dafe2eb35a771f68efcc8275ce8c9b493b0846f3c",
+      "date": "2026-07-02",
+      "id": "legacy-2026-07-02-7fcd7dcb31902995"
+    },
+    {
+      "content": "스킬 알림의 구형 버프칸 모드를 정리하고 정밀 감지 항목으로 자동 전환되도록 했습니다.",
+      "contentHash": "439a36cb4c49889c740b784784750f529b43bcd2c69ccbe4a911dbe75b0db26f",
+      "date": "2026-07-01",
+      "id": "legacy-2026-07-01-439a36cb4c49889c"
+    },
+    {
+      "content": "스킬 알림에 최초 알림만 0.5초 단위로 최대 2초 늦춰 울리는 랜덤 지연 옵션을 추가했습니다.",
+      "contentHash": "e41225da1fe6a339bfe4a183b2bfe7b65aaf07a517485f5ad95fade8df883ed8",
+      "date": "2026-07-01",
+      "id": "legacy-2026-07-01-e41225da1fe6a339"
+    },
+    {
+      "content": "PIP 타이머에서 특수코어 쿨타임을 보스용 화면으로 볼 수 있게 했습니다.",
+      "contentHash": "57ed51f0d033ae819650d968956444cbb7119b92c12d3f47c75829cdb398c842",
+      "date": "2026-06-30",
+      "id": "legacy-2026-06-30-57ed51f0d033ae81"
+    },
+    {
+      "content": "특수 코어 발동을 감지해 재사용 대기시간 기준으로 알려주는 특수 코어 알림을 추가했습니다.",
+      "contentHash": "2c5f00c9dae60abd5924cc2b871a17dd05820bf074130f5d2169045942cc0800",
+      "date": "2026-06-30",
+      "id": "legacy-2026-06-30-2c5f00c9dae60abd"
+    },
+    {
+      "content": "스킬 알림에 에르다 파운틴 정밀 감지 항목을 추가했습니다.",
+      "contentHash": "603d54caadde44b3e853cf9afe45d8feb5ba914236f90c3186817a144cab3527",
+      "date": "2026-06-29",
+      "id": "legacy-2026-06-29-603d54caadde44b3"
+    },
+    {
+      "content": "스킬 알림에 솔 야누스: 새벽 정밀 감지 항목을 추가했습니다.",
+      "contentHash": "e178e370188f156abb6f9c12b3f0b9abc4857abe15315469eaf37a6a5c7f9334",
+      "date": "2026-06-29",
+      "id": "legacy-2026-06-29-e178e370188f156a"
+    },
+    {
+      "content": "스킬 알림에서 에르다 파운틴을 버프칸 남은 시간 기준으로 감지할 수 있는 모드를 추가했습니다.",
+      "contentHash": "be16a531bacde4d3a22f1dbec51a403f1190921d54e4815f77c61a685c2daa26",
+      "date": "2026-06-23",
+      "id": "legacy-2026-06-23-be16a531bacde4d3"
+    },
+    {
+      "content": "룬 이미지를 경험치 쿠폰으로 인식하던 문제를 수정했습니다.",
+      "contentHash": "f36f22f4808b8928b8ff6f4389890de08339b19669d74f351379c02fa2f84437",
+      "date": "2026-06-23",
+      "id": "legacy-2026-06-23-f36f22f4808b8928"
+    },
+    {
+      "content": "에르다 파운틴 알림이 알림 완료 후 다시 감지되지 않던 문제를 수정했습니다.",
+      "contentHash": "23b1b0c79c9c1b4531c3fc59f3376e46376fd8490f63e2f9186464aef3d2fb83",
+      "date": "2026-06-23",
+      "id": "legacy-2026-06-23-23b1b0c79c9c1b45"
+    },
+    {
+      "content": "스킬 알림이 알림 완료 후 일부 설치기를 다시 감지하지 못하던 문제를 수정했습니다.",
+      "contentHash": "a4ca899c7af1f21373ed9fe21b88ed7049c41ba1998ec9e82414c67552750b4b",
+      "date": "2026-06-23",
+      "id": "legacy-2026-06-23-a4ca899c7af1f213"
+    },
+    {
+      "content": "버프 종료 알림에서 일부 첫 줄 버프가 잘못 감지되어 알림이 울리던 문제를 수정했습니다.",
+      "contentHash": "5a092c6e4bb79b7cc994838367fe94462e545133c3e55cb6bba8e18b69a65040",
+      "date": "2026-06-23",
+      "id": "legacy-2026-06-23-5a092c6e4bb79b7c"
+    },
+    {
+      "content": "스킬 알림이 재사용 가능 전 다시 울릴 수 있던 문제를 수정했습니다.",
+      "contentHash": "160f22ea1d385425669b4f24ed47db3d86342b621cbfdc8bbc3481afd9f8f479",
+      "date": "2026-06-23",
+      "id": "legacy-2026-06-23-160f22ea1d385425"
+    },
+    {
+      "content": "수동 경험치 인식에서 영역 선택 후 경험치 바가 잠시 표시되지 않던 문제를 수정했습니다.",
+      "contentHash": "93b6ce8d9ece77d15f851d73d7fd6a9f7c223a8d05a82c091c220e069ff6176a",
+      "date": "2026-06-23",
+      "id": "legacy-2026-06-23-93b6ce8d9ece77d1"
+    },
+    {
+      "content": "직업 설치기 알림 시점을 스킬 종료 후 최대 20초까지 설정할 수 있게 했습니다.",
+      "contentHash": "9fb295450ae27c853d29db5da93d23f9ee958df804ef1ebfc2e7b3c2b04e2cea",
+      "date": "2026-06-22",
+      "id": "legacy-2026-06-22-9fb295450ae27c85"
+    },
+    {
+      "content": "스킬 알림 버프칸 모드에서 같은 알림이 짧은 간격으로 다시 울릴 수 있던 문제를 수정했습니다.",
+      "contentHash": "871b25f6450518526151b5d7551ed693e00c7726bca4e9184273c3610221d224",
+      "date": "2026-06-20",
+      "id": "legacy-2026-06-20-871b25f645051852"
+    },
+    {
+      "content": "스킬 알림 버프칸 모드에서 남은 시간이 잠깐 사라져도 알림을 놓치지 않도록 수정했습니다.",
+      "contentHash": "bd81b18dd05a68546a0904f3c8af62b9e1ef12489cbdcefa2a0afd51fb37c646",
+      "date": "2026-06-20",
+      "id": "legacy-2026-06-20-bd81b18dd05a6854"
+    },
+    {
+      "content": "일반 타이머 자동 재시작이 시간이 지날수록 조금씩 밀리던 문제를 수정했습니다.",
+      "contentHash": "c4e1a09e6fe885076c0d1f0a5a6d1b167b224eefa99a6fb455ca43daa4ac955d",
+      "date": "2026-06-19",
+      "id": "legacy-2026-06-19-c4e1a09e6fe88507"
+    },
+    {
+      "content": "사냥 멈춤 알림의 경험치 인식 방식을 직접 경험치바 높이를 선택하는 방식으로 정리했습니다.",
+      "contentHash": "b3566e3a3be1e9f113ca4186e675d6c8080d5df567507f1023c2711a2c02da04",
+      "date": "2026-06-19",
+      "id": "legacy-2026-06-19-b3566e3a3be1e9f1"
+    },
+    {
+      "content": "PiP 타이머에 현재 공유 중인 화면을 함께 볼 수 있는 옵션을 추가했습니다.",
+      "contentHash": "d4d7c4f23879adb1255dbb65cbd4b339fa847862e6f3141cbbf56ad605facd83",
+      "date": "2026-06-19",
+      "id": "legacy-2026-06-19-d4d7c4f23879adb1"
+    },
+    {
+      "content": "PiP 타이머에서 수동 경험치 인식 상태가 표시되지 않던 문제를 수정했습니다.",
+      "contentHash": "d14e0908f164f8b5581a36e51eed639a387c2b851597be29993d24e53fbb15b0",
+      "date": "2026-06-19",
+      "id": "legacy-2026-06-19-d14e0908f164f8b5"
+    },
+    {
+      "content": "스킬 알림에 홀로그램 그래피티: 역장 VI 버프칸 감지를 추가했습니다.",
+      "contentHash": "59e5a4e8a95b18ead4d5768293d77da9a900f9175642a9ebf0b75c30195e4ba8",
+      "date": "2026-06-19",
+      "id": "legacy-2026-06-19-59e5a4e8a95b18ea"
+    },
+    {
+      "content": "스킬 알림의 반복 알림이 짧은 간격으로 겹쳐 울리던 문제를 수정했습니다.",
+      "contentHash": "3f3c4b2b4f574e4784ea4736e2f9e7127a63b6cc53f08e11383ff2d12ca3e62b",
+      "date": "2026-06-19",
+      "id": "legacy-2026-06-19-3f3c4b2b4f574e47"
+    },
+    {
+      "content": "일반 타이머를 한 번에 시작, 일시정지, 초기화할 수 있는 버튼을 추가했습니다.",
+      "contentHash": "5f7c88ddbacd3bea17aabac634559f4559c1d9c835c7c5e3263f6df82b64f8a4",
+      "date": "2026-06-19",
+      "id": "legacy-2026-06-19-5f7c88ddbacd3bea"
+    },
+    {
+      "content": "일반 타이머에 완료 후 같은 시간으로 다시 시작하는 자동 재시작 옵션을 추가했습니다.",
+      "contentHash": "56593cf4a8b936a606324fa780cf4d62fc2d63bff0ae62f1afcd2c5117131a6b",
+      "date": "2026-06-18",
+      "id": "legacy-2026-06-18-56593cf4a8b936a6"
+    },
+    {
+      "content": "사냥 멈춤 알림에 경험치바 높이를 직접 선택하는 경험치 인식 모드를 추가했습니다.",
+      "contentHash": "1329abb1e4ef458e0836ed157d11ff37e0d53ece44d20778572289e4e06ff69e",
+      "date": "2026-06-18",
+      "id": "legacy-2026-06-18-1329abb1e4ef458e"
+    },
+    {
+      "content": "종료된 이벤트 전용 스킬 알림 항목을 정리했습니다.",
+      "contentHash": "1a7e0421f52081dd0be8c78d97156caa958fd802e6128f0d9c4182ae84ed3bdc",
+      "date": "2026-06-17",
+      "id": "legacy-2026-06-17-1a7e0421f52081dd"
+    },
+    {
+      "content": "스킬 알림과 룬 알림의 반복 횟수를 1회, 2회, 3회, 5회 또는 계속 반복으로 설정할 수 있게 했습니다.",
+      "contentHash": "f74d9dfaae9b9191ebf9a9c39faf2767cf36034712e73518c2ea9e70a0bd69b1",
+      "date": "2026-06-15",
+      "id": "legacy-2026-06-15-f74d9dfaae9b9191"
+    },
+    {
+      "content": "스킬 알림에서 솔 야누스: 새벽을 퀵슬롯 대신 버프칸에서 남은 시간 기준으로 감지할 수 있는 기능을 추가했습니다.",
+      "contentHash": "ae35973cee2056b8f8ba925a2a4e08929ef24006f66becc2c031077a091e29a9",
+      "date": "2026-06-15",
+      "id": "legacy-2026-06-15-ae35973cee2056b8"
+    },
+    {
+      "content": "버프 종료 알림의 알림 시점을 버프 종료 전뿐 아니라 종료 후까지 설정할 수 있게 개선했습니다.",
+      "contentHash": "24e502dfe01b57c33b86e75a0313e260a1b1f8152f1b879fee9eb696063d4b97",
+      "date": "2026-06-15",
+      "id": "legacy-2026-06-15-24e502dfe01b57c3"
+    },
+    {
+      "content": "스킬 알림의 알림 시점을 스킬 종료 전뿐 아니라 종료 후까지 설정할 수 있게 개선했습니다.",
+      "contentHash": "21321fae1a0ce202eec4d3c4a7df5cbe21df82831fabf911b12fa4ab3ef128c1",
+      "date": "2026-06-14",
+      "id": "legacy-2026-06-14-21321fae1a0ce202"
+    },
+    {
+      "content": "부스터 종료 알림에 전용 알림음을 추가했습니다.",
+      "contentHash": "1c07d5890ab2e54449ab7b96ce245655506b8023ee403984eea73699e5a81714",
+      "date": "2026-06-13",
+      "id": "legacy-2026-06-13-1c07d5890ab2e544"
+    },
+    {
+      "content": "스킬 알림에서 영역을 조금 넓게 선택했을 때 아이콘 테두리가 쿨타임 숫자로 잘못 인식되던 문제를 개선했습니다.",
+      "contentHash": "2552ed0c875fd2d005c2768a66f4e8febfb6c6a9bcab5aac3ea2fe4bca8ce706",
+      "date": "2026-06-13",
+      "id": "legacy-2026-06-13-2552ed0c875fd2d0"
+    },
+    {
+      "content": "버프 종료 알림에서 감지할 대상 그룹을 선택할 수 있게 했습니다.",
+      "contentHash": "4869a65f7d127db1d4e160213e1303623dbd6ae100b71730901b5ca07658559e",
+      "date": "2026-06-12",
+      "id": "legacy-2026-06-12-4869a65f7d127db1"
+    },
+    {
+      "content": "버프 종료 알림의 기본 감지 모드를 제거하고 정밀 감지로 통합했습니다.",
+      "contentHash": "74eaaf72309b42389b5dda700ece24e88bebc5f2cd8a54a5b68a98d44ee2a167",
+      "date": "2026-06-12",
+      "id": "legacy-2026-06-12-74eaaf72309b4238"
+    },
+    {
+      "content": "다크 모드의 색감과 모달 가시성을 개선했습니다.",
+      "contentHash": "0499e9c12f6ee1b0608bd39f3478c823a75a1ed2fafb1ad5a509ac9763f97d71",
+      "date": "2026-06-09",
+      "id": "legacy-2026-06-09-0499e9c12f6ee1b0"
+    },
+    {
+      "content": "버프 종료 알림에 정밀 감지 모드를 추가했습니다.",
+      "contentHash": "8645607f28f538121c7cbf195f296d3d4bd94ad3db4abfd110021ff0cf789ed0",
+      "date": "2026-06-09",
+      "id": "legacy-2026-06-09-8645607f28f53812"
+    },
+    {
+      "content": "룬을 감지한 뒤에도 마지막 감지 시간이 계속 유지되도록 수정했습니다.",
+      "contentHash": "bfb10ff14431d464c5136dd9d6df9b2fb29994c8a63c53ab3b6ffb978499b0f4",
+      "date": "2026-06-09",
+      "id": "legacy-2026-06-09-bfb10ff14431d464"
+    },
+    {
+      "content": "부스터 종료 알림이 같은 시점에 겹쳐 울릴 수 있던 문제를 수정했습니다.",
+      "contentHash": "cd40b6cc2f32a5a6a225ea74b8b65ebbbbbb34d3ffe3917409ec3632b6deefa8",
+      "date": "2026-06-09",
+      "id": "legacy-2026-06-09-cd40b6cc2f32a5a6"
+    },
+    {
+      "content": "버프 종료 알림이 순간적인 감지 지연에도 알림을 놓치지 않도록 개선했습니다.",
+      "contentHash": "0da750597f1f8edd7f3c15ebcb529439ebd2936e2a4aeb5183adc36fb101a534",
+      "date": "2026-06-03",
+      "id": "legacy-2026-06-03-0da750597f1f8edd"
+    },
+    {
+      "content": "버프 종료 알림이 일부 정상 카운트다운을 놓치던 문제를 개선했습니다.",
+      "contentHash": "03275e40590e4a8c093b93a6d8386d42956f4c3d93ac4ea3468f0e7d5ac70dde",
+      "date": "2026-06-03",
+      "id": "legacy-2026-06-03-03275e40590e4a8c"
+    },
+    {
+      "content": "PiP 타이머에서 사냥 멈춤 알림의 경험치와 쿨타임 인식 상태를 함께 볼 수 있도록 개선했습니다.",
+      "contentHash": "a244a7e70872094c939e4ea31ff172aa045bc4dbc758477927fedef97a90d226",
+      "date": "2026-06-02",
+      "id": "legacy-2026-06-02-a244a7e70872094c"
+    },
+    {
+      "content": "사냥 멈춤 알림의 쿨타임 인식 모드에서 알림 후 새 쿨타임을 다시 감지하지 못하던 문제를 수정했습니다.",
+      "contentHash": "05af9f1b6be20a7a3f9633f49a2a0ab1600b453657bfe2cec16d25a04721305e",
+      "date": "2026-06-02",
+      "id": "legacy-2026-06-02-05af9f1b6be20a7a"
+    },
+    {
+      "content": "PiP 창 메이커를 추가해 표시 항목, 항목별 색상, 크기와 강조 방식을 한곳에서 조정할 수 있게 했습니다.",
+      "contentHash": "d03fe239ca6b4a1e1a030b82b1e73deb0d0e2305ec3bd981d9c36952e208f377",
+      "date": "2026-06-02",
+      "id": "legacy-2026-06-02-d03fe239ca6b4a1e"
+    },
+    {
+      "content": "PiP 타이머가 사용자가 설정한 알림 시점에 맞춰 강조되도록 조정했습니다.",
+      "contentHash": "0e85591383c5065193fa083790300ef9ba642eca86b78a235e5b2ff426c907d5",
+      "date": "2026-06-02",
+      "id": "legacy-2026-06-02-0e85591383c50651"
+    },
+    {
+      "content": "PiP 타이머의 크기, 알림 색, 강조 방식을 조절할 수 있도록 개선했습니다.",
+      "contentHash": "de8e091b803a37fba7901a3d70fc1ad2498177b3a96bc3e8eeee1dc85eb435bd",
+      "date": "2026-06-01",
+      "id": "legacy-2026-06-01-de8e091b803a37fb"
+    },
+    {
+      "content": "부스터 종료 알림이 잘못된 시간 인식으로 엉뚱한 타이밍에 울리는 문제를 완화했습니다.",
+      "contentHash": "dd3df80b97ee29206c2f5f58cfca123b7c6dab157a847138caf47a94f393e65c",
+      "date": "2026-06-01",
+      "id": "legacy-2026-06-01-dd3df80b97ee2920"
+    },
+    {
+      "content": "사냥 멈춤 알림의 쿨타임 인식이 한 번 울린 뒤 다시 감시하지 않거나 숫자를 잘못 읽던 문제를 수정했습니다.",
+      "contentHash": "62d29d93b32fe7e5f727fcce991de8171e946649e075e0234315e0375fbddaf9",
+      "date": "2026-06-01",
+      "id": "legacy-2026-06-01-62d29d93b32fe7e5"
+    },
+    {
+      "content": "VIP 부스터, HEXA 부스터 종료 알림 기능을 추가했습니다.",
+      "contentHash": "02ddd516fa2081a21bda17bbeecb82d3d670ed30534996861b94b5b147fda891",
+      "date": "2026-06-01",
+      "id": "legacy-2026-06-01-02ddd516fa2081a2"
+    },
+    {
+      "content": "사냥 멈춤 알림에 쿨타임 숫자가 사라졌을 때 알려주는 감시 방식을 추가했습니다.",
+      "contentHash": "a635c41d8d36895d60d2e8ea7e81062d5a3214ca1183a1267423336d9ca854ed",
+      "date": "2026-05-31",
+      "id": "legacy-2026-05-31-a635c41d8d36895d"
+    },
+    {
+      "content": "버프 종료 알림이 룬 쿨타임처럼 비슷하게 보이는 아이콘을 잘못 추적하던 문제를 완화했습니다.",
+      "contentHash": "82370bdd01b84b41b2fe5b354d966200f464bd5b8f23b48f87fb4150e61c34f3",
+      "date": "2026-05-29",
+      "id": "legacy-2026-05-29-82370bdd01b84b41"
+    },
+    {
+      "content": "버프 종료 알림에서 소재비를 인식하지 못하던 문제를 개선했습니다.",
+      "contentHash": "6974780c9ddd1251fa49ac19fffe99bf0cd0cef3214e0e5539a5fd665298bb3b",
+      "date": "2026-05-26",
+      "id": "legacy-2026-05-26-6974780c9ddd1251"
+    },
+    {
+      "content": "사용자 알림음 파일을 직접 업로드해 원하는 알림 소리로 사용할 수 있게 했습니다.",
+      "contentHash": "cf821667e2c86b5c01468d8317dace759f5e5292384a9a96b3bda417e95de44e",
+      "date": "2026-05-26",
+      "id": "legacy-2026-05-26-cf821667e2c86b5c"
+    },
+    {
+      "content": "버프 종료 알림이 지원하지 않는 버프 아이콘을 잘못 추적해 오작동하던 문제를 완화했습니다.",
+      "contentHash": "9000505baad27eb2e47517780d40c534aa7bf037cfe1162fcef7570e2b460f83",
+      "date": "2026-05-25",
+      "id": "legacy-2026-05-25-9000505baad27eb2"
+    },
+    {
+      "content": "알림음이 더 안정적으로 재생되도록 정리하고, 소리 크기와 앞뒤 여백을 자연스럽게 맞췄습니다.",
+      "contentHash": "a974d146c1d26819a65c8681be592b34c25e1f61d3763fcf3c81e8455460b345",
+      "date": "2026-05-25",
+      "id": "legacy-2026-05-25-a974d146c1d26819"
+    },
+    {
+      "content": "PiP 타이머 하단에서 사냥 경험치와 퍼센트를 함께 볼 수 있도록 개선했습니다.",
+      "contentHash": "c3a2d70431a320064af22d4a96f2ffa9811dedfc2ff533fefd5fd89fcc2c70df",
+      "date": "2026-05-25",
+      "id": "legacy-2026-05-25-c3a2d70431a32006"
+    },
+    {
+      "content": "버프 종료 알림의 지원 버프를 보강하고 오감지 방지 로직을 개선했습니다.",
+      "contentHash": "961920d900eedff24aca9fded74ce7365a46ac386b5ccc89ea963f456894a966",
+      "date": "2026-05-25",
+      "id": "legacy-2026-05-25-961920d900eedff2"
+    },
+    {
+      "content": "신규 여성 음성 알림음과 버프 종료 전용 음성을 추가했습니다.",
+      "contentHash": "62bec905eb23a0225f576b0cb287d9de934ccd1ab093973fd77afa386e6b96b6",
+      "date": "2026-05-23",
+      "id": "legacy-2026-05-23-62bec905eb23a022"
+    },
+    {
+      "content": "사냥 멈춤 알림 판독 로직을 백그라운드 처리로 전환해 화면 반응성을 개선했습니다.",
+      "contentHash": "ffc69c5a8c69e21906c1bda6b099f020dc2797da8aad452b60d8528d3bc31bd7",
+      "date": "2026-05-22",
+      "id": "legacy-2026-05-22-ffc69c5a8c69e219"
+    },
+    {
+      "content": "우상단 사냥 버프를 추적해 종료 전에 알려주는 버프 종료 알림 베타를 추가했습니다.",
+      "contentHash": "689844ed5d2665e7da3c6873d4cdc0f65a8c73502d3712e63c132c4056618a36",
+      "date": "2026-05-22",
+      "id": "legacy-2026-05-22-689844ed5d2665e7"
+    },
+    {
+      "content": "설정 프리셋 저장과 JSON 내보내기/불러오기 기능을 추가했습니다.",
+      "contentHash": "51540fc30009e55f89c1a4385dc3c8b2c5ae88fde0661ab451f94d94fd4a7cbf",
+      "date": "2026-05-16",
+      "id": "legacy-2026-05-16-51540fc30009e55f"
+    },
+    {
+      "content": "일부 미니맵에서 작게 표시되는 룬 아이콘을 놓치는 문제를 개선했습니다.",
+      "contentHash": "377fa561b9f49131e5efb8cdf895213c2a87f635bf0ace589fd8f9f62704a4ed",
+      "date": "2026-05-16",
+      "id": "legacy-2026-05-16-377fa561b9f49131"
+    },
+    {
+      "content": "사냥 멈춤 알림 경험치 판독 엔진과 기준값 전환 로직을 교체했습니다.",
+      "contentHash": "83dc33368452349d615d103b596e02094dac1fa4c8b28564f27d81053456111e",
+      "date": "2026-05-16",
+      "id": "legacy-2026-05-16-83dc33368452349d"
+    },
+    {
+      "content": "신규 여성 음성 알림음 10개와 랜덤 재생 옵션을 추가했습니다.",
+      "contentHash": "2ac7f25d451ae586f06e1fad88252982bd5f315c2487034bc82bb424fea31109",
+      "date": "2026-05-14",
+      "id": "legacy-2026-05-14-2ac7f25d451ae586"
+    },
+    {
+      "content": "알림 패널 접기와 반복 알림 표시 UI를 정리했습니다.",
+      "contentHash": "663e56759f4f2f92c45f4e807267e0fff28e7ae62bfecf5f7b02d60d9a95c388",
+      "date": "2026-05-14",
+      "id": "legacy-2026-05-14-663e56759f4f2f92"
+    },
+    {
+      "content": "스킬 알림과 룬 알림을 놓쳤을 때 설정한 간격으로 다시 알려주는 반복 알림 옵션을 추가했습니다.",
+      "contentHash": "5a92b7f6802df4c7301047ee4d223ad65bce55f61c13dbfc75bf364c04b5c8a9",
+      "date": "2026-05-13",
+      "id": "legacy-2026-05-13-5a92b7f6802df4c7"
+    },
+    {
+      "content": "PiP 타이머에서 일반 타이머 남은 시간도 함께 볼 수 있도록 개선했습니다.",
+      "contentHash": "2bd09ed8b7b9d4507377bf8b2cc93e3857972bea53d4b6efae969e762f00253a",
+      "date": "2026-05-13",
+      "id": "legacy-2026-05-13-2bd09ed8b7b9d450"
+    },
+    {
+      "content": "짧고 낮은 띵동/도어벨 계열 10개를 추가하고 모든 알림 소리 크기를 정규화했습니다.",
+      "contentHash": "ab7978a170b366232380899b4adb3fa395277c51eb0edcee1b45274a8f15f0d2",
+      "date": "2026-05-13",
+      "id": "legacy-2026-05-13-ab7978a170b36623"
+    },
+    {
+      "content": "스킬 알림을 놓쳤을 때 재사용 전까지 반복해서 울리는 옵션을 추가했습니다.",
+      "contentHash": "24793099a73869ef66497330cae0dcf5423322665fa0959443164cbaab77b868",
+      "date": "2026-05-12",
+      "id": "legacy-2026-05-12-24793099a73869ef"
+    },
+    {
+      "content": "도핑과 재획비를 직접 맞출 수 있는 일반 타이머를 추가했습니다.",
+      "contentHash": "527c08c0effef0f187f10ea39f0a2f8be3fa24165a8a37926d66d0e4d64ff916",
+      "date": "2026-05-12",
+      "id": "legacy-2026-05-12-527c08c0effef0f1"
+    },
+    {
+      "content": "알림 소리를 한 번에 줄일 수 있는 마스터 볼륨을 추가했습니다.",
+      "contentHash": "7569e8b34c1f0474e5c4d6e5d0202263da2148d50de91738f4cc4884a1dd85b4",
+      "date": "2026-05-12",
+      "id": "legacy-2026-05-12-7569e8b34c1f0474"
+    },
+    {
+      "content": "솔 야누스 : 새벽 70초/80초 종류를 추가했습니다.",
+      "contentHash": "75817634ddd273cd7bfff2817aa0dba1c554b6f4a02d97fb009997703683bc70",
+      "date": "2026-05-12",
+      "id": "legacy-2026-05-12-75817634ddd273cd"
+    },
+    {
+      "content": "사냥 멈춤 알림의 시작 대기/감시 중 상태 표시를 개선했습니다.",
+      "contentHash": "3282dfe992b44e7289a52a89216d847d8f057b2196fc2ebdb62bc0d51f737e2d",
+      "date": "2026-05-12",
+      "id": "legacy-2026-05-12-3282dfe992b44e72"
+    },
+    {
+      "content": "미니맵이나 퀵슬롯이 아닌 위치를 선택한 것으로 보이면 확인창을 띄우도록 개선했습니다.",
+      "contentHash": "9d44bc265b8028b33a57daf701669cbc0941d64fe4bc18e1646e340c4b311e38",
+      "date": "2026-05-12",
+      "id": "legacy-2026-05-12-9d44bc265b8028b3"
+    },
+    {
+      "content": "알람음 볼륨을 최대 200%까지 높일 수 있도록 개선했습니다.",
+      "contentHash": "334c08e699a0c3b39aa32e31bd3dd74c22f0e5e99c48f703d336b6d0dfa25425",
+      "date": "2026-05-11",
+      "id": "legacy-2026-05-11-334c08e699a0c3b3"
+    },
+    {
+      "content": "스킬 쿨타임 숫자가 안정적으로 이어질 때만 타이머가 시작되도록 개선했습니다.",
+      "contentHash": "9c7b30340335391ae9857f6e002aeec62980913d9706506590583f582a32fd3d",
+      "date": "2026-05-11",
+      "id": "legacy-2026-05-11-9c7b30340335391a"
+    },
+    {
+      "content": "사냥 멈춤 알림 기능을 추가했습니다.",
+      "contentHash": "b20d496fc77443e926a9345e5f356aaf2da4669d6c2457c467a0c8b79da65772",
+      "date": "2026-05-10",
+      "id": "legacy-2026-05-10-b20d496fc77443e9"
+    },
+    {
+      "content": "스킬 알림과 룬 알림을 하나의 알림 패널로 정리했습니다.",
+      "contentHash": "2e6ced3c5325297264d3011bec9669a28e38f3a175ef36e2f9318a6279a7449c",
+      "date": "2026-05-10",
+      "id": "legacy-2026-05-10-2e6ced3c53252972"
+    },
+    {
+      "content": "전체 비활성화 기능을 추가했습니다.",
+      "contentHash": "c22377a66c1cbbb25e8e23b65edb86cf201f647ab69145757440e21c1595a76b",
+      "date": "2026-05-10",
+      "id": "legacy-2026-05-10-c22377a66c1cbbb2"
+    },
+    {
+      "content": "스킬 알림과 룬 알림이 동시에 발생해도 서로 끊기지 않도록 수정했습니다.",
+      "contentHash": "ca4448895fc0f0d52c3a1535e869397d41820fd83abd40d31e939a4b797a2b1e",
+      "date": "2026-05-10",
+      "id": "legacy-2026-05-10-ca4448895fc0f0d5"
+    },
+    {
+      "content": "사용 가이드 모달과 가이드 페이지를 추가했습니다.",
+      "contentHash": "628e8349412d2d78dc67b5f4bc42c2a532b94b0bb2d9bc66e2111324cf90d1d3",
+      "date": "2026-05-09",
+      "id": "legacy-2026-05-09-628e8349412d2d78"
+    },
+    {
+      "content": "알람음 선택이 새로고침 후 기본값으로 돌아가던 문제를 수정했습니다.",
+      "contentHash": "d2f59ff0d71bdfbfe35f82a549ebd0979052ff22cfcb291159e1ab42a9bef26a",
+      "date": "2026-05-09",
+      "id": "legacy-2026-05-09-d2f59ff0d71bdfbf"
+    },
+    {
+      "content": "PiP 타이머로 다음 알림까지 남은 시간을 크게 볼 수 있도록 추가했습니다.",
+      "contentHash": "ad7185bf6da7fe2b687ed98445b8507898bf32088645778345213b9c6d6a8ced",
+      "date": "2026-05-07",
+      "id": "legacy-2026-05-07-ad7185bf6da7fe2b"
+    },
+    {
+      "content": "룬, 야누스, 파운틴 전용 알람음을 추가하고 기본 알람음을 조정했습니다.",
+      "contentHash": "45248b2d1c07f293bc49a9e06eca4871645eba0f82acc904a7485907e1db9350",
+      "date": "2026-05-04",
+      "id": "legacy-2026-05-04-45248b2d1c07f293"
+    },
+    {
+      "content": "룬 자동 감지 기능을 추가했습니다.",
+      "contentHash": "fb9d3954fe9198f471624408f17301a4d8f2a0e1905e39dabd01decaa1478303",
+      "date": "2026-05-04",
+      "id": "legacy-2026-05-04-fb9d3954fe9198f4"
+    },
+    {
+      "content": "에르다 파운틴은 쿨타임이 실제로 돌아온 뒤 새 쿨타임 숫자가 시작될 때만 재설치 갱신하도록 조정했습니다.",
+      "contentHash": "4f8fd27b8c86e03bb42f515a05dbbcf3db95a1b245d477206c6661ad9912f1b1",
+      "date": "2026-05-03",
+      "id": "legacy-2026-05-03-4f8fd27b8c86e03b"
+    },
+    {
+      "content": "알람 전 재설치 시 새 쿨타임 숫자가 안정적으로 감지되면 타이머를 갱신하도록 수정했습니다.",
+      "contentHash": "4584b12caaa30defb4ec97a9316e421b7adb477e383c11ba47b22f9efd0a9232",
+      "date": "2026-05-03",
+      "id": "legacy-2026-05-03-4584b12caaa30def"
+    }
+  ],
+  "schema": "maple-timer.release-notes",
+  "version": 1
+}

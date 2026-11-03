@@ -1,0 +1,11 @@
+{
+  "name": "maple-timer",
+  "version": "0.1.0",
+  "commitSha": "81f181e70837c343bf3e09a8bb90ac0ce45fe650",
+  "shortCommit": "81f181e",
+  "branch": "main",
+  "deploymentUrl": "https://maple-timer.com",
+  "buildTime": "2026-10-22T17:19:14.391Z",
+  "channel": "production",
+  "remoteRecognitionV1TestArm": false
+}

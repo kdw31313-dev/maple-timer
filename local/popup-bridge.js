@@ -29,7 +29,7 @@
   document.addEventListener('pointerdown',unlock,{once:true});
   analyzer.onPopupStatusChange=(text,detected)=>{
    status.textContent=text;status.style.color=detected?'#ffb5ad':'';
-   if(!detected)return;const master=document.querySelector('[aria-label^="마스터 볼륨"]')?.getAttribute('aria-label')?.match(/(\d+)%/);const volume=master?Math.min(1,Number(master[1])/100):1;if(volume<=0)return;
+   if(!detected)return;void root.telegramNotifier?.send("🚨 [메이플] "+text);const master=document.querySelector('[aria-label^="마스터 볼륨"]')?.getAttribute('aria-label')?.match(/(\d+)%/);const volume=master?Math.min(1,Number(master[1])/100):1;if(volume<=0)return;
    try{if(audio){const osc=audio.createOscillator(),gain=audio.createGain();osc.type='square';osc.frequency.value=880;gain.gain.value=.12*volume;osc.connect(gain).connect(audio.destination);osc.start();osc.stop(audio.currentTime+.6);}if('speechSynthesis'in root){const utterance=new SpeechSynthesisUtterance('거짓말 탐지기가 감지되었습니다. 화면을 확인하세요.');utterance.lang='ko-KR';utterance.volume=volume;speechSynthesis.speak(utterance);}}catch(e){status.textContent=text+' · 소리 확인 필요';}
   };
   bridge.setEnabled(toggle.checked);toggle.addEventListener('change',()=>{localStorage.setItem('local-popup-enabled',String(toggle.checked));bridge.setEnabled(toggle.checked);});
