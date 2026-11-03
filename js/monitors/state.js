@@ -1,21 +1,26 @@
 export const BUFFS = [{id:'unionWealth',name:'유니온의 부'},{id:'unionLuck',name:'유니온의 행운'},{id:'potion',name:'비약'},{id:'expCoupon',name:'경험치 쿠폰'}];
-export const LABELS={rune:'룬',buff:'버프 종료',exp:'경험치 정체'};
+export const LABELS={rune:'룬',popup:'거짓말 탐지기',buff:'버프 종료',exp:'경험치 정체'};
 export const KEY='maple-native-monitors-v1';
 export function defaults() {
   const sound = { sound: 'chime', volume: 80, repeat: 0, telegram: true };
   return {
     version: 1,
-    tab: 'rune',
     items: {
       rune: { ...sound, enabled: true, sound: 'rune', mode: 'combined', roi: { x: .3, y: 8.3, w: 14.5, h: 13 } },
+      popup: { ...sound, enabled: true, sound: 'siren' },
       buff: { ...sound, enabled: false, lead: 20, roi: { x: 50, y: 0, w: 50, h: 35 }, groups: BUFFS.map(buff => buff.id) },
       exp: { ...sound, enabled: false, stall: 10, roi: { x: 25, y: 94, w: 50, h: 6 } },
     },
     customSounds: [],
   };
 }
-export function loadConfig() {
+export function loadConfig(legacy) {
   const config = defaults();
+  if (legacy) {
+    config.items.popup.sound = legacy.customSounds?.popup || 'siren';
+    config.items.popup.volume = Number.isFinite(legacy.volume) ? legacy.volume : 80;
+    config.items.popup.enabled = legacy.popupDetectionEnabled ?? true;
+  }
   try {
     const saved = JSON.parse(localStorage.getItem(KEY));
     if (saved?.version !== 1) return config;
@@ -24,7 +29,6 @@ export function loadConfig() {
       config.items[key] = { ...config.items[key], ...saved.items?.[key] };
     }
     if (Array.isArray(saved.customSounds)) config.customSounds = saved.customSounds;
-    if (Object.hasOwn(LABELS, saved.tab)) config.tab = saved.tab;
   } catch {
     // Use defaults when browser storage cannot be read.
   }

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/monitors.css?v=20261103-single-capture">
+  <link rel="stylesheet" href="css/monitors.css?v=20261103-rows">
 </head>
 <body>
   <div id="app-container">
@@ -29,30 +29,13 @@
         <button id="btn-pip-toggle" class="btn btn-secondary" title="게임 위에 룬·거탐 상태 표시">
           <span class="icon">📺</span> PIP 감지 상태
         </button>
-        <button id="btn-export-settings" class="btn btn-secondary btn-sm" title="설정 1클릭 백업">
-          <span class="icon">💾</span> 설정 백업
-        </button>
-        <button id="btn-import-settings" class="btn btn-secondary btn-sm" title="다른 PC에서 설정 복원">
-          <span class="icon">📂</span> 설정 복원
-        </button>
-        <input type="file" id="file-import-input" accept=".json" style="display:none;">
         <button id="btn-reset-settings" class="btn btn-outline" title="설정 초기화">
           <span class="icon">⚙️</span> 초기화
         </button>
       </div>
     </header>
 
-    <!-- 🌟 상단 메인 탭 네비게이션 -->
-    <nav class="main-tabs-nav"><a id="precision-panel-link" class="btn btn-secondary" href="#precision-panel">🍄 감시 도구함</a>
-      <button class="tab-btn active" data-tab="tab-timer">
-        <span class="icon">⏱️</span> 사냥 타이머 HUD
-      </button>
-    </nav>
-
-    <!-- 📌 Tab 1: 기존 사냥 타이머 HUD -->
-    <div id="tab-timer" class="tab-content active">
-    <!-- 메인 컨텐츠 레이아웃 -->
-    <main class="main-content">
+    <main class="monitor-dashboard">
       <!-- 좌측: 화면 공유 및 ROI (화면 감지 영역) 지정 -->
       <section id="precision-panel" class="card screen-section" aria-labelledby="capture-heading">
         <div class="card-header capture-header">
@@ -89,84 +72,23 @@
           </div>
         </div>
 
-        <section id="monitor-toolbox" aria-label="룬·버프·경험치 감시 설정"></section>
-
-        <!-- 감지 영역(ROI) 설정 도구 및 개별 사운드 지정 -->
-        <div class="roi-tools-panel">
-          <div class="roi-tool-item">
-            <div class="tool-title">
-              <span class="color-badge rune-badge"></span>
-              <div>
-                <strong>📍 룬 감지 영역 (미니맵 ROI)</strong>
-                <div style="font-size:0.75rem; color:var(--text-muted);">시작 시 고정 보라 표식을 구분한 뒤 새로 출현한 룬 마름모만 감지합니다.</div>
-              </div>
-            </div>
-            <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <div class="sound-select-box" style="display:inline-flex; align-items:center; gap:4px;">
-                <select id="select-sound-rune" class="select-sound-preset" style="padding:3px 6px; font-size:0.75rem; border-radius:4px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border-color);">
-                  <option value="rune">🎶 아르페지오 (룬 기본)</option>
-                  <option value="siren">🚨 비상 사이렌</option>
-                  <option value="beep">⚡ 전자 삐삐음</option>
-                  <option value="chime">🔔 맑은 벨소리</option>
-                  <option value="bell">🔔 딩동 듀얼벨</option>
-                  <option value="harp">🎵 하프 아르페지오</option>
-                </select>
-                <button class="btn btn-tiny btn-outline btn-test-sound" data-sound-cat="rune" style="padding:3px 6px; font-size:0.75rem;">🔊 테스트</button>
-              </div>
-              <label class="switch">
-                <input type="checkbox" id="toggle-rune-detection" checked>
-                <span class="slider"></span>
-              </label>
-              <button id="btn-select-rune-roi" class="btn btn-small btn-outline">영역 드래그 지정</button>
-              <span class="status-pill" id="rune-status-pill">대기 중</span>
-            </div>
-          </div>
-
-          <div class="roi-tool-item">
-            <div class="tool-title">
-              <span class="color-badge popup-badge"></span>
-              <div>
-                <strong>🚨 거짓말 탐지기 7개 유형 정밀 감지</strong>
-                <div style="font-size:0.75rem; color:var(--text-muted);">화면 어디든 나타나는 작은 클릭 준비 패널까지 전체 화면에서 찾습니다. 원형 클릭형은 3회, 나머지는 2회 연속 확인합니다.</div>
-              </div>
-            </div>
-            <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <div class="sound-select-box" style="display:inline-flex; align-items:center; gap:4px;">
-                <select id="select-sound-popup" class="select-sound-preset" style="padding:3px 6px; font-size:0.75rem; border-radius:4px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border-color);">
-                  <option value="siren">🚨 비상 사이렌 (거탐 기본)</option>
-                  <option value="rune">🎶 아르페지오</option>
-                  <option value="beep">⚡ 전자 삐삐음</option>
-                  <option value="chime">🔔 맑은 벨소리</option>
-                  <option value="bell">🔔 딩동 듀얼벨</option>
-                  <option value="harp">🎵 하프 아르페지오</option>
-                </select>
-                <button class="btn btn-tiny btn-outline btn-test-sound" data-sound-cat="popup" style="padding:3px 6px; font-size:0.75rem;">🔊 테스트</button>
-              </div>
-              <label class="switch">
-                <input type="checkbox" id="toggle-popup-detection" checked>
-                <span class="slider"></span>
-              </label>
-              <span class="status-pill" id="popup-status-pill">대기 중</span>
-            </div>
-          </div>
-
-          <div class="roi-tool-item" style="border:1px solid rgba(46, 204, 113, 0.45); background:rgba(46, 204, 113, 0.10);">
-            <div class="tool-title">
-              <span class="color-badge" style="background:#2ecc71; width:12px; height:12px; border-radius:50%; display:inline-block;"></span>
-              <div>
-                <strong>🪶 저부하 집중 감지 모드</strong>
-                <div style="font-size:0.75rem; color:var(--text-muted);">룬·거탐 검사 주기를 유지하며 불필요한 연산을 줄입니다.</div>
-              </div>
-            </div>
-          </div>
-
+        <section id="monitor-toolbox" aria-label="감시 설정"></section>
+        <input id="toggle-rune-detection" type="checkbox" checked hidden>
+        <input id="toggle-popup-detection" type="checkbox" checked hidden>
+        <div class="monitor-preferences" aria-label="공통 알림 설정">
+          <strong>공통 알림</strong>
+          <label><input type="checkbox" id="toggle-tts-voice"> 한국어 음성 안내</label>
+          <label><input type="checkbox" id="toggle-visual-flash"> 화면 깜빡임</label>
+        </div>
+        <details class="monitor-telegram">
+          <summary>텔레그램 연결 설정</summary>
           <!-- 📱 텔레그램 봇 알림 연동 (실시간 메세지 전송) -->
           <div class="roi-tool-item" style="border:1px solid rgba(0, 136, 204, 0.4); background:rgba(0, 136, 204, 0.1);">
             <div class="tool-title">
               <span class="color-badge" style="background:#0088cc; width:12px; height:12px; border-radius:50%; display:inline-block;"></span>
               <div>
                 <strong>✈️ 텔레그램 봇 실시간 알림 연동</strong>
-                <div style="font-size:0.75rem; color:var(--text-muted);">룬 또는 거탐 발생 시 탐지 순간의 전체 화면과 실제 판정 영역을 텔레그램으로 전송합니다.</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">감시 줄에서 선택한 알림을 텔레그램으로 받습니다.</div>
               </div>
             </div>
             <div class="tool-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -182,170 +104,9 @@
               <span class="status-pill" id="telegram-status-pill" role="status">설정 확인 중</span>
             </div>
           </div>
-        </div>
-      </section>
-
-      <!-- 우측: 사냥 수동 타이머 및 알림 설정 -->
-      <section class="right-panel">
-        <!-- 경험치 쿠폰 타이머 -->
-        <div class="card timer-card">
-          <div class="card-header">
-            <h2><span class="icon">🧪</span> 경험치 쿠폰 타이머</h2>
-            <div class="preset-buttons">
-              <button class="btn btn-xs btn-preset" data-minutes="15">15분</button>
-              <button class="btn btn-xs btn-preset active" data-minutes="30">30분</button>
-              <button class="btn btn-xs btn-preset" data-minutes="60">60분</button>
-            </div>
-          </div>
-          
-          <div class="timer-display-area">
-            <div class="timer-clock" id="exp-timer-clock">30:00</div>
-            <div class="progress-bar-container">
-              <div class="progress-bar" id="exp-progress-bar" style="width: 100%;"></div>
-            </div>
-          </div>
-
-          <div class="timer-controls">
-            <button id="btn-exp-start" class="btn btn-primary btn-large">
-              <span class="icon">▶</span> 쿠폰 시작
-            </button>
-            <button id="btn-exp-pause" class="btn btn-warning btn-large hidden">
-              <span class="icon">⏸</span> 일시정지
-            </button>
-            <button id="btn-exp-reset" class="btn btn-secondary btn-large">
-              <span class="icon">🔄</span> 리셋
-            </button>
-            <div class="quick-add-group">
-              <button class="btn btn-small btn-outline" id="btn-exp-add1">+1분</button>
-              <button class="btn btn-small btn-outline" id="btn-exp-add5">+5분</button>
-            </div>
-          </div>
-
-          <div class="timer-settings-inline">
-            <label><input type="checkbox" id="chk-exp-alert-10" checked> 10초 전 알림</label>
-            <label><input type="checkbox" id="chk-exp-alert-end" checked> 종료 반복 알림</label>
-          </div>
-        </div>
-
-        <!-- 사냥 필수 도핑 버프 타이머 (재획비 / MVP) -->
-        <div class="card timer-card doping-card">
-          <div class="card-header">
-            <h2><span class="icon">🍾</span> 사냥 필수 도핑 타이머</h2>
-          </div>
-
-          <div class="doping-grid">
-            <!-- 1) 재물 획득의 약 (재획비 - 2시간) -->
-            <div class="doping-item">
-              <div class="doping-info">
-                <span class="doping-name">💰 재획비 (2시간)</span>
-                <span class="doping-clock" id="doping-wealth-clock">02:00:00</span>
-              </div>
-              <div class="doping-controls">
-                <button id="btn-wealth-start" class="btn btn-xs btn-primary">시작</button>
-                <button id="btn-wealth-pause" class="btn btn-xs btn-warning hidden">일시정지</button>
-                <button id="btn-wealth-reset" class="btn btn-xs btn-secondary">리셋</button>
-              </div>
-            </div>
-
-            <!-- 2) MVP 뿌리기 / 기상효과 (30분) -->
-            <div class="doping-item">
-              <div class="doping-info">
-                <span class="doping-name">📢 MVP 뿌리기 (30분)</span>
-                <span class="doping-clock" id="doping-mvp-clock">30:00</span>
-              </div>
-              <div class="doping-controls">
-                <button id="btn-mvp-start" class="btn btn-xs btn-primary">시작</button>
-                <button id="btn-mvp-pause" class="btn btn-xs btn-warning hidden">일시정지</button>
-                <button id="btn-mvp-reset" class="btn btn-xs btn-secondary">리셋</button>
-              </div>
-            </div>
-
-          </div>
-
-          <div class="timer-settings-inline" style="margin-top:10px;">
-            <label><input type="checkbox" id="chk-doping-10s" checked> 10초 전 알림</label>
-            <label><input type="checkbox" id="chk-doping-end" checked> 종료 직후 알림</label>
-          </div>
-        </div>
-
-        <!-- 팝업 인식 학습 및 유형별 안내 파트 -->
-        <div class="card popup-guide-card">
-          <div class="card-header">
-            <h2><span class="icon">⚠️</span> 팝업 감지 7개 유형 모니터링</h2>
-          </div>
-          <div class="popup-grid">
-            <div class="popup-item">
-              <span class="popup-tag">일반 팝업</span>
-              <p>문구 입력/지시문 안내창</p>
-            </div>
-            <div class="popup-item">
-              <span class="popup-tag">정답 문장</span>
-              <p>읽을 문장 및 항목 선택</p>
-            </div>
-            <div class="popup-item">
-              <span class="popup-tag">비올레타</span>
-              <p>화면 중앙 미니게임 창</p>
-            </div>
-            <div class="popup-item">
-              <span class="popup-tag">투명 도형</span>
-              <p>배경 방해/투명 객체 비올레타</p>
-            </div>
-            <div class="popup-item">
-              <span class="popup-tag">클릭 준비</span>
-              <p>별빛 패널·노란 카운트다운</p>
-            </div>
-            <div class="popup-item">
-              <span class="popup-tag">원형 클릭</span>
-              <p>청회색 원형 미니게임 판</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- 알림 & 사운드 공통 설정 -->
-        <div class="card settings-card">
-          <div class="card-header">
-            <h2><span class="icon">🔔</span> 알림 및 음성 설정</h2>
-          </div>
-
-          <div class="setting-row">
-            <label for="select-sound-preset">알림 사운드 종류</label>
-            <div class="setting-control-group">
-              <select id="select-sound-preset" class="form-select">
-                <option value="chime">맑은 차임벨 (Chime)</option>
-                <option value="beep">게이밍 비프음 (Beep)</option>
-                <option value="rune">룬 감지 전용음 (Rune Synth)</option>
-                <option value="siren">경고 사이렌 (Siren)</option>
-              </select>
-              <button id="btn-test-sound" class="btn btn-small btn-outline">소리 테스트</button>
-            </div>
-          </div>
-
-          <div class="setting-row">
-            <label for="range-volume">전체 알림 볼륨 (<span id="volume-val-text">80%</span>)</label>
-            <input type="range" id="range-volume" min="0" max="100" value="80" class="form-range">
-          </div>
-
-          <div class="setting-row">
-            <label>한국어 음성 안내 (TTS)</label>
-            <label class="switch">
-              <input type="checkbox" id="toggle-tts-voice" checked>
-              <span class="slider"></span>
-            </label>
-          </div>
-
-          <div class="setting-row">
-            <label>화면 깜빡임 시각 알림</label>
-            <label class="switch">
-              <input type="checkbox" id="toggle-visual-flash" checked>
-              <span class="slider"></span>
-            </label>
-          </div>
-        </div>
+        </details>
       </section>
     </main>
-
-
-    </div> <!-- /#tab-timer -->
 
     <!-- 시각 알림용 오버레이 플래시 -->
     <div id="flash-overlay" class="flash-overlay hidden"></div>
@@ -390,8 +151,7 @@
   <!-- 스크립트 불러오기 모듈 -->
   <script src="js/storage.js?v=20260812-3"></script>
   <script src="js/telegramNotifier.js?v=20261103"></script><script src="js/telegramSettings.js?v=20261103"></script>
-  <script src="js/audioNotifier.js?v=20260918-1"></script>
-  <script src="js/timerModule.js"></script>
+  <script src="js/audioNotifier.js?v=20261103-rows"></script>
   <script src="js/거탐인식기기준.js?v=20260818-1"></script>
   <script src="js/버프인식기기준.js?v=20260917-1"></script>
   <script src="js/익스트림골드인식기준.js?v=20260917-1"></script>
@@ -400,9 +160,9 @@
   <script src="js/검출정확도개선.js?v=20260826-1"></script>
   <script src="js/룬검출정확도.js?v=20261007-1"></script>
   <script src="js/거탐검출정확도.js?v=20260825-3"></script>
-  <script src="js/screenCapture.js?v=20261103-single-capture"></script>
+  <script src="js/screenCapture.js?v=20261103-rows"></script>
   <script src="js/pipController.js?v=20260820-1"></script>
-  <script src="js/app.js?v=20261103"></script>
-  <script type="module" src="js/monitors/main.js?v=20261103-single-capture"></script>
+  <script src="js/app.js?v=20261103-rows"></script>
+  <script type="module" src="js/monitors/main.js?v=20261103-rows"></script>
 </body>
 </html>

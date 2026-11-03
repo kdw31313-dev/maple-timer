@@ -74,6 +74,16 @@ class AudioNotifier {
       }, 400);
     }
 
+    this.presentAlert(message);
+
+    // 3. 📱 텔레그램 메세지 알림 자동 전송 (간결한 문구)
+    if (options.telegram !== false && window.telegramNotifier && message) {
+      window.telegramNotifier.sendAlert(message, category);
+    }
+
+  }
+
+  presentAlert(message) {
     // 2. 음성 안내 (TTS - 크롬 백그라운드 큐 지연 해제 cancel 처리)
     if (this.useTTS && message && 'speechSynthesis' in window) {
       try {
@@ -84,11 +94,6 @@ class AudioNotifier {
       } catch (e) {
         console.warn('SpeechSynthesis error:', e);
       }
-    }
-
-    // 3. 📱 텔레그램 메세지 알림 자동 전송 (간결한 문구)
-    if (options.telegram !== false && window.telegramNotifier && message) {
-      window.telegramNotifier.sendAlert(message, category);
     }
 
     // 4. 시각 깜빡임 (Flash)

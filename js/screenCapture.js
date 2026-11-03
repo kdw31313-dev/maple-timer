@@ -65,6 +65,7 @@ class ScreenCaptureManager {
       this.overlayCanvas.addEventListener('mouseleave', () => this.handleMouseUp());
     }
     window.addEventListener('resize', () => this.resizeCanvas());
+    this.videoEl?.addEventListener?.('resize', () => this.resizeCanvas());
 
     this.initModalEvents();
   }
@@ -509,7 +510,7 @@ class ScreenCaptureManager {
         runePill.className = 'status-pill active';
       }
       if (popupPill && !window.imageAnalyzer?.popupState.isDetected) {
-        popupPill.textContent = '🟢 거탐 감시 중 (7개 유형 정밀 인식)';
+        popupPill.textContent = document.getElementById('toggle-popup-detection')?.checked ? '감시 중' : '감시 꺼짐';
         popupPill.className = 'status-pill active';
       }
     } else {
@@ -548,22 +549,26 @@ class ScreenCaptureManager {
 
     if (!this.isStreaming) return;
 
-    this.drawRoiBox(this.runeRoi, 'rgba(255, 0, 128, 0.9)', '📍 미니맵 (룬)');
+    if (this.getMonitorRegions) {
+      const {videoWidth, videoHeight} = this.videoEl;
+      if (!videoWidth || !videoHeight) return;
+      const scale = Math.min(w / videoWidth, h / videoHeight);
+      const width = videoWidth * scale;
+      const height = videoHeight * scale;
+      const frame = {x:(w-width)/2, y:(h-height)/2, width, height};
+      for (const {roi,color,label} of this.getMonitorRegions()) {
+        this.drawRoiBox(roi, color, label, frame);
+      }
+    } else {
+      this.drawRoiBox(this.runeRoi, 'rgba(255, 0, 128, 0.9)', '📍 미니맵 (룬)');
+    }
   }
 
-  drawRoiBox(roi, color, label, fillColor = null) {
-    const w = this.overlayCanvas.width;
-    const h = this.overlayCanvas.height;
-
-    const rx = (roi.x / 100) * w;
-    const ry = (roi.y / 100) * h;
-    const rw = (roi.w / 100) * w;
-    const rh = (roi.h / 100) * h;
-
-    if (fillColor) {
-      this.overlayCtx.fillStyle = fillColor;
-      this.overlayCtx.fillRect(rx, ry, rw, rh);
-    }
+  drawRoiBox(roi, color, label, frame = {x:0, y:0, width:this.overlayCanvas.width, height:this.overlayCanvas.height}) {
+    const rx = frame.x + (roi.x / 100) * frame.width;
+    const ry = frame.y + (roi.y / 100) * frame.height;
+    const rw = (roi.w / 100) * frame.width;
+    const rh = (roi.h / 100) * frame.height;
 
     this.overlayCtx.strokeStyle = color;
     this.overlayCtx.lineWidth = 2.5;
@@ -576,11 +581,12 @@ class ScreenCaptureManager {
     this.overlayCtx.font = 'bold 12px sans-serif';
     const textWidth = this.overlayCtx.measureText(label).width;
     
-    const labelY = ry > 22 ? ry - 22 : ry + 2;
-    this.overlayCtx.fillRect(rx, labelY, textWidth + 12, 20);
+    const labelY = ry - frame.y > 22 ? ry - 22 : ry + 2;
+    const labelX = Math.min(rx, frame.x + Math.max(0, frame.width - textWidth - 12));
+    this.overlayCtx.fillRect(labelX, labelY, textWidth + 12, 20);
 
     this.overlayCtx.fillStyle = '#ffffff';
-    this.overlayCtx.fillText(label, rx + 6, labelY + 14);
+    this.overlayCtx.fillText(label, labelX + 6, labelY + 14);
   }
 
   captureAlertScreenshot(category = 'chime', message = '') {
