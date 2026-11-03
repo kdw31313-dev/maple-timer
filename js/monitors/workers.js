@@ -1,5 +1,5 @@
 const ROOT=new URL('../../precise/runtime/assets/',import.meta.url);
-const FILES={rune:'runeDetection.worker-B_C0yRcq.js',buff:'buffExpiryPrecision.worker-CiNT21Gn.js',skill:'skillPrecisionAnalysis.worker-QLy_dNyi.js'};
+const FILES={rune:'runeDetection.worker-B_C0yRcq.js',buff:'buffExpiryPrecision.worker-CiNT21Gn.js'};
 export class WorkerPool {
  constructor(){this.entries=new Map();this.sequence=0;}
  async call(kind,message){let entry=this.entries.get(kind);if(!entry){const worker=new Worker(kind==='exp'?new URL('./experience.worker.js',import.meta.url):new URL(FILES[kind],ROOT),{type:'module'});entry={worker,pending:new Map()};this.entries.set(kind,entry);worker.onmessage=({data})=>{const id=data.requestId??data.id;const p=entry.pending.get(id);if(!p)return;entry.pending.delete(id);clearTimeout(p.timer);if(data.ok===false||data.type==='error')p.reject(Error(data.error||data.message));else p.resolve(data.response??data);};worker.onerror=()=>this.drop(kind,'감지 워커 로딩 실패');}

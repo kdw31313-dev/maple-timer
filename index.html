@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/monitors.css?v=20261103-native">
+  <link rel="stylesheet" href="css/monitors.css?v=20261103-single-capture">
 </head>
 <body>
   <div id="app-container">
@@ -18,7 +18,7 @@
         <div class="logo-icon">🍁</div>
         <div>
           <h1>메이플 사냥 도우미</h1>
-          <p class="subtitle">룬 · 거탐 · 스킬 · 버프 · 경험치 맞춤 감시</p>
+          <p class="subtitle">룬 · 거탐 · 버프 · 경험치 맞춤 감시</p>
         </div>
       </div>
       <div class="header-actions">
@@ -43,7 +43,7 @@
     </header>
 
     <!-- 🌟 상단 메인 탭 네비게이션 -->
-    <nav class="main-tabs-nav"><a id="precision-panel-link" class="btn btn-secondary" href="#monitor-toolbox">🍄 감시 도구함</a>
+    <nav class="main-tabs-nav"><a id="precision-panel-link" class="btn btn-secondary" href="#precision-panel">🍄 감시 도구함</a>
       <button class="tab-btn active" data-tab="tab-timer">
         <span class="icon">⏱️</span> 사냥 타이머 HUD
       </button>
@@ -51,28 +51,27 @@
 
     <!-- 📌 Tab 1: 기존 사냥 타이머 HUD -->
     <div id="tab-timer" class="tab-content active">
-    <section id="monitor-toolbox" class="card"></section>
     <!-- 메인 컨텐츠 레이아웃 -->
     <main class="main-content">
       <!-- 좌측: 화면 공유 및 ROI (화면 감지 영역) 지정 -->
-      <section class="card screen-section">
-        <div class="card-header">
-          <h2><span class="icon">🖥️</span> 메이플 게임 화면 분석</h2>
+      <section id="precision-panel" class="card screen-section" aria-labelledby="capture-heading">
+        <div class="card-header capture-header">
+          <div class="capture-title">
+            <div class="forest-friends" aria-hidden="true"><span class="mushroom-friend"><i></i></span><span class="slime-friend"><i></i></span></div>
+            <h2 id="capture-heading">나의 사냥 도구함</h2>
+          </div>
           <div class="screen-controls">
-            <button id="btn-start-share" class="btn btn-primary" onclick="if(window.screenCaptureManager) window.screenCaptureManager.startCapture();">
+            <button id="btn-start-share" class="btn btn-primary">
               <span class="icon">▶</span> 게임 창 공유 시작
             </button>
-            <button id="btn-test-audio" class="btn btn-secondary" onclick="if(window.audioNotifier){ window.audioNotifier.notify('미니맵에 룬이 출현했습니다! 룬을 해제해 주세요!', 'rune'); }">
-              <span class="icon">🔊</span> 사운드/음성 테스트
-            </button>
-            <button id="btn-stop-share" class="btn btn-danger hidden" onclick="if(window.screenCaptureManager) window.screenCaptureManager.stopCapture();">
+            <button id="btn-stop-share" class="btn btn-danger hidden">
               <span class="icon">⏹</span> 공유 중지
             </button>
           </div>
         </div>
 
         <div class="info-alert" style="background: rgba(0, 242, 254, 0.1); border-color: rgba(0, 242, 254, 0.3);">
-          💡 <strong>실시간 공유 꿀팁:</strong> 크롬 공유 팝업에서 <strong>[전체 화면]</strong>을 선택해 주시면, 메이플 창을 옮기거나 탭을 내려도 24시간 멈춤 없이 <strong>100% 실시간 연속 감지</strong>됩니다!
+          게임 창을 한 번 공유하면 켜 둔 룬·거탐·버프·경험치 감시가 모두 같은 화면을 사용합니다.
         </div>
 
         <!-- 화면 공유 뷰포트 및 ROI 오버레이 -->
@@ -89,6 +88,8 @@
             </div>
           </div>
         </div>
+
+        <section id="monitor-toolbox" aria-label="룬·버프·경험치 감시 설정"></section>
 
         <!-- 감지 영역(ROI) 설정 도구 및 개별 사운드 지정 -->
         <div class="roi-tools-panel">
@@ -399,9 +400,9 @@
   <script src="js/검출정확도개선.js?v=20260826-1"></script>
   <script src="js/룬검출정확도.js?v=20261007-1"></script>
   <script src="js/거탐검출정확도.js?v=20260825-3"></script>
-  <script src="js/screenCapture.js?v=20261103"></script>
+  <script src="js/screenCapture.js?v=20261103-single-capture"></script>
   <script src="js/pipController.js?v=20260820-1"></script>
   <script src="js/app.js?v=20261103"></script>
-  <script type="module" src="js/monitors/main.js?v=20261103-native"></script>
+  <script type="module" src="js/monitors/main.js?v=20261103-single-capture"></script>
 </body>
 </html>

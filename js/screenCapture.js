@@ -4,6 +4,7 @@
 class ScreenCaptureManager {
   constructor() {
     this.mediaStream = null;
+    this.capturePending = false;
     this.videoEl = document.getElementById('game-video');
     this.analysisCanvas = document.getElementById('analysis-canvas');
     this.overlayCanvas = document.getElementById('roi-overlay-canvas');
@@ -301,42 +302,41 @@ class ScreenCaptureManager {
     if (window.saveCurrentConfig) window.saveCurrentConfig();
   }
 
-  startCapture() {
-    if (window.audioNotifier) {
-      window.audioNotifier.initAudioContext();
-    }
-
-    if (window.maplePrecisionStart?.()) return;
+  async startCapture() {
+    if (this.isStreaming || this.capturePending) return;
 
     if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
       alert('현재 브라우저 환경에서 화면 공유(WebRTC)를 지원하지 않거나 보안 연결이 아닙니다.');
       return;
     }
 
-    navigator.mediaDevices.getDisplayMedia({
-      video: {
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-        frameRate: { max: 15 }
-      },
-      audio: false
-    })
-    .catch(() => {
-      return navigator.mediaDevices.getDisplayMedia({
-        video: true,
+    const startBtn = document.getElementById('btn-start-share');
+    this.capturePending = true;
+    if (startBtn) startBtn.disabled = true;
+
+    try {
+      window.audioNotifier?.initAudioContext();
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { max: 15 }
+        },
         audio: false
       });
-    })
-    .then(stream => this.attachSharedCapture(stream))
-    .catch((err) => {
-      console.error('화면 공유 실패/취소:', err);
-      if (err.name !== 'NotAllowedError' && !err.message?.includes('Permission denied')) {
-        alert('화면 공유 팝업 창 호출 중 오류가 발생했습니다: ' + err.message);
+      this.attachSharedCapture(stream);
+    } catch (err) {
+      if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+        console.error('화면 공유 실패:', err);
+        alert('화면 공유 중 오류가 발생했습니다: ' + err.message);
       }
-    });
+    } finally {
+      this.capturePending = false;
+      if (startBtn) startBtn.disabled = false;
+    }
   }
 
-  // The precision panel and existing detectors consume the same chosen stream.
+  // All detectors read frames from this video element.
   attachSharedCapture(stream, stopExternal = null) {
     if (this.mediaStream === stream) return;
     if (this.mediaStream) this.stopCapture();
@@ -500,7 +500,7 @@ class ScreenCaptureManager {
       badge.className = isConnected ? 'status-badge live' : 'status-badge disconnected';
     }
     if (text) {
-      text.textContent = isConnected ? '🪶 룬·거탐 저부하 감지 중' : '연결 안 됨';
+      text.textContent = isConnected ? '게임 화면 공유 중' : '화면 공유 대기 중';
     }
 
     if (isConnected) {

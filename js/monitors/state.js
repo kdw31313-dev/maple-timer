@@ -1,14 +1,35 @@
-export const SKILLS = [
- {id:'janus',name:'솔 야누스 : 새벽',matcherSkillId:'janus'},
- {id:'fountain',name:'에르다 파운틴',matcherSkillId:'fountain'},
- {id:'hologramGraffitiBarrierVi',name:'홀로그램 그래피티 : 역장 VI',matcherSkillId:'barrier'},
- {id:'maehwaYein',name:'매화검 3초식 : 예인 VI',matcherSkillId:'maehwaYein'}
-];
 export const BUFFS = [{id:'unionWealth',name:'유니온의 부'},{id:'unionLuck',name:'유니온의 행운'},{id:'potion',name:'비약'},{id:'expCoupon',name:'경험치 쿠폰'}];
-export const LABELS={rune:'룬',skill:'스킬',buff:'버프 종료',exp:'경험치 정체'};
+export const LABELS={rune:'룬',buff:'버프 종료',exp:'경험치 정체'};
 export const KEY='maple-native-monitors-v1';
-export function defaults(){const sound={sound:'chime',volume:80,repeat:0,telegram:true};return {version:1,tab:'rune',items:{rune:{...sound,enabled:true,sound:'rune',mode:'combined',roi:{x:.3,y:8.3,w:14.5,h:13}},skill:{...sound,enabled:false,lead:10,roi:{x:50,y:0,w:50,h:35}},buff:{...sound,enabled:false,lead:20,roi:{x:50,y:0,w:50,h:35},groups:BUFFS.map(x=>x.id)},exp:{...sound,enabled:false,stall:10,roi:{x:25,y:94,w:50,h:6}}},skills:SKILLS.map((x,i)=>({...x,...sound,enabled:i<2,lead:10})),customSounds:[]};}
-export function loadConfig(){const d=defaults();try{const p=JSON.parse(localStorage.getItem(KEY));if(p?.version!==1)return d;for(const k in d.items)d.items[k]={...d.items[k],...p.items?.[k]};d.skills=SKILLS.map(x=>({...d.skills.find(y=>y.id===x.id),...p.skills?.find(y=>y.id===x.id)}));d.customSounds=Array.isArray(p.customSounds)?p.customSounds:[];d.tab=LABELS[p.tab]?p.tab:'rune';}catch{}return d;}
+export function defaults() {
+  const sound = { sound: 'chime', volume: 80, repeat: 0, telegram: true };
+  return {
+    version: 1,
+    tab: 'rune',
+    items: {
+      rune: { ...sound, enabled: true, sound: 'rune', mode: 'combined', roi: { x: .3, y: 8.3, w: 14.5, h: 13 } },
+      buff: { ...sound, enabled: false, lead: 20, roi: { x: 50, y: 0, w: 50, h: 35 }, groups: BUFFS.map(buff => buff.id) },
+      exp: { ...sound, enabled: false, stall: 10, roi: { x: 25, y: 94, w: 50, h: 6 } },
+    },
+    customSounds: [],
+  };
+}
+export function loadConfig() {
+  const config = defaults();
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY));
+    if (saved?.version !== 1) return config;
+    // Only load current detectors so older backups remain compatible.
+    for (const key of Object.keys(config.items)) {
+      config.items[key] = { ...config.items[key], ...saved.items?.[key] };
+    }
+    if (Array.isArray(saved.customSounds)) config.customSounds = saved.customSounds;
+    if (Object.hasOwn(LABELS, saved.tab)) config.tab = saved.tab;
+  } catch {
+    // Use defaults when browser storage cannot be read.
+  }
+  return config;
+}
 export function saveConfig(c){localStorage.setItem(KEY,JSON.stringify(c));}
 // Reset on unreadable frames. A stale OCR value must never look like stopped hunting.
 export class ExperienceTracker {
