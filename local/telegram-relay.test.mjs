@@ -37,8 +37,15 @@ test('relay requires the private key and origin and allows only text and diagnos
   assert.match(preflight.headers.get('Access-Control-Allow-Headers'),/Authorization/);
 });
 
-test('browser test and rune alerts use the relay and receive the Telegram receipt', async t => {
+test('browser test and all detector alerts use the relay and receive the Telegram receipt', async t => {
   const calls = [];
+  const messages = [];
+  const alerts = [
+    ['rune','모의 룬 감지','💎 룬 발견'],
+    ['popup','모의 거탐 감지','🚨 거짓말 탐지기'],
+    ['buff','경험치 쿠폰 종료까지 10초','⏳ 버프 종료 임박'],
+    ['exp','경험치가 10초 동안 오르지 않았어요.','📉 경험치 정체'],
+  ];
   t.mock.method(globalThis, 'fetch', async (address, options) => {
     const url = new URL(address);
     assert.equal(url.origin, 'https://api.telegram.org');
@@ -57,7 +64,7 @@ test('browser test and rune alerts use the relay and receive the Telegram receip
     const body = JSON.parse(options.body);
     assert.equal(body.chat_id,env.TELEGRAM_CHAT_ID);
     assert.equal(body.message_thread_id,env.TELEGRAM_THREAD_ID);
-    assert.match(body.text,calls.length===3 ? /알림 전송 테스트/ : /룬 발견/);
+    messages.push(body.text);
     return Response.json({ok:true,result:{
       chat:{id:-1002468},message_id:42,is_topic_message:true,message_thread_id:27,
     }});
@@ -75,10 +82,16 @@ test('browser test and rune alerts use the relay and receive the Telegram receip
     },
   });
   const testResult = await window.telegramNotifier.sendTestMessage();
-  const runeResult = await window.telegramNotifier.sendAlert('모의 룬 감지', 'rune');
   assert.equal(testResult.messageUrl,'https://t.me/c/2468/27/42');
-  assert.equal(runeResult.messageUrl,testResult.messageUrl);
-  assert.deepEqual(calls,['getMe','getChat','sendMessage','sendMessage']);
+  assert.match(messages[0],/^🔔 알림 전송 테스트/);
+  for (const [category,detail,title] of alerts) {
+    const result = await window.telegramNotifier.sendAlert(detail,category);
+    assert.equal(result.messageUrl,testResult.messageUrl);
+    assert.equal(messages.at(-1).split('\n')[0],title);
+    assert.ok(messages.at(-1).includes(detail));
+    assert.match(messages.at(-1),/🕒 발생 시각/);
+  }
+  assert.deepEqual(calls,['getMe','getChat',...Array(5).fill('sendMessage')]);
 });
 
 test('relay controls the destination and marks upstream timeouts as uncertain', async t => {
