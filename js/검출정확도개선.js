@@ -559,7 +559,7 @@
       clearPopupCooldown(this, state, true);
       state.lastAlertAt = now;
       state.repeatAlertCount++;
-      this.triggerPopupStructureAlert(repeatType, { telegram: false });
+      this.triggerPopupStructureAlert(repeatType, { telegram: false, repeat: true });
     } else if (state.cooldownActive
       && (!state.lastAlertAt || now - state.lastAlertAt >= POPUP_MAX_COOLDOWN_MS)) {
       // 다른 전투 이펙트가 계속 후보로 잡혀도 재알림 제한이 영구 연장되지 않는다.

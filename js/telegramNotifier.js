@@ -1,3 +1,24 @@
+const TELEGRAM_ALERT_TEMPLATES = {
+  rune: { title: '◆ 룬 발견', action: '미니맵에서 룬 위치를 확인하세요.' },
+  popup: { title: '🚨 거짓말 탐지기', action: '게임 화면의 안내를 바로 확인하세요.' },
+  buff: { title: '⏳ 버프 종료 임박', action: '남은 시간과 재사용 가능 여부를 확인하세요.' },
+  exp: { title: '📉 경험치 정체', action: '사냥이 멈췄는지 게임 화면을 확인하세요.' },
+  test: { title: '🔔 알림 전송 테스트', action: '이 메시지를 받았다면 텔레그램 연결이 정상입니다.' },
+};
+
+function formatTelegramAlert(text, category, now = new Date()) {
+  const template = Object.hasOwn(TELEGRAM_ALERT_TEMPLATES, category)
+    ? TELEGRAM_ALERT_TEMPLATES[category] : { title: '🔔 감지 알림' };
+  const time = new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul', dateStyle: 'short', timeStyle: 'medium', hour12: false,
+  }).format(now);
+  const detail = String(text).replace(/^(?:📍|🚨)\s*\[메이플\]\s*/, '').trim();
+  const lines = ['[메이플 사냥 도우미] ' + template.title, detail];
+  if (template.action) lines.push(template.action);
+  lines.push('발생 시각 ' + time + ' (한국 시간)');
+  return lines.join('\n');
+}
+
 /** Browser-side Telegram Bot API client. Credentials stay in this browser. */
 class TelegramNotifier {
   constructor() {
@@ -86,16 +107,18 @@ class TelegramNotifier {
   }
 
   sendAlert(text, category = 'chime', force = false) {
+    const message = formatTelegramAlert(text, category);
+    // Deduplicate by the detector event text, not the formatted timestamp.
     return this.deliver(text, force, async target => {
       let photo;
       try { photo = await window.screenCaptureManager?.captureAlertScreenshot?.(category, text); }
       catch { /* Capture failure still permits the text alert. */ }
-      if (!photo) return this.sendText(target, text);
+      if (!photo) return this.sendText(target, message);
       const form = new FormData();
-      form.set('caption', String(text).slice(0, 1024));
+      form.set('caption', message.slice(0, 1024));
       form.set('photo', photo, 'maple-alert.jpg');
       const result = await this.request('sendPhoto', target, form);
-      return result.ok || result.uncertain ? result : this.sendText(target, text);
+      return result.ok || result.uncertain ? result : this.sendText(target, message);
     });
   }
 
@@ -116,7 +139,7 @@ class TelegramNotifier {
   }
 
   sendTestMessage() {
-    return this.send('[메이플 타이머] 🔔 텔레그램 알림 테스트입니다.', true);
+    return this.send(formatTelegramAlert('실제 감지 알림과 같은 형식의 테스트입니다.', 'test'), true);
   }
 }
 

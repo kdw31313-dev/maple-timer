@@ -1,3 +1,4 @@
+import { bindPopupRecording } from './popup-recording.js?v=20261103-recording';
 import { pickRegion } from './region-picker.js?v=20261103-zoom';
 import { LABELS, BUFFS, KEY, loadConfig, saveConfig, ExperienceTracker, AlertGate } from './state.js?v=20261103-rows';
 import { WorkerPool, cropVideo } from './workers.js?v=20261103-rows';
@@ -116,9 +117,9 @@ function play(item, key) {
 }
 
 function notify(key, message, item, options) {
+  if (item.telegram && options?.telegram !== false) window.telegramNotifier?.sendAlert(message, key);
   play(item, key);
   window.audioNotifier.presentAlert(message);
-  if (item.telegram && options?.telegram !== false) window.telegramNotifier?.sendAlert(message, key);
 }
 
 function emit(id, text, item) {
@@ -276,6 +277,7 @@ async function analyze(key,video,epoch){const item=config.items[key];if(!item.en
 }
 async function tick(){try{const manager=window.screenCaptureManager,video=manager?.videoEl;const live=manager?.isStreaming&&video?.readyState>=2;if(!live){if(streaming){generation++;pool.close();gate.reset();exp.reset();hits.clear();for(const key in LABELS)setStatus(key,config.items[key].enabled?'화면 공유 대기':'감시 꺼짐');}streaming=false;return;}streaming=true;const epoch=generation;for(const key of ['rune','buff','exp']){if(!config.items[key].enabled){setStatus(key,'감시 꺼짐');continue;}if(Date.now()<(errors.get(key)||0))continue;try{await analyze(key,video,epoch);}catch(error){errors.set(key,Date.now()+10000);setStatus(key,'감지 오류 · '+error.message);}if(epoch!==generation)break;}}finally{setTimeout(tick,500);}}
 const captureManager = window.screenCaptureManager;
+const popupRecording = bindPopupRecording(document.getElementById('popup-recording'));
 captureManager.getMonitorRegions = () => Object.entries(config.items)
   .filter(([, item]) => item.enabled && item.roi)
   .map(([key, item]) => ({ roi: item.roi, color: colors[key], label: LABELS[key] }));
@@ -296,6 +298,7 @@ window.audioNotifier.notify = (message, category, options) => {
   } else if (category === 'popup') {
     const popup = config.items.popup;
     if (!popup.enabled) return;
+    if (!options?.repeat) popupRecording.record(captureManager.mediaStream);
     notify('popup', message, popup, options);
     setTimeout(() => { if (popup.enabled && captureManager.isStreaming) play(popup, 'popup'); }, 400);
   } else {
@@ -305,6 +308,7 @@ window.audioNotifier.notify = (message, category, options) => {
 
 const originalStop = captureManager.stopCapture.bind(captureManager);
 captureManager.stopCapture = () => {
+  popupRecording.stop();
   generation++;
   pool.close();
   gate.reset();

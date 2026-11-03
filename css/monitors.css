@@ -137,3 +137,5 @@
 .monitor-roi-dialog canvas.pan-mode { cursor: grab; }
 .monitor-roi-dialog canvas.is-panning { cursor: grabbing; }
 .monitor-roi-dialog button { margin-right: 0; }
+
+#popup-recording [hidden] { display: none; }
