@@ -128,9 +128,14 @@ test('all detection categories send only text and preserve detector details', as
   for (const [category, title, detail] of cases) {
     await x.client.sendAlert(detail, category);
     const message = messages.at(-1);
-    assert.ok(message.split('\n')[0].endsWith(title));
-    assert.ok(message.includes(detail));
-    assert.match(message, /발생 시각 .+/);
+    const [heading, divider, detailLine, actionLine, gap, brand] = message.split('\n');
+    assert.ok(heading.endsWith(title));
+    assert.equal(divider, '────────────');
+    assert.ok(detailLine.endsWith(detail));
+    assert.match(actionLine, /^👉 /);
+    assert.equal(gap, '');
+    assert.equal(brand, '🍁 메이플 사냥 도우미');
+    assert.match(message, /🕒 발생 시각 .+/);
     assert.ok(message.endsWith('(한국 시간)'));
   }
   assert.equal(screenshots, 0);

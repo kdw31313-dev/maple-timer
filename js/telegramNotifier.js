@@ -1,21 +1,22 @@
 const TELEGRAM_ALERT_TEMPLATES = {
-  rune: { title: '◆ 룬 발견', action: '미니맵에서 룬 위치를 확인하세요.' },
-  popup: { title: '🚨 거짓말 탐지기', action: '게임 화면의 안내를 바로 확인하세요.' },
-  buff: { title: '⏳ 버프 종료 임박', action: '남은 시간과 재사용 가능 여부를 확인하세요.' },
-  exp: { title: '📉 경험치 정체', action: '사냥이 멈췄는지 게임 화면을 확인하세요.' },
-  test: { title: '🔔 알림 전송 테스트', action: '이 메시지를 받았다면 텔레그램 연결이 정상입니다.' },
+  rune: { title: '💎 룬 발견', icon: '📍', action: '미니맵에서 룬 위치를 확인하세요.' },
+  popup: { title: '🚨 거짓말 탐지기', icon: '🖥️', action: '게임 화면의 안내를 바로 확인하세요.' },
+  buff: { title: '⏳ 버프 종료 임박', icon: '✨', action: '남은 시간과 재사용 가능 여부를 확인하세요.' },
+  exp: { title: '📉 경험치 정체', icon: '📊', action: '사냥이 멈췄는지 게임 화면을 확인하세요.' },
+  test: { title: '🔔 알림 전송 테스트', icon: '📬', action: '이 메시지가 도착했다면 텔레그램 연결이 정상입니다.' },
 };
 
 function formatTelegramAlert(text, category, now = new Date()) {
   const template = Object.hasOwn(TELEGRAM_ALERT_TEMPLATES, category)
-    ? TELEGRAM_ALERT_TEMPLATES[category] : { title: '🔔 감지 알림' };
+    ? TELEGRAM_ALERT_TEMPLATES[category] : { title: '🔔 감지 알림', icon: '📌' };
   const time = new Intl.DateTimeFormat('ko-KR', {
     timeZone: 'Asia/Seoul', dateStyle: 'short', timeStyle: 'medium', hour12: false,
   }).format(now);
   const detail = String(text).replace(/^(?:📍|🚨)\s*\[메이플\]\s*/, '').trim();
-  const lines = ['[메이플 사냥 도우미] ' + template.title, detail];
-  if (template.action) lines.push(template.action);
-  lines.push('발생 시각 ' + time + ' (한국 시간)');
+  const lines = [template.title, '────────────'];
+  if (detail) lines.push(template.icon + ' ' + detail);
+  if (template.action) lines.push('👉 ' + template.action);
+  lines.push('', '🍁 메이플 사냥 도우미', '🕒 발생 시각 ' + time + ' (한국 시간)');
   return lines.join('\n');
 }
 
