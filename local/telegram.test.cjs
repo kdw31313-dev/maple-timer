@@ -57,7 +57,7 @@ test('the test stops at bot authentication if Telegram returns an error', async 
     });
     const result = await x.client.sendTestMessage();
     assert.match(result.message, /봇 인증 확인 실패/);
-    assert.match(result.message, code === 401 ? /만료/ : /HTTP 502/);
+    assert.match(result.message, code === 401 ? /봇 인증 실패/ : /HTTP 502/);
     assert.equal(result.uncertain, false);
     assert.equal(calls, 1);
   }

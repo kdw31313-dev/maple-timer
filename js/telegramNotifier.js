@@ -35,16 +35,30 @@ class TelegramNotifier {
   constructor() {
     this.storageKey = 'maple_timer_telegram_config';
     const defaults = { enabled: true, botToken: '', chatId: '', threadId: '', relayUrl: '', relayKey: '' };
-    try { this.config = { ...defaults, ...JSON.parse(localStorage.getItem(this.storageKey)) }; }
+    this.defaults = defaults;
+    try { this.storedConfig = localStorage.getItem(this.storageKey); this.config = { ...defaults, ...JSON.parse(this.storedConfig) }; }
     catch { this.config = defaults; }
     this.sent = new Map();
     this.pending = new Set();
   }
 
   saveConfig(settings) {
+    this.syncSavedConfig();
     this.config = { ...this.config, ...settings };
-    try { localStorage.setItem(this.storageKey, JSON.stringify(this.config)); return true; }
+    try { const raw = JSON.stringify(this.config); localStorage.setItem(this.storageKey, raw); this.storedConfig = raw; return true; }
     catch { return false; }
+  }
+
+  syncSavedConfig() {
+    try {
+      const raw = localStorage.getItem(this.storageKey);
+      if (raw === this.storedConfig) return false;
+      const saved = JSON.parse(raw);
+      if (saved !== null && (typeof saved !== 'object' || Array.isArray(saved))) return false;
+      this.config = { ...this.defaults, ...saved };
+      this.storedConfig = raw;
+      return true;
+    } catch { return false; }
   }
 
   getTarget(config = this.config) {
@@ -134,7 +148,9 @@ class TelegramNotifier {
     const code = data?.error_code ?? response.status;
     const description = String(data?.description ?? '').toLowerCase();
     let message;
-    if (code === 401 || code === 404) message = '봇 토큰이 올바르지 않거나 만료되었습니다.';
+    if (relay && (code === 401 || code === 404)) message = '이 브라우저에 예전 중계 서버 설정이 남아 있습니다. 최신 개인 실행 링크로 연결을 갱신하세요.';
+    else if ((code === 401 || code === 404) && data?.ok === false) message = 'Telegram 봇 인증 실패. 이 브라우저의 연결 설정을 최신 개인 실행 링크로 갱신하세요.';
+    else if (!data) message = '전송 경로에서 Telegram 응답이 아닌 HTTP ' + code + ' 응답을 받았습니다. 네트워크 경로를 확인하세요.';
     else if (data?.parameters?.migrate_to_chat_id != null) message = '그룹이 변경되었습니다. 새 Chat ID: ' + data.parameters.migrate_to_chat_id;
     else if (code === 403) message = '봇이 차단되었거나 채팅에 보낼 권한이 없습니다. 개인 채팅에서는 봇을 열어 시작을 누르세요.';
     else if (code >= 500) {
@@ -149,6 +165,7 @@ class TelegramNotifier {
   }
 
   async deliver(text, force, action) {
+    this.syncSavedConfig();
     if (!this.config.enabled && !force) return this.report({ ok: false, skipped: true, reason: 'disabled', message: '자동 텔레그램 알림이 꺼져 있습니다. 자동 알림 모두 켜기를 눌러주세요.' });
     let target;
     try { target = this.getTarget(); }

@@ -104,6 +104,12 @@ async function bindTelegramSettings() {
     }
   }
 
+  window.addEventListener('storage', event => {
+    if (event.key === notifier.storageKey || event.key === null) {
+      notifier.syncSavedConfig();
+      refresh();
+    }
+  });
   refresh();
   window.addEventListener('hashchange', connectFromLink);
   await connectFromLink();
