@@ -149,7 +149,7 @@ class TelegramNotifier {
   }
 
   async deliver(text, force, action) {
-    if (!this.config.enabled && !force) return { ok: false, skipped: true };
+    if (!this.config.enabled && !force) return this.report({ ok: false, skipped: true, reason: 'disabled', message: '자동 텔레그램 알림이 꺼져 있습니다. 자동 알림 모두 켜기를 눌러주세요.' });
     let target;
     try { target = this.getTarget(); }
     catch (error) { return this.report({ ok: false, message: error.message }); }

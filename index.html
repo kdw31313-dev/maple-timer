@@ -93,7 +93,10 @@
           <span class="status-pill" id="telegram-status-pill" role="status">설정 확인 중</span>
           <a id="telegram-message-link" target="_blank" rel="noopener noreferrer" hidden>텔레그램에서 메시지 열기</a>
           <button id="btn-telegram-test" type="button" class="btn btn-small btn-secondary" disabled>테스트 메시지 전송</button>
-          <label><input type="checkbox" id="toggle-telegram-alert" disabled> 알림 받기</label>
+          <label><input type="checkbox" id="toggle-telegram-alert" disabled> 자동 알림 받기</label>
+          <button id="btn-telegram-enable-all" type="button" class="btn btn-small btn-secondary" disabled>자동 알림 모두 켜기</button>
+          <button id="btn-telegram-detectors-test" type="button" class="btn btn-small btn-secondary" disabled>감지 알림 4종 테스트</button>
+          <span id="telegram-auto-summary" role="status"></span>
         </div>
       </section>
     </main>
@@ -140,7 +143,7 @@
 
   <!-- 스크립트 불러오기 모듈 -->
   <script src="js/storage.js?v=20260812-3"></script>
-  <script src="js/telegramNotifier.js?v=20261103-alert-style"></script><script type="module" src="js/telegramSettings.js?v=20261103-relay"></script>
+  <script src="js/telegramNotifier.js?v=20261104-auto-status"></script><script type="module" src="js/telegramSettings.js?v=20261104-auto-status"></script>
   <script src="js/audioNotifier.js?v=20261103-rows"></script>
   <script src="js/거탐인식기기준.js?v=20260818-1"></script>
   <script src="js/버프인식기기준.js?v=20260917-1"></script>
@@ -153,6 +156,6 @@
   <script src="js/screenCapture.js?v=20261103-text"></script>
   <script src="js/pipController.js?v=20260820-1"></script>
   <script src="js/app.js?v=20261103-link"></script>
-  <script type="module" src="js/monitors/main.js?v=20261103-folder-permission"></script>
+  <script type="module" src="js/monitors/main.js?v=20261104-auto-status"></script>
 </body>
 </html>

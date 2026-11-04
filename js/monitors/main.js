@@ -117,9 +117,16 @@ function play(item, key) {
 }
 
 function notify(key, message, item, options) {
-  if (item.telegram && options?.telegram !== false) window.telegramNotifier?.sendAlert(message, key);
+  let delivery;
+  if (options?.telegram !== false) {
+    const notifier = window.telegramNotifier;
+    delivery = item.telegram
+      ? notifier?.sendAlert(message, key)
+      : notifier?.report({ ok: false, skipped: true, message: LABELS[key] + ' 텔레그램 알림이 꺼져 있습니다.' });
+  }
   play(item, key);
   window.audioNotifier.presentAlert(message);
+  return delivery;
 }
 
 function emit(id, text, item) {
@@ -319,8 +326,23 @@ captureManager.stopCapture = () => {
 window.addEventListener('pagehide', () => pool.close());
 window.mapleNativeMonitors = {
   config, pool, analyze,
+  enableTelegramAlerts() {
+    for (const item of Object.values(config.items)) item.telegram = true;
+    persist();
+    render();
+    synchronize();
+  },
+  async testTelegramAlerts() {
+    const results = [];
+    for (const [key, label] of Object.entries(LABELS)) {
+      const result = await notify(key, '[모의 감지 테스트] ' + label + ' 자동 전송 경로 확인', config.items[key]);
+      results.push({ key, ok: result?.ok === true, message: result?.message });
+    }
+    return results;
+  },
   stop: () => { generation++; pool.close(); },
   getStatuses: () => ({...statuses}),
   resetSettings: () => localStorage.removeItem(KEY),
 };
+window.dispatchEvent(new Event('maple-monitors-ready'));
 tick();

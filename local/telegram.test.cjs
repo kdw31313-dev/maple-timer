@@ -141,3 +141,17 @@ test('all detection categories send only text and preserve detector details', as
   assert.equal(screenshots, 0);
   assert.equal(messages.length, cases.length);
 });
+
+test('automatic delivery reports disabled while connection tests still work', async () => {
+  let requests = 0;
+  const x = client(async () => { requests++; return response(200, {ok:true, result:{type:'supergroup',is_forum:true}}); }, {...target, enabled:false});
+  let reported;
+  x.client.onStatus = result => { reported=result; };
+  const result = await x.client.sendAlert('룬 감지', 'rune');
+  assert.equal(result.skipped,true);
+  assert.equal(result.reason,'disabled');
+  assert.equal(reported,result);
+  assert.equal(requests,0);
+  assert.equal((await x.client.sendTestMessage()).ok,true);
+  assert.equal(requests,3);
+});
